@@ -15,8 +15,8 @@ class CreateSubdistrictsTable extends Migration
     {
         Schema::create('subdistricts', function (Blueprint $table) {
             $table->id();
-            $table->string('subdistrict_code')->nullable();
-            $table->string('subdistrict_name');
+            $table->string('code')->unique()->nullable();
+            $table->string('name');
             $table->foreignId('district_id')->constrained('districts')->onUpdate('cascade')->onDelete('cascade');
         });
     }

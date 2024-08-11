@@ -22,38 +22,23 @@ use App\Http\Controllers\StatusPengobatanController;
 
 Route::get('/', function () {
     // return view('welcome');
-    // Redirect pengguna dari halaman utama ke halaman login
     return redirect('login');
 });
 
 Route::controller(LoginController::class)->group(function () {
-    // Definisi rute untuk menampilkan halaman login.
-    // 'login' adalah URI yang akan diakses oleh pengguna.
-    // 'index' adalah metode dalam LoginController yang akan dipanggil ketika rute ini diakses.
-    // ->name('login') memberikan nama 'login' pada rute ini, yang bisa digunakan untuk menghasilkan URL dengan fungsi route() atau URL::route().
-    // ->middleware('guest') menerapkan middleware 'guest', yang memastikan bahwa hanya pengguna yang belum login yang dapat mengakses halaman ini.
     Route::get('login', 'index')->name('login')->middleware('guest');
-
-    // Definisi rute untuk melakukan otentikasi pengguna.
-    // 'login' adalah URI yang akan diakses oleh pengguna.
-    // 'authenticate' adalah metode dalam LoginController yang akan dipanggil ketika rute ini diakses.
     Route::post('login', 'authenticate');
-
-    // Definisi rute untuk proses logout pengguna.
-    // 'logout' adalah URI yang akan diakses oleh pengguna.
-    // 'logout' adalah metode dalam LoginController yang akan dipanggil ketika rute ini diakses.
     Route::get('logout', 'logout')->name('logout');
 });
 
-// Menetapkan middleware 'auth' untuk grup rute, yang berarti semua rute dalam grup ini akan
-// memerlukan otentikasi pengguna sebelum dapat diakses.
 Route::middleware('auth')->group(function () {
-    // Mendefinisikan rute GET '/home' yang akan menangani permintaan untuk halaman utama.
-    // Rute ini akan mengeksekusi metode 'index' dari HomeController ketika diakses.
-    // Nama rute 'home' ditetapkan untuk rute ini.
+    // HomeController
     Route::get('home', [HomeController::class, 'index'])->name('home');
     // UserController
-    Route::get('users', [UserController::class, 'index'])->name('users');
+    Route::get('user/{id}/list', [UserController::class, 'list'])->name('user.list');
+    Route::get('user/{id}//add', [UserController::class, 'create'])->name('user.add');
+
+    // Route::get('users', [UserController::class, 'index'])->name('users');
     // Route::get('user/add', [UserController::class, 'create'])->name('user.add');
     Route::get('user/{id}/edit', [UserController::class, 'edit'])->name('user.edit');
     Route::match(['post', 'put'], 'user/save/{id?}', [UserController::class, 'save'])->name('user.save');

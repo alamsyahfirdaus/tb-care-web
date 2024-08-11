@@ -156,13 +156,33 @@
                                 <p>Beranda</p>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item {{ Request::segment(1) == 'user' ? 'menu-open' : '' }}">
+                            <a href="javascript:void(0)" class="nav-link {{ Request::segment(1) == 'user' ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-users"></i>
+                                <p>
+                                    Pengguna
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                @foreach (App\Models\UserType::all() as $item)
+                                    <li class="nav-item">
+                                        <a href="{{ route('user.list', ['id' => base64_encode($item->id)]) }}"
+                                            class="nav-link {{ Request::segment(2) == base64_encode($item->id) ? 'active' : '' }}">
+                                            <i class="far fa-circle nav-icon"></i>
+                                            <p>{{ $item->name }}</p>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </li>
+                        {{-- <li class="nav-item">
                             <a href="{{ route('users') }}"
                                 class="nav-link {{ $title == 'Pengguna' ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-users"></i>
                                 <p>Pengguna</p>
                             </a>
-                        </li>
+                        </li> --}}
                         <li class="nav-item">
                             <a href="{{ route('pkm') }}"
                                 class="nav-link {{ Request::segment(1) == 'pkm' ? 'active' : '' }}">

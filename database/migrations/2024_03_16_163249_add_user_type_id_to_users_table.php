@@ -14,8 +14,10 @@ class AddUserTypeIdToUsersTable extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            // $table->unsignedBigInteger('user_type_id')->nullable();
-            $table->foreign('user_type_id')->references('id')->on('user_types')->onUpdate('cascade')->onDelete('cascade');
+            if (!Schema::hasColumn('users', 'user_type_id')) {
+                $table->unsignedBigInteger('user_type_id')->nullable()->after('profile');
+            }
+            $table->foreign('user_type_id')->references('id')->on('user_types')->onUpdate('cascade')->onDelete('set null');
         });
     }
 

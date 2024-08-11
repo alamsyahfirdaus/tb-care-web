@@ -15,8 +15,16 @@ class CreateCoordinatorsTable extends Migration
     {
         Schema::create('coordinators', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreignId('puskesmas_id')->nullable()->constrained('puskesmas')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('user_id')
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+            $table->foreignId('puskesmas_id')
+                ->nullable()
+                ->constrained('puskesmas')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
         });
     }
 

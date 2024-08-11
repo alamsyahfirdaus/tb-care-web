@@ -22,14 +22,14 @@
                     @if (empty($data->id))
                         <div class="tab-pane active" id="tab1">
                             <div class="table-responsive">
-                                <table id="datatable" class="table table-bordered table-hover">
+                                <table id="datatable" class="table table-bordered table-hover" style="width: 100%;">
                                     <thead>
                                         <tr>
                                             <th style="width: 5%; text-align: center;">No</th>
                                             <th>Nama</th>
                                             <th>Email</th>
                                             <th>Telepon</th>
-                                            <th>Level</th>
+                                            {{-- <th>Level</th> --}}
                                             <th style="width: 5%; text-align: center;">Aksi</th>
                                         </tr>
                                     </thead>
@@ -40,7 +40,7 @@
                                                 <td>{{ $user->name }}</td>
                                                 <td>{{ $user->email }}</td>
                                                 <td>{{ $user->telephone ?? '-' }}</td>
-                                                <td>{{ optional($user->userType)->user_type ?? '-' }}</td>
+                                                {{-- <td>{{ optional($user->userType)->user_type ?? '-' }}</td> --}}
                                                 <td style="text-align: center;">
                                                     <div class="btn-group">
                                                         <button type="button"

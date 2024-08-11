@@ -15,11 +15,11 @@ class PuskesmasController extends Controller
     public function index()
     {
         $data = [
-            'title' => 'Puskesmas',
+            'title'     => 'Puskesmas',
             'puskesmas' => Puskesmas::with('subdistrict.district.province')->orderByDesc('id')->get()
         ];
 
-        return view('pkm-index', $data);
+        return view('pkm', $data);
     }
 
     public function create()

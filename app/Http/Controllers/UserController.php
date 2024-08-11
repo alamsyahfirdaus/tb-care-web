@@ -19,13 +19,29 @@ class UserController extends Controller
 
     public function index()
     {
+        // $data = [
+        //     'title'         => 'Pengguna',
+        //     'users'         => User::with('userType') ->whereNotIn('id', [1])->orderByDesc('id') ->get(),
+        //     'user_types'    => UserType::all()
+        // ];
+
+        // return view('user', $data);
+    }
+
+    public function list($id)
+    {
         $data = [
             'title'         => 'Pengguna',
-            'users'         => User::with('userType') ->whereNotIn('id', [1])->orderByDesc('id') ->get(),
+            'users'         => User::with('userType')->whereNotIn('id', [1])->orderByDesc('id') ->get(),
             'user_types'    => UserType::all()
         ];
 
         return view('user', $data);
+    }
+
+    public function create()
+    {
+        
     }
 
     public function edit($id)
