@@ -31,7 +31,7 @@ Route::controller(LoginController::class)->group(function () {
     Route::get('logout', 'logout')->name('logout');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'checkUserType'])->group(function () {
     // HomeController
     Route::get('home', [HomeController::class, 'index'])->name('home');
     // UserController

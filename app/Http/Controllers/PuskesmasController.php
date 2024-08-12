@@ -15,132 +15,70 @@ class PuskesmasController extends Controller
     public function index()
     {
         $data = [
-            'title'     => 'Puskesmas',
-            'puskesmas' => Puskesmas::with('subdistrict.district.province')->orderByDesc('id')->get()
+            'title'         => 'Puskesmas',
+            'puskesmas'     => Puskesmas::with('subdistrict.district.province')->orderByDesc('id')->get(),
+            'subdistricts'  => Subdistrict::with('district.province')->orderBy('name', 'asc')->get(),
         ];
 
-        return view('pkm', $data);
+        return view('puskesmas', $data);
     }
-
-    public function create()
-    {
-        $data = array(
-            'title' => 'Puskesmas',
-            'nextKode' => $this->_nextKode(),
-            'subdistricts' => Subdistrict::all(),
-        );
-
-        return view('pkm-add-edit', $data);
-    }
-
-    private function _nextKode()
-    {
-        $latestPuskesmas = Puskesmas::count();
-        $nextKode = sprintf('P%010d', $latestPuskesmas + 1);
-
-        while (Puskesmas::where('kode', $nextKode)->exists()) {
-            $latestPuskesmas++;
-            $nextKode = sprintf('P%010d', $latestPuskesmas + 1);
-        }
-
-        return $nextKode;
-    }
-
 
     public function edit($id)
     {
-        $query = Puskesmas::with('subdistrict.district.province')->find(base64_decode($id));
+        $puskesmas = Puskesmas::with('subdistrict.district.province')->find(base64_decode($id));
 
         $data = [
-            'title' => 'Puskesmas',
-            'nextKode' => $this->_nextKode(),
-            'data' => $query,
-            'subdistricts' => Subdistrict::all(),
+            'title'         => 'Puskesmas',
+            'data'          => $puskesmas,
+            'subdistricts'  => Subdistrict::with('district.province')->orderBy('name', 'asc')->get(),
         ];
 
-
-        return view('pkm-add-edit', $data);
+        return view('puskesmas', $data);
     }
 
     public function save(Request $request, $id = null): JsonResponse
     {
-        $query = Puskesmas::find(base64_decode($id));
-        if (!$query) {
-            $query = new Puskesmas();
+        $puskesmas = Puskesmas::find(base64_decode($id));
+        if (!$puskesmas) {
+            $puskesmas = new Puskesmas();
         }
 
         $validatedData = $request->validate([
-            'kode' => ['required', 'string', 'max:255', isset($query->id) ? Rule::unique('puskesmas', 'kode')->ignore($query->id) : 'unique:puskesmas,kode'],
-            'nama' => ['required', 'string', 'max:255'],
-            'lokasi' => ['required', 'string'],
+            'code' => ['required', 'string', 'max:255', isset($puskesmas->id) ? Rule::unique('puskesmas', 'code')->ignore($puskesmas->id) : 'unique:puskesmas,code'],
+            'name' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string'],
             'subdistrict_id' => ['required', 'exists:subdistricts,id'],
         ]);
 
-        $query->kode = $validatedData['kode'];
-        $query->nama = $validatedData['nama'];
-        $query->lokasi = $validatedData['lokasi'];
-        $query->subdistrict_id = $validatedData['subdistrict_id'];
+        $puskesmas->code = $validatedData['code'];
+        $puskesmas->name = $validatedData['name'];
+        $puskesmas->address = $validatedData['address'];
+        $puskesmas->subdistrict_id = $validatedData['subdistrict_id'];
 
-        $query->save();
+        $puskesmas->save();
 
-        return response()->json(
-            [
-                'success' => true,
-                'message' => 'Data Puskesmas berhasil disimpan.',
-            ],
-            200
+        $data = array(
+            'success' => true,
+            'message' => 'Data puskesmas berhasil disimpan.',
         );
+
+        if (!$puskesmas->wasRecentlyCreated) {
+            $data['previous'] = true;
+        }
+
+        return response()->json($data, 200);
     }
 
     public function destroy($id): RedirectResponse
     {
-        $query = Puskesmas::find(base64_decode($id));
+        $puskesmas = Puskesmas::find(base64_decode($id));
 
-        if (!$query) {
-            return redirect()->route('pkm')->with('error', 'Data Puskesmas tidak ditemukan.');
+        if (!$puskesmas) {
+            return redirect()->route('pkm')->with('error', 'Data puskesmas tidak ditemukan.');
         }
 
-        $query->delete();
+        $puskesmas->delete();
 
-        return redirect()->route('pkm')->with('success', 'Data Puskesmas berhasil dihapus.');
-    }
-
-    public function getAddress(Request $request): JsonResponse
-    {
-        $subdistrict_id = $request->subdistrict_id;
-        $subdistrict = Subdistrict::with('district.province')->find($subdistrict_id);
-
-        $data = [
-            'district_name' => $subdistrict->district->district_name ?? '',
-            'province_name' => $subdistrict->district->province->province_name ?? '',
-        ];
-
-        return response()->json($data);
-    }
-
-    public function getRegion(Request $request): JsonResponse
-    {
-        $puskesmas_id   = $request->puskesmas_id;
-        $puskesmas      = Puskesmas::with('subdistrict.district.province')->find($puskesmas_id);
-
-        if (isset($puskesmas)) {
-            $subdistrict_name =
-                $puskesmas->subdistrict->subdistrict_name;
-            $district_name =
-                $puskesmas->subdistrict->district->district_name;
-            $province_name =
-                $puskesmas->subdistrict->district->province
-                ->province_name;
-            $wilayah =
-                $subdistrict_name .
-                ', ' .
-                $district_name .
-                ', ' .
-                $province_name;
-        } else {
-            $wilayah = '';
-        }
-
-        return response()->json(['wilayah' => $wilayah]);
+        return redirect()->route('pkm')->with('success', 'Data puskesmas berhasil dihapus.');
     }
 }

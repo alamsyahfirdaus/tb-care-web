@@ -38,7 +38,13 @@
                                                 <td style="text-align: center;">{{ $key + 1 }}</td>
                                                 <td>{{ $item->code ?? '-' }}</td>
                                                 <td>{{ $item->name }}</td>
-                                                <td>{{ $item->location }}</td>
+                                                <td>{{ $item->address }} 
+                                                    @if ($item->subdistrict_id)
+                                                    <hr style="margin-top: 8px; margin-bottom: 8px;">
+                                                    {{ $item->subdistrict->name }} - {{ $item->subdistrict->district->name }} -
+                                                    {{ $item->subdistrict->district->province->name }}
+                                                    @endif
+                                                </td>
                                                 <td style="text-align: center;">
                                                     <div class="btn-group">
                                                         <button type="button"
@@ -67,11 +73,10 @@
                         </div>
                     @endif
                     <div class="tab-pane {{ isset($data->id) ? 'active' : '' }}" id="tab2">
-                        <form class="form-horizontal"
-                            action="{{ route('user.save', isset($data) ? base64_encode($data->id) : '') }}" method="POST"
+                        <form action="{{ route('pkm.save', isset($data) ? base64_encode($data->id) : '') }}" method="POST"
                             enctype="multipart/form-data" id="form-data">
                             @csrf
-                            @if (isset($user))
+                            @if (isset($data))
                                 @method('PUT')
                             @endif
                             <div class="form-group row">
@@ -79,7 +84,7 @@
                                 <div class="col-sm-10">
                                     <input type="text" class="form-control" name="code" id="code"
                                         placeholder="Masukan Kode" autocomplete="off"
-                                        value="{{ isset($data) ? $data->name : '' }}">
+                                        value="{{ isset($data) ? $data->code : '0' }}">
                                     <span id="error-code" class="error invalid-feedback"></span>
                                 </div>
                             </div>
@@ -93,10 +98,34 @@
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <input type="file" name="image" id="image" style="display: none;">
+                                <label for="address" class="col-sm-2 col-form-label">Alamat</label>
+                                <div class="col-sm-10">
+                                    <textarea class="form-control" name="address" id="address" 
+                                              placeholder="Masukan Alamat">{{ isset($data) ? $data->address : '' }}</textarea>
+                                    <span id="error-address" class="error invalid-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="subdistrict_id" class="col-sm-2 col-form-label">Kecamatan</label>
+                                <div class="col-sm-10">
+                                    <select name="subdistrict_id" id="subdistrict_id" class="form-control select2"
+                                        style="width: 100%;">
+                                        <option value="">Pilih Kecamatan</option>
+                                        @foreach ($subdistricts as $item)
+                                            <option value="{{ $item->id }}"
+                                                {{ isset($data) && $data->subdistrict_id == $item->id ? 'selected' : '' }}>
+                                                {{ $item->name }} - {{ $item->district->name }} -
+                                                {{ $item->district->province->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <span id="error-subdistrict_id" class="error invalid-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
                                 <div class="offset-sm-2 col-sm-10">
-                                    <button type="submit" class="btn btn-primary btn-sm"><i
-                                            class="fas fa-save mr-1"></i> Simpan</button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>
+                                        Simpan</button>
                                 </div>
                             </div>
                         </form>

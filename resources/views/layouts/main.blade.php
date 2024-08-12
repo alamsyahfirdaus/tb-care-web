@@ -318,6 +318,7 @@
                     "emptyTable": "Tidak ada data yang tersedia dalam tabel",
                     // "infoEmpty": "Menampilkan 0 hingga 0 dari 0 entri",
                     // "infoFiltered": "(disaring dari total _MAX_ entri)",
+                    "infoFiltered": "",
                     // "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
                     // "lengthMenu": "Tampilkan _MENU_ entri per halaman",
                     "search": "Cari:",

@@ -17,7 +17,7 @@ class CreatePuskesmasTable extends Migration
             $table->id();
             $table->string('code')->unique()->nullable();
             $table->string('name');
-            $table->text('location')->nullable();
+            $table->text('address')->nullable();
         });
     }
 
