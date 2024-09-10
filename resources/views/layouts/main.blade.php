@@ -49,6 +49,12 @@
             font-size: 28px;
         }
 
+        .user-panel .image img {
+            width: 40px;
+            aspect-ratio: 1 / 1;
+        }
+
+
         .content-wrapper {
             background-color: white;
         }
@@ -56,6 +62,7 @@
         #user-profile {
             color: white;
         }
+
 
         .main-footer a {
             color: #869099;
@@ -65,7 +72,9 @@
         .modal-footer .btn,
         td .btn-group .btn,
         .bs-stepper-content div .btn,
-        .offset-sm-2 .btn {
+        .offset-sm-2 .btn,
+        .offset-sm-3 .btn,
+        .btn-block {
             font-weight: bold;
         }
 
@@ -94,6 +103,15 @@
             border-top: 0 solid rgba(0, 0, 0, 0.125);
             padding-top: 0px;
         }
+
+        .select2-container--default.select2-container--disabled .select2-selection--single {
+            background-color: #fff;
+            cursor: default;
+        }
+
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border: 1px solid #ced4da;
+        }
     </style>
 </head>
 
@@ -101,9 +119,9 @@
     <div class="wrapper">
         <nav class="main-header navbar navbar-expand navbar-primary navbar-dark">
             <ul class="navbar-nav">
-                <li class="nav-item d-lg-none">
-                    <a class="nav-link" data-widget="pushmenu" href="javascript:void(0)" role="button"><i
-                            class="fas fa-bars"></i></a>
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="javascript:void(0)" role="button"
+                        style="color: #fff;"><i class="fas fa-bars"></i></a>
                 </li>
             </ul>
             <ul class="navbar-nav ml-auto">
@@ -114,11 +132,7 @@
                     </a>
                     <div class="dropdown-menu dropdown-menu-right">
                         <a href="{{ route('user.show', ['id' => base64_encode(Auth::id())]) }}" class="dropdown-item">
-                            <i class="fas fa-user mr-2"></i> Profile Saya
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a href="javascript:void(0)" class="dropdown-item">
-                            <i class="fas fa-cog mr-2"></i> Pengaturan
+                            <i class="fas fa-user mr-2"></i> Profil Saya
                         </a>
                         <div class="dropdown-divider"></div>
                         <a href="{{ route('logout') }}" class="dropdown-item">
@@ -135,13 +149,13 @@
             </a>
 
             <div class="sidebar" style="border-right: 1px solid #DEE2E6;">
-                <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                <div class="user-panel my-3 pb-3 d-flex">
                     <div class="image">
-                        <img src="{{ Auth::user()->profile ? asset('profile_images/' . Auth::user()->profile) : asset('assets/img/profile.png') }}"
+                        <img src="{{ Auth::user()->profile ? asset('upload_images/' . Auth::user()->profile) : asset('assets/img/profile.png') }}"
                             class="img-circle" alt="">
                     </div>
                     <div class="info">
-                        <a href="{{ route('user.show', ['id' => base64_encode(Auth::id())]) }}" class="d-block">
+                        <a href="{{ route('user.show', ['id' => base64_encode(Auth::id())]) }}" class="d-block py-1">
                             {{ Str::limit(Auth::user()->name, 20) }}
                         </a>
                     </div>
@@ -156,54 +170,56 @@
                                 <p>Beranda</p>
                             </a>
                         </li>
-                        <li class="nav-item {{ Request::segment(1) == 'user' ? 'menu-open' : '' }}">
-                            <a href="javascript:void(0)" class="nav-link {{ Request::segment(1) == 'user' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-users"></i>
-                                <p>
-                                    Pengguna
-                                    <i class="right fas fa-angle-left"></i>
-                                </p>
-                            </a>
-                            <ul class="nav nav-treeview">
-                                @foreach (App\Models\UserType::all() as $item)
-                                    <li class="nav-item">
-                                        <a href="{{ route('user.list', ['id' => base64_encode($item->id)]) }}"
-                                            class="nav-link {{ Request::segment(2) == base64_encode($item->id) ? 'active' : '' }}">
-                                            <i class="far fa-circle nav-icon"></i>
-                                            <p>{{ $item->name }}</p>
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </li>
-                        {{-- <li class="nav-item">
-                            <a href="{{ route('users') }}"
-                                class="nav-link {{ $title == 'Pengguna' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-users"></i>
-                                <p>Pengguna</p>
-                            </a>
-                        </li> --}}
+                        @if (session('role') == 1)
+                            @php
+                                $segments = ['user', 'ho', 'coord', 'patient'];
+                                $isActive = in_array(Request::segment(1), $segments);
+                            @endphp
+
+                            <li class="nav-item {{ $isActive ? 'menu-open' : '' }}">
+                                <a href="javascript:void(0)" class="nav-link {{ $isActive ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-users"></i>
+                                    <p>
+                                        Pengguna
+                                        <i class="right fas fa-angle-left"></i>
+                                    </p>
+                                </a>
+                                <ul class="nav nav-treeview">
+                                    @foreach (App\Models\UserType::all() as $item)
+                                        <li class="nav-item">
+                                            <a href="{{ route('user.list', ['id' => base64_encode($item->id)]) }}"
+                                                class="nav-link {{ $title == $item->name ? 'active' : '' }}">
+                                                <i class="far fa-circle nav-icon"></i>
+                                                <p>{{ $item->name }}</p>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </li>
+
+                        @endif
                         <li class="nav-item">
                             <a href="{{ route('pkm') }}"
-                                class="nav-link {{ Request::segment(1) == 'pkm' ? 'active' : '' }}">
+                                class="nav-link {{ $title == 'Puskesmas' ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-hospital"></i>
                                 <p>Puskesmas</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ route('pjtb') }}"
-                                class="nav-link {{ Request::segment(1) == 'pjtb' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-user-nurse"></i>
-                                <p>PJ TB</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="{{ route('patient') }}"
-                                class="nav-link {{ Request::segment(1) == 'patient' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-user-injured"></i>
-                                <p>Pasien</p>
-                            </a>
-                        </li>
+                        {{-- @php
+                            $userTypes = [
+                                '3' => ['name' => 'PJTB/Kader', 'icon' => 'fa-user-nurse'],
+                                '4' => ['name' => 'Pasien', 'icon' => 'fa-user-injured'],
+                            ];
+                        @endphp
+                        @foreach ($userTypes as $id => $item)
+                            <li class="nav-item">
+                                <a href="{{ route('user.list', ['id' => base64_encode($id)]) }}"
+                                    class="nav-link {{ $title == $item['name'] ? 'active' : '' }}">
+                                    <i class="nav-icon fas {{ $item['icon'] }}"></i>
+                                    <p>{{ $item['name'] }}</p>
+                                </a>
+                            </li>
+                        @endforeach --}}
                         <li class="nav-item {{ Request::segment(1) == 'status' ? 'menu-open' : '' }}">
                             <a href="javascript:void(0)"
                                 class="nav-link {{ Request::segment(1) == 'status' ? 'active' : '' }}">
@@ -268,6 +284,7 @@
                 <script src="{{ asset('assets/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
                 <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
                 <script src="{{ asset('assets/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
+                <script src="{{ asset('assets/plugins/bs-stepper/js/bs-stepper.min.js') }}"></script>
                 <script src="{{ asset('assets/dist/js/adminlte.js') }}"></script>
                 @yield('content')
                 @if (@session()->has('success'))
@@ -376,15 +393,20 @@
                             showConfirmButton: false,
                             timer: 1750
                         });
-                        if (!response.previous) {
-                            $('#modal-form').modal('hide');
+                        if (response.url) {
                             setTimeout(function() {
-                                window.location.reload();
+                                window.location.href = response.url;
                             }, 2250);
                         } else {
-                            setTimeout(function() {
-                                window.location.href = "{{ url()->previous() }}";
-                            }, 2250);
+                            if (response.previous) {
+                                setTimeout(function() {
+                                    window.location.href = "{{ url()->previous() }}";
+                                }, 2250);
+                            } else {
+                                setTimeout(function() {
+                                    window.location.reload();
+                                }, 2250);
+                            }
                         }
                     },
                     error: function(xhr, status, error) {
@@ -426,46 +448,6 @@
                 }
             });
 
-        });
-
-        $('#subdistrict_id').change(function(e) {
-            e.preventDefault();
-            $.ajax({
-                type: 'POST',
-                url: '{{ route('pkm.address') }}',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    subdistrict_id: $(this).val()
-                },
-                dataType: 'json',
-                success: function(response) {
-                    $('#district_name').val(response.district_name);
-                    $('#province_name').val(response.province_name);
-                    $('#wilayah').val(response.wilayah);
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                }
-            });
-        });
-
-        $('#puskesmas_id').change(function(e) {
-            e.preventDefault();
-            $.ajax({
-                type: 'POST',
-                url: '{{ route('pkm.region') }}',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    puskesmas_id: $(this).val()
-                },
-                dataType: 'json',
-                success: function(response) {
-                    $('#wilayah').val(response.wilayah);
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                }
-            });
         });
 
         function deleteData(id) {

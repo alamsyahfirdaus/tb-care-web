@@ -41,7 +41,7 @@
                                                 <td>{{ $item->address }} 
                                                     @if ($item->subdistrict_id)
                                                     <hr style="margin-top: 8px; margin-bottom: 8px;">
-                                                    {{ $item->subdistrict->name }} - {{ $item->subdistrict->district->name }} -
+                                                    {{ 'Kec. ' . $item->subdistrict->name }} - {{ $item->subdistrict->district->name }} - Prov.
                                                     {{ $item->subdistrict->district->province->name }}
                                                     @endif
                                                 </td>
@@ -84,7 +84,7 @@
                                 <div class="col-sm-10">
                                     <input type="text" class="form-control" name="code" id="code"
                                         placeholder="Masukan Kode" autocomplete="off"
-                                        value="{{ isset($data) ? $data->code : '0' }}">
+                                        value="{{ isset($data) ? $data->code : '' }}">
                                     <span id="error-code" class="error invalid-feedback"></span>
                                 </div>
                             </div>
@@ -114,7 +114,7 @@
                                         @foreach ($subdistricts as $item)
                                             <option value="{{ $item->id }}"
                                                 {{ isset($data) && $data->subdistrict_id == $item->id ? 'selected' : '' }}>
-                                                {{ $item->name }} - {{ $item->district->name }} -
+                                                Kec. {{ $item->name }} - {{ $item->district->name }} - Prov.
                                                 {{ $item->district->province->name }}
                                             </option>
                                         @endforeach

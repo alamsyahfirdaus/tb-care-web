@@ -22,12 +22,11 @@ class CreateUsersTable extends Migration
             $table->string('place_of_birth')->nullable();
             $table->date('date_of_birth')->nullable();
             $table->string('telephone')->nullable();
-            // $table->timestamp('email_verified_at')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('profile')->nullable();
             $table->unsignedBigInteger('user_type_id')->nullable();
-            $table->text('address')->nullable();
-            // $table->rememberToken();
+            $table->rememberToken()->nullable();
             $table->timestamps();
         });
         

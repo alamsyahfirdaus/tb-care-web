@@ -15,7 +15,7 @@ class CreatePuskesmasTable extends Migration
     {
         Schema::create('puskesmas', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->unique()->nullable();
+            $table->string('code')->nullable();
             $table->string('name');
             $table->text('address')->nullable();
         });

@@ -14,11 +14,7 @@ class AddSubdistrictIdToPuskesmasTable extends Migration
     public function up()
     {
         Schema::table('puskesmas', function (Blueprint $table) {
-            $table->foreignId('subdistrict_id')
-                    ->nullable()
-                    ->constrained('subdistricts')
-                    ->onUpdate('cascade')
-                    ->onDelete('set null');
+            $table->foreignId('subdistrict_id')->nullable()->constrained('subdistricts')->onUpdate('cascade')->onDelete('set null');
         });
     }
 

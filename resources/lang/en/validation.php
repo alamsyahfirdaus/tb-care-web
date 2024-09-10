@@ -25,7 +25,7 @@ return [
     'alpha_num' => $attr . ' hanya boleh berisi huruf dan angka.',
     'array' => $attr . ' harus berupa array.',
     'before' => $attr . ' harus tanggal sebelum :date.',
-    'before_or_equal' => $attr . ' harus tanggal sebelum atau sama dengan :date.',
+    'before_or_equal' => $attr . ' tidak boleh setelah hari ini.',
     'between' => [
         'numeric' => $attr . ' harus antara :min dan :max.',
         'file' => $attr . ' harus antara :min dan :max kilobita.',
@@ -165,6 +165,19 @@ return [
         'user_type_id' => 'level',
         'subdistrict_id' => 'kecamatan',
         'telephone' => 'telepon',
+        'gender' => 'jenis kelamin',
+        'place_of_birth' => 'tempat lahir',
+        'date_of_birth' => 'tanggal lahir',
+        'office_type_id' => 'dinas kesehatan',
+        'office_address' => 'alamat kantor',
+        'puskesmas_id' => 'puskesmas',
+        'diagnosis_date' => 'tanggal diagnosa',
+        'address' => 'alamat',
+        'occupation' => 'pekerjaan',
+        'height' => 'tinggi badan',
+        'weight' => 'berat badan',
+        'blood_type' => 'golongan darah',
+        'district_id' => 'kapubaten/kota',
     ],
 
 ];

@@ -4,24 +4,72 @@ namespace App\Http\Controllers;
 
 use App\Models\Puskesmas;
 use App\Models\Subdistrict;
+use App\Models\HealthOffice;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
 class PuskesmasController extends Controller
 {
     public function index()
     {
+        $role = session('role');
+        $puskesmasQuery = Puskesmas::with('subdistrict.district.province')->orderByDesc('id');
+
+        if ($role == 1) {
+            // Jika role adalah 1 (admin), ambil semua data Puskesmas dan Subdistricts
+            $puskesmas = $puskesmasQuery->get();
+            $subdistricts = Subdistrict::with('district.province')->orderBy('name', 'asc')->get();
+        } elseif ($role == 2) {
+            // Jika role adalah 2 (Health Office), ambil data HealthOffice berdasarkan user_id
+            $healthOffice = HealthOffice::with('district.province')->where('user_id', Auth::id())->first();
+
+            if ($healthOffice) {
+                if ($healthOffice->office_type == 'Provinsi') {
+                    // Filter Puskesmas berdasarkan province_id
+                    $puskesmas = $puskesmasQuery->whereHas('subdistrict.district', function ($query) use ($healthOffice) {
+                        $query->where('province_id', $healthOffice->district->province_id);
+                    })->get();
+
+                    // Ambil Subdistricts berdasarkan province_id
+                    $subdistricts = Subdistrict::with('district.province')
+                        ->whereHas('district', function ($query) use ($healthOffice) {
+                            $query->where('province_id', $healthOffice->district->province_id);
+                        })
+                        ->orderBy('name', 'asc')
+                        ->get();
+                } else {
+                    // Filter Puskesmas berdasarkan district_id
+                    $puskesmas = $puskesmasQuery->whereHas('subdistrict', function ($query) use ($healthOffice) {
+                        $query->where('district_id', $healthOffice->district_id);
+                    })->get();
+
+                    // Ambil Subdistricts berdasarkan district_id
+                    $subdistricts = Subdistrict::with('district.province')
+                        ->where('district_id', $healthOffice->district_id)
+                        ->orderBy('name', 'asc')
+                        ->get();
+                }
+            } else {
+                // Jika HealthOffice tidak ditemukan, tampilkan pesan error
+                return redirect()->back()->with('error', 'Data tidak ditemukan');
+            }
+        } else {
+            return redirect()->back()->with('error', 'Akses tidak sah');
+        }
+
         $data = [
-            'title'         => 'Puskesmas',
-            'puskesmas'     => Puskesmas::with('subdistrict.district.province')->orderByDesc('id')->get(),
-            'subdistricts'  => Subdistrict::with('district.province')->orderBy('name', 'asc')->get(),
+            'title'        => 'Puskesmas',
+            'puskesmas'    => $puskesmas,
+            'subdistricts' => $subdistricts,
         ];
 
-        return view('puskesmas', $data);
+        return view('puskesmas-index', $data);
     }
+
 
     public function edit($id)
     {
@@ -33,7 +81,7 @@ class PuskesmasController extends Controller
             'subdistricts'  => Subdistrict::with('district.province')->orderBy('name', 'asc')->get(),
         ];
 
-        return view('puskesmas', $data);
+        return view('puskesmas-index', $data);
     }
 
     public function save(Request $request, $id = null): JsonResponse
@@ -44,7 +92,12 @@ class PuskesmasController extends Controller
         }
 
         $validatedData = $request->validate([
-            'code' => ['required', 'string', 'max:255', isset($puskesmas->id) ? Rule::unique('puskesmas', 'code')->ignore($puskesmas->id) : 'unique:puskesmas,code'],
+            'code' => [
+                'nullable',
+                Rule::unique('puskesmas', 'code')->ignore($puskesmas->id)->where(function ($query) {
+                    return $query->whereNotNull('code')->where('code', '!=', '0');
+                }),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string'],
             'subdistrict_id' => ['required', 'exists:subdistricts,id'],
@@ -58,7 +111,7 @@ class PuskesmasController extends Controller
         $puskesmas->save();
 
         $data = array(
-            'success' => true,
+            'status' => true,
             'message' => 'Data puskesmas berhasil disimpan.',
         );
 

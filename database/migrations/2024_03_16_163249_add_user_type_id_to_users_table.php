@@ -17,7 +17,7 @@ class AddUserTypeIdToUsersTable extends Migration
             if (!Schema::hasColumn('users', 'user_type_id')) {
                 $table->unsignedBigInteger('user_type_id')->nullable()->after('profile');
             }
-            $table->foreign('user_type_id')->references('id')->on('user_types')->onUpdate('cascade')->onDelete('set null');
+            $table->foreign('user_type_id')->references('id')->on('user_types')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 

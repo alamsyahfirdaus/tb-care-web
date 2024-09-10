@@ -30,6 +30,13 @@ class LoginController extends Controller
         if (Auth::attempt([$field => $credentials['username'], 'password' => $credentials['password']])) {
             // Jika berhasil, regenerasi session untuk mencegah serangan session fixation.
             $request->session()->regenerate();
+
+            // Mengambil pengguna yang terautentikasi
+            $user = Auth::user();
+
+            // Menyimpan role ke dalam session dari user_type_id
+            session(['role' =>  $user->user_type_id]);
+
             // Mengembalikan respons JSON dengan status sukses.
             return response()->json(['success' => true]);
         }
