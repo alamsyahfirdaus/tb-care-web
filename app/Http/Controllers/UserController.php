@@ -337,7 +337,7 @@ class UserController extends Controller
         $data = [
             'status' => true,
             'message' => 'Data ' . $request->input('user_type') . ' berhasil disimpan.',
-            'url' => $request->input('user_type_id') != 1 || Auth::id() == $user->id ? r : route('user.list', ['id' => base64_encode($request->input('user_type_id'))]),
+            'url' => $request->input('user_type_id') != 1 || Auth::id() == $user->id ? route('user.show', ['id' => base64_encode($user->id)]) : route('user.list', ['id' => base64_encode($request->input('user_type_id'))]),
         ];
 
         return response()->json($data, 200);
