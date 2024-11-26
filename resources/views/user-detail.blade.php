@@ -2,15 +2,18 @@
 @section('content')
     <div class="container-fluid">
         <div class="card card-primary card-outline">
-            <div class="card-header py-2">
-                <h3 class="card-title pt-1">{{ Auth::id() == $user->id ? $title : 'Data ' . $title }}</h3>
-                <div class="card-tools">
-                    <a href="{{ Auth::id() == $user->id ? url()->previous() : route('user.list', ['id' => base64_encode($user_type_id)]) }}"
-                        class="btn btn-primary btn-sm" title="Tutup Data {{ $title }}">
-                        <i class="fas fa-times"></i>
-                    </a>
+            @if (Auth::id() != $user->id)
+                <div class="card-header py-2">
+                    <h3 class="card-title pt-1">{{ 'Data ' . $title }}</h3>
+                    <div class="card-tools">
+                        <a href="{{ route('user.list', ['id' => base64_encode($user_type_id)]) }}"
+                            class="btn btn-primary btn-sm" title="Sebelumnya">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </div>
+
                 </div>
-            </div>
+            @endif
             <div class="row">
                 <div class="col-md-3">
                     <div class="card-body box-profile">
@@ -25,10 +28,18 @@
                             {{ $user->userType->name }}</p>
                         <ul class="list-group list-group-unbordered">
                             <li class="list-group-item" style="border-bottom: none;">
-                                <a href="{{ isset($user) ? route('user.edit', ['id' => base64_encode($user->id)]) : 'javascript:void(0)' }}"
-                                    type="button" class="btn btn-outline-primary btn-block btn-sm"><i
-                                        class="fas fa-edit"></i>
-                                    {{ Auth::id() == $user->id ? 'Edit Profil' : 'Edit Data ' . $title }}</a>
+                                @php
+                                    $route =
+                                        $user->id == Auth::id()
+                                            ? route('profile.edit', ['id' => base64_encode($user->id)])
+                                            : route('user.edit', ['id' => base64_encode($user->id)]);
+                                    $buttonText = $user->id == Auth::id() ? 'Edit Profil' : 'Edit Data ' . $title;
+                                @endphp
+
+                                <a href="{{ $route }}" type="button"
+                                    class="btn btn-outline-primary btn-block btn-sm">
+                                    <i class="fas fa-user-edit"></i> {{ $buttonText }}
+                                </a>
                             </li>
                         </ul>
                     </div>
@@ -46,7 +57,7 @@
                                     @foreach ($users as $item)
                                         <option value="{{ base64_encode($item->id) }}"
                                             {{ $user->id == $item->id ? 'selected' : '' }}>
-                                            {{ $item->name }} ({{ $item->username }}) - {{ $item->email }}
+                                            {{ $item->name }} ({{ $item->username }})
                                         </option>
                                     @endforeach
                                 </select>
@@ -63,7 +74,7 @@
                                         $user->place_of_birth && $user->date_of_birth
                                             ? $user->place_of_birth .
                                                 ', ' .
-                                                \Carbon\Carbon::parse($user->date_of_birth)->format('d F Y')
+                                                \App\Helpers\DateHelper::convertDate($user->date_of_birth)
                                             : '-',
                                 ];
                             @endphp
@@ -78,7 +89,7 @@
             </div>
         </div>
 
-        @if ($user_type_id != 1)
+        @if (($user_type_id != 1 && $user_type_id == 4 && $user->id != Auth::id()) || $user_type_id == 2 || $user_type_id == 3)
             <div class="card card-primary card-outline">
                 <div class="card-header py-2">
                     <h3 class="card-title pt-1 card-title-patient">Detail {{ $title }}</h3>
@@ -112,6 +123,7 @@
             </div>
         @endif
     </div>
+
     <script>
         $('#user_id').change(function() {
             var userId = $(this).val();

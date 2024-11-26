@@ -25,11 +25,11 @@ class CoordinatorController extends Controller
         }
 
         $data = [
-            'title' => $coord->user->userType->name,
-            'data' => $coord,
-            'coords' => Coordinator::getCoordWithUser(),
+            'title'       => $coord->user->userType->name,
+            'data'        => $coord,
+            'coords'      => Coordinator::getCoordWithUser(),
             'coord_types' => Coordinator::getCoordTypes(),
-            'puskesmas' => Puskesmas::getAllPuskesmas(),
+            'puskesmas'   => Puskesmas::getAllPuskesmas(),
         ];
 
         return view('coord-edit', $data);
@@ -51,7 +51,7 @@ class CoordinatorController extends Controller
         if (!$coord) {
             return response()->json([
                 'status' => false,
-                'message' => 'PJTB/Kader tidak ditemukan.',
+                'message' => 'Data Koordinator tidak ditemukan.',
             ], 404);
         }
     
@@ -63,7 +63,7 @@ class CoordinatorController extends Controller
     
         return response()->json([
             'status' => true,
-            'message' => 'Data ptjb/kader berhasil diperbarui.',
+            'message' => 'Data Koordinator berhasil diperbarui.',
         ], 200);
     }
 

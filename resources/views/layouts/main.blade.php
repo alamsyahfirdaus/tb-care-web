@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title }} - {{ Config::get('constants.APP_NAME') }}</title>
+    <title>{{ Config::get('constants.APP_NAME') }} | {{ $title }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon.ico') }}" />
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -25,8 +25,7 @@
     <link rel="stylesheet" href="{{ asset('assets/plugins/overlayScrollbars/css/OverlayScrollbars.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/plugins/daterangepicker/daterangepicker.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/plugins/summernote/summernote-bs4.min.css') }}">
-    {{-- <link rel="stylesheet" href="{{ asset('assets/dist/css/adminlte.min.css') }}"> --}}
-    <link rel="stylesheet" href="{{ asset('assets/dist/css/adminlte.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/dist/css/tbcare.css') }}">
     <style>
         body {
             font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
@@ -68,12 +67,13 @@
             color: #869099;
         }
 
-        .card-footer .btn,
+        /* .card-footer .btn,
         .modal-footer .btn,
         td .btn-group .btn,
         .bs-stepper-content div .btn,
         .offset-sm-2 .btn,
-        .offset-sm-3 .btn,
+        .offset-sm-3 .btn, */
+        form .btn-sm,
         .btn-block {
             font-weight: bold;
         }
@@ -116,6 +116,7 @@
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+
     <div class="wrapper">
         <nav class="main-header navbar navbar-expand navbar-primary navbar-dark">
             <ul class="navbar-nav">
@@ -131,12 +132,12 @@
                         <i class="fas fa-user-alt fa-fw"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right">
-                        <a href="{{ route('user.show', ['id' => base64_encode(Auth::id())]) }}" class="dropdown-item">
+                        <a href="{{ route('profile') }}" class="dropdown-item">
                             <i class="fas fa-user mr-2"></i> Profil Saya
                         </a>
                         <div class="dropdown-divider"></div>
                         <a href="{{ route('logout') }}" class="dropdown-item">
-                            <i class="fas fa-power-off mr-2"></i> Log Out
+                            <i class="fas fa-sign-out-alt mr-2"></i> Keluar
                         </a>
                     </div>
                 </li>
@@ -171,6 +172,31 @@
                             </a>
                         </li>
                         @if (session('role') == 1)
+
+                            <li
+                                class="nav-item {{ in_array(Request::segment(1), ['trtypes', 'pkm']) ? 'menu-open' : '' }}">
+                                <a href="javascript:void(0)"
+                                    class="nav-link {{ in_array(Request::segment(1), ['trtypes', 'pkm']) ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-folder-open"></i>
+                                    <p>Master<i class="right fas fa-angle-left"></i></p>
+                                </a>
+                                <ul class="nav nav-treeview">
+                                    <li class="nav-item">
+                                        <a href="{{ route('pkm') }}"
+                                            class="nav-link {{ Request::segment(1) == 'pkm' ? 'active' : '' }}">
+                                            <i class="far fa-circle nav-icon"></i>
+                                            <p>Daftar Puskesmas</p>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a href="{{ route('trtypes') }}"
+                                            class="nav-link {{ Request::segment(1) == 'trtypes' ? 'active' : '' }}">
+                                            <i class="far fa-circle nav-icon"></i>
+                                            <p>Jenis Pengobatan</p>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
                             @php
                                 $segments = ['user', 'ho', 'coord', 'patient'];
                                 $isActive = in_array(Request::segment(1), $segments);
@@ -196,46 +222,37 @@
                                     @endforeach
                                 </ul>
                             </li>
-
-                        @endif
-                        <li class="nav-item">
-                            <a href="{{ route('pkm') }}"
-                                class="nav-link {{ $title == 'Puskesmas' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-hospital"></i>
-                                <p>Puskesmas</p>
-                            </a>
-                        </li>
-                        {{-- @php
-                            $userTypes = [
-                                '3' => ['name' => 'PJTB/Kader', 'icon' => 'fa-user-nurse'],
-                                '4' => ['name' => 'Pasien', 'icon' => 'fa-user-injured'],
-                            ];
-                        @endphp
-                        @foreach ($userTypes as $id => $item)
+                            {{-- <li class="nav-item">
+                                <a href="{{ route('pkm') }}"
+                                    class="nav-link {{ $title == 'Puskesmas' ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-hospital"></i>
+                                    <p>Puskesmas</p>
+                                </a>
+                            </li> --}}
                             <li class="nav-item">
-                                <a href="{{ route('user.list', ['id' => base64_encode($id)]) }}"
-                                    class="nav-link {{ $title == $item['name'] ? 'active' : '' }}">
-                                    <i class="nav-icon fas {{ $item['icon'] }}"></i>
-                                    <p>{{ $item['name'] }}</p>
+                                <a href="{{ route('treatments') }}"
+                                    class="nav-link {{ $title == 'Pengobatan' ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-user-md"></i>
+                                    <p>Pengobatan</p>
                                 </a>
                             </li>
-                        @endforeach --}}
-                        <li class="nav-item {{ Request::segment(1) == 'status' ? 'menu-open' : '' }}">
-                            <a href="javascript:void(0)"
-                                class="nav-link {{ Request::segment(1) == 'status' ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-cogs"></i>
-                                <p>Pengaturan<i class="right fas fa-angle-left"></i></p>
-                            </a>
-                            <ul class="nav nav-treeview">
-                                <li class="nav-item">
-                                    <a href="{{ route('status') }}"
-                                        class="nav-link {{ Request::segment(1) == 'status' ? 'active' : '' }}">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Status Pengobatan</p>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
+                        @endif
+                        @if (in_array(session('role'), [2, 3]))
+                            <li class="nav-item">
+                                <a href="{{ route('patients') }}"
+                                    class="nav-link {{ $title == 'Pasien' ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-users"></i>
+                                    <p>Pasien</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('treatments') }}"
+                                    class="nav-link {{ $title == 'Pengobatan' ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-user-md"></i>
+                                    <p>Pengobatan</p>
+                                </a>
+                            </li>
+                        @endif
                     </ul>
                 </nav>
             </div>
@@ -284,8 +301,7 @@
                 <script src="{{ asset('assets/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
                 <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
                 <script src="{{ asset('assets/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
-                <script src="{{ asset('assets/plugins/bs-stepper/js/bs-stepper.min.js') }}"></script>
-                <script src="{{ asset('assets/dist/js/adminlte.js') }}"></script>
+                <script src="{{ asset('assets/dist/js/tbcare.js') }}"></script>
                 @yield('content')
                 @if (@session()->has('success'))
                     <script>
@@ -318,7 +334,7 @@
 
     <script>
         $(function() {
-            $('#datatable').DataTable({
+            var table = $('#datatable').DataTable({
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
@@ -328,7 +344,7 @@
                 "responsive": false,
                 "order": [],
                 "columnDefs": [{
-                    "targets": [0, -1],
+                    "targets": [-1],
                     "orderable": false,
                 }],
                 "language": {
@@ -347,16 +363,25 @@
                     //     "previous": "Sebelumnya"
                     // }
                 }
-            }).on('order.dt search.dt', function() {
-                $('#datatable tbody tr').each(function(index) {
-                    $(this).find('td:first').text(index + 1);
-                });
             });
+
+            if (table.data().count() > 0) {
+                table.on('order.dt search.dt', function() {
+                    table.rows().every(function(rowIdx) {
+                        table.cell(rowIdx, 0).data(rowIdx +
+                            1);
+                    });
+                });
+            }
 
             $('.select2').select2();
 
             $('.datetimepicker-input').datetimepicker({
                 format: 'DD/MM/YYYY'
+            });
+
+            $('.timepicker-input').datetimepicker({
+                format: 'LT'
             });
 
             $('#btn-password').click(function() {
@@ -418,6 +443,12 @@
                                 $(this).removeClass('is-invalid');
                                 $('#error-' + field).text('').hide();
                             });
+                            if ($field.hasClass('datetimepicker-input')) {
+                                $field.click(function() {
+                                    $(this).removeClass('is-invalid');
+                                    $('#error-' + field).text('').hide();
+                                });
+                            }
                             if ($field.hasClass('select2')) {
                                 $field.next().find('.select2-selection').addClass(
                                     'border border-danger');
@@ -436,13 +467,13 @@
                     $('#tab1').removeClass('active');
                     $('#tab2').addClass('active');
                     $('.card-title').text('Tambah {{ $title }}');
-                    $(this).find('i').removeClass('fas fa-plus').addClass('fas fa-times');
-                    $(this).attr('title', 'Tutup Formulir');
+                    $(this).find('i').removeClass('fas fa-plus').addClass('fas fa-angle-double-left');
+                    $(this).attr('title', 'Sebelumnya');
                 } else {
                     $('#tab2').removeClass('active');
                     $('#tab1').addClass('active');
                     $('.card-title').text('Daftar {{ $title }}');
-                    $(this).find('i').removeClass('fas fa-times').addClass('fas fa-plus');
+                    $(this).find('i').removeClass('fas fa-angle-double-left').addClass('fas fa-plus');
                     $(this).attr('title', 'Tambah {{ $title }}');
                     $('#form-data .form-control').val('').change().removeClass('is-invalid');
                 }

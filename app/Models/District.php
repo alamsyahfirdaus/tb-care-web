@@ -18,34 +18,34 @@ class District extends Model
         return $this->belongsTo(Province::class, 'province_id');
     }
 
-    public static function getAllDistricts()
+    public static function getAllDistricts($province_id = null)
     {
-        return self::with('province')
-            ->orderBy('name', 'asc')
-            ->get()
-            ->mapWithKeys(function ($district) {
-                return [
-                    $district->id => $district->name . ' - Prov. ' . ($district->province ? $district->province->name : 'Unknown'),
-                ];
-            })->toArray();
+        $query = self::with('province')->orderBy('name', 'asc');
+
+        if ($province_id) {
+            $query->where('province_id', $province_id);
+        }
+
+        return $query->get()->mapWithKeys(function ($district) {
+            return [
+                $district->id => $district->name . ' - Prov. ' . ($district->province ? $district->province->name : 'Unknown'),
+            ];
+        })->toArray();
     }
 
     public static function getDistrictById($id)
     {
         $district = self::with('province')->find($id);
-
-        if (!$district) {
+    
+        if ($district) {
             return [
-                'id' => null,
-                'name' => '-',
+                'id'          => $district->id,
+                'name'        => $district->name,
+                'province_id' => $district->province_id,
+                'province'    => $district->province ? $district->name . ' - Prov. ' . $district->province->name : null,
             ];
         }
-
-        $province = $district->province ? $district->province->name : 'Unknown';
-
-        return [
-            'id' => $district->id,
-            'name' => $district->name . ' - Prov. ' . $province,
-        ];
-    }
+    
+        return null;
+    }    
 }

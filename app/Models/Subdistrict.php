@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Subdistrict extends Model
 {
@@ -20,20 +21,48 @@ class Subdistrict extends Model
 
     public static function getAllSubdistricts()
     {
-        return self::with('district.province')
-            ->orderBy('name', 'asc')
-            ->get()
-            ->mapWithKeys(function ($subdistrict) {
-                return [
-                    $subdistrict->id => 'Kec. ' . $subdistrict->name . ' - ' . $subdistrict->district->name . ' - Prov. ' . $subdistrict->district->province->name,
-                ];
-            })->toArray();
+        $districtId = $provinceId = null;
+
+        if (session('role') == 2) {
+            $healthOffice = HealthOffice::with('district.province')
+                ->where('user_id', Auth::id())
+                ->first();
+
+            if ($healthOffice) {
+                if ($healthOffice->office_type === 'Kabupaten/Kota') {
+                    $districtId = $healthOffice->district_id;
+                } elseif ($healthOffice->office_type === 'Provinsi') {
+                    $provinceId = $healthOffice->district->province_id;
+                }
+            }
+        }
+
+        $query = self::with('district.province')->orderBy('name', 'asc');
+
+        if ($districtId) {
+            $query->where('district_id', $districtId);
+        }
+
+        if ($provinceId) {
+            $query->whereHas('district', function ($q) use ($provinceId) {
+                $q->where('province_id', $provinceId);
+            });
+        }
+
+        return $query->get()->mapWithKeys(function ($subdistrict) {
+            $area = 'Kec. ' . $subdistrict->name . ' - ' . $subdistrict->district->name . ' - Prov. ' . $subdistrict->district->province->name;
+
+            return [
+                $subdistrict->id => $area,
+            ];
+        })->toArray();
     }
+
 
     public static function getSubdistrictById($id)
     {
         $subdistrict = self::with('district.province')->find($id);
-    
+
         if (!$subdistrict) {
             return [
                 'id' => null,
@@ -43,7 +72,7 @@ class Subdistrict extends Model
 
         $district = $subdistrict->district;
         $province = $district ? $district->province : null;
-    
+
         $name = 'Kec. ' . $subdistrict->name;
         if ($district) {
             $name .= ' - ' . $district->name;

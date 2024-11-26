@@ -6,8 +6,8 @@
                 <h3 class="card-title pt-1">{{ 'Edit Detail ' . $title }}</h3>
                 <div class="card-tools">
                     <a href="{{ route('user.show', ['id' => base64_encode($data->user_id)]) }}" class="btn btn-primary btn-sm"
-                        title="Tutup Data {{ $title }}">
-                        <i class="fas fa-times"></i>
+                        title="Sebelumnya">
+                        <i class="fas fa-angle-double-left"></i>
                     </a>
                 </div>
             </div>
@@ -30,7 +30,8 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="nik" class="col-sm-3 col-form-label">NIK</label>
+                        <label for="nik" class="col-sm-3 col-form-label">NIK<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" name="nik" id="nik"
                                 placeholder="Masukan NIK" autocomplete="off" value="{{ isset($data) ? $data->nik : '' }}">
@@ -38,14 +39,16 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="address" class="col-sm-3 col-form-label">Alamat</label>
+                        <label for="address" class="col-sm-3 col-form-label">Alamat<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <textarea class="form-control" name="address" id="address" placeholder="Masukan Alamat">{{ isset($data->address) ? $data->address : '' }}</textarea>
                             <span id="error-address" class="error invalid-feedback"></span>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="subdistrict_id" class="col-sm-3 col-form-label">Kecamatan</label>
+                        <label for="subdistrict_id" class="col-sm-3 col-form-label">Kecamatan<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <select name="subdistrict_id" id="subdistrict_id" class="form-control select2"
                                 style="width: 100%;">
@@ -58,12 +61,6 @@
                                 @endforeach
                             </select>
                             <span id="error-subdistrict_id" class="error invalid-feedback"></span>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="offset-sm-3 col-sm-9">
-                            <small style="font-style: italic;">*) NIK, alamat, dan kecamatan harus
-                                sesuai dengan KTP pasien.</small>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -111,29 +108,30 @@
                             <span id="error-blood_type" class="error invalid-feedback"></span>
                         </div>
                     </div>
-                    <div class="form-group row">
+                    {{-- <div class="form-group row">
                         <label for="diagnosis_date" class="col-sm-3 col-form-label">Tanggal
-                            Diagnosis</label>
+                            Diagnosis<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control datetimepicker-input"
                                 data-target="#reservationdate" data-toggle="datetimepicker" name="diagnosis_date"
-                                id="diagnosis_date" placeholder="Tanggal Diagnosis"
+                                id="diagnosis_date" placeholder="Masukan Tanggal Diagnosis"
                                 value="{{ isset($data) && $data->diagnosis_date ? \Carbon\Carbon::parse($data->diagnosis_date)->format('d/m/Y') : '' }}"
                                 autocomplete="off">
                             <span id="error-diagnosis_date" class="error invalid-feedback"></span>
                         </div>
-                    </div>
+                    </div> --}}
                     <div class="form-group row">
-                        <label for="puskesmas_id" class="col-sm-3 col-form-label">Tempat Berobat
-                            (Puskesmas)</label>
+                        <label for="puskesmas_id" class="col-sm-3 col-form-label">Puskesmas<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <select name="puskesmas_id" id="puskesmas_id" class="form-control select2"
                                 style="width: 100%;">
                                 <option value="">Pilih Puskesmas</option>
-                                @foreach ($puskesmas as $key => $value)
-                                    <option value="{{ $key }}"
-                                        {{ isset($data) && $data->puskesmas_id == $key ? 'selected' : '' }}>
-                                        {{ $value }}
+                                @foreach ($puskesmas as $item)
+                                    <option value="{{ $item['id'] }}"
+                                        {{ isset($data) && $data->puskesmas_id == $item['id'] ? 'selected' : '' }}>
+                                        {{ $item['puskesmas'] }}
                                     </option>
                                 @endforeach
                             </select>

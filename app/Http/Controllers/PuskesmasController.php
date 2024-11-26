@@ -14,71 +14,30 @@ use Illuminate\Support\Facades\Auth;
 
 class PuskesmasController extends Controller
 {
+
     public function index()
     {
-        $role = session('role');
-        $puskesmasQuery = Puskesmas::with('subdistrict.district.province')->orderByDesc('id');
-
-        if ($role == 1) {
-            // Jika role adalah 1 (admin), ambil semua data Puskesmas dan Subdistricts
-            $puskesmas = $puskesmasQuery->get();
-            $subdistricts = Subdistrict::with('district.province')->orderBy('name', 'asc')->get();
-        } elseif ($role == 2) {
-            // Jika role adalah 2 (Health Office), ambil data HealthOffice berdasarkan user_id
-            $healthOffice = HealthOffice::with('district.province')->where('user_id', Auth::id())->first();
-
-            if ($healthOffice) {
-                if ($healthOffice->office_type == 'Provinsi') {
-                    // Filter Puskesmas berdasarkan province_id
-                    $puskesmas = $puskesmasQuery->whereHas('subdistrict.district', function ($query) use ($healthOffice) {
-                        $query->where('province_id', $healthOffice->district->province_id);
-                    })->get();
-
-                    // Ambil Subdistricts berdasarkan province_id
-                    $subdistricts = Subdistrict::with('district.province')
-                        ->whereHas('district', function ($query) use ($healthOffice) {
-                            $query->where('province_id', $healthOffice->district->province_id);
-                        })
-                        ->orderBy('name', 'asc')
-                        ->get();
-                } else {
-                    // Filter Puskesmas berdasarkan district_id
-                    $puskesmas = $puskesmasQuery->whereHas('subdistrict', function ($query) use ($healthOffice) {
-                        $query->where('district_id', $healthOffice->district_id);
-                    })->get();
-
-                    // Ambil Subdistricts berdasarkan district_id
-                    $subdistricts = Subdistrict::with('district.province')
-                        ->where('district_id', $healthOffice->district_id)
-                        ->orderBy('name', 'asc')
-                        ->get();
-                }
-            } else {
-                // Jika HealthOffice tidak ditemukan, tampilkan pesan error
-                return redirect()->back()->with('error', 'Data tidak ditemukan');
-            }
-        } else {
-            return redirect()->back()->with('error', 'Akses tidak sah');
-        }
-
         $data = [
             'title'        => 'Puskesmas',
-            'puskesmas'    => $puskesmas,
-            'subdistricts' => $subdistricts,
+            'puskesmas'    => Puskesmas::getAllPuskesmas(),
+            'subdistricts' => Subdistrict::getAllSubdistricts(),
         ];
 
         return view('puskesmas-index', $data);
     }
 
-
     public function edit($id)
     {
-        $puskesmas = Puskesmas::with('subdistrict.district.province')->find(base64_decode($id));
+        $puskesmas = Puskesmas::getPuskesmasById(base64_decode($id));
+
+        if (!$puskesmas) {
+            return redirect()->back();
+        }
 
         $data = [
             'title'         => 'Puskesmas',
-            'data'          => $puskesmas,
-            'subdistricts'  => Subdistrict::with('district.province')->orderBy('name', 'asc')->get(),
+            'data'          => Puskesmas::getPuskesmasById(base64_decode($id)),
+            'subdistricts'  => Subdistrict::getAllSubdistricts(),
         ];
 
         return view('puskesmas-index', $data);
@@ -112,7 +71,7 @@ class PuskesmasController extends Controller
 
         $data = array(
             'status' => true,
-            'message' => 'Data puskesmas berhasil disimpan.',
+            'message' => 'Data Puskesmas berhasil disimpan.',
         );
 
         if (!$puskesmas->wasRecentlyCreated) {
@@ -127,11 +86,11 @@ class PuskesmasController extends Controller
         $puskesmas = Puskesmas::find(base64_decode($id));
 
         if (!$puskesmas) {
-            return redirect()->route('pkm')->with('error', 'Data puskesmas tidak ditemukan.');
+            return redirect()->route('pkm')->with('error', 'Data Puskesmas tidak ditemukan.');
         }
 
         $puskesmas->delete();
 
-        return redirect()->route('pkm')->with('success', 'Data puskesmas berhasil dihapus.');
+        return redirect()->route('pkm')->with('success', 'Data Puskesmas berhasil dihapus.');
     }
 }

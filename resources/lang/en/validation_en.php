@@ -1,5 +1,6 @@
 <?php
 
+$attr = ":" . ucwords('attribute');
 return [
 
     /*

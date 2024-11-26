@@ -8,7 +8,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 
-    <title>Login - {{ Config::get('constants.APP_NAME') }}</title>
+    <title>Sistem Layanan Tuberkulosis</title>
 
     <meta name="description" content="" />
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico" />
@@ -69,12 +69,12 @@
                                 <span id="error-password" class="error invalid-feedback"></span>
                             </div>
                             <div class="mb-3">
-                                <button class="btn btn-primary d-grid w-100 fw-bolder" type="submit">Login</button>
+                                <button class="btn btn-primary d-grid w-100 fw-bolder" type="submit">Masuk</button>
                             </div>
                         </form>
-                        <p class="text-center">
+                        {{-- <p class="text-center">
                             <a href="javascript:void(0)" class="text-primary">Lupa Password?</a>
-                        </p>
+                        </p> --}}
                     </div>
                 </div>
             </div>

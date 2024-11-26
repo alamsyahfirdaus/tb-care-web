@@ -33,20 +33,49 @@ class Patient extends Model
     public static function getPatientWithUser()
     {
         $patients = self::with('user')->get();
-        
-        $patients = $patients->sortBy(function ($patient) {
-            return $patient->user->name ?? '';
-        });
-        
-        $patientData = [];
-        
-        foreach ($patients as $patient) {
+
+        $patients = $patients->sortBy(fn($patient) => $patient->user->name ?? '');
+
+        $patientData = $patients->mapWithKeys(function ($patient) {
             if ($patient->user) {
-                $patientData[$patient->id] = $patient->user->name . ' (' . $patient->user->username . ') - ' . $patient->user->email;
+                return [
+                    $patient->id => $patient->user->name . ' (' . $patient->user->username . ')',
+                ];
             }
-        }
-        
-        return $patientData;
+            return [];
+        });
+
+        return $patientData->toArray();
     }
-    
+
+    public static function getAllPatients()
+    {
+        $puskesmas           = Puskesmas::getAllPuskesmas();
+        $puskesmasCollection = collect($puskesmas);
+
+        $puskesmasIds        = $puskesmasCollection->pluck('id')->toArray();
+
+        $query = self::with(['user', 'puskesmas']);
+
+        if (!empty($puskesmasIds)) {
+            $query->whereIn('puskesmas_id', $puskesmasIds);
+        }
+
+        return $query
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($patient) {
+                return [
+                    'id'             => $patient->id,
+                    'user_id'        => $patient->user_id,
+                    'full_name'      => $patient->user->name,
+                    'gender'         => $patient->user->gender,
+                    'telephone'      => $patient->user->telephone ?? '-',
+                    'username'       => $patient->user->username ?? '-',
+                    'email'          => $patient->user->email ?? '-',
+                    'puskesmas_name' => $patient->puskesmas->name ?? '-',
+                ];
+            })
+            ->toArray();
+    }
 }

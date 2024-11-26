@@ -16,7 +16,12 @@ class PatientController extends Controller
 {
     public function index() 
     {
-        //
+        $data = [
+            'title'       => 'Pasien',
+            'patients'    => Patient::getAllPatients()
+        ];
+
+        return view('patient-index', $data);
     }
 
     public function edit($id)
@@ -28,11 +33,11 @@ class PatientController extends Controller
         }
 
         $data = [
-            'title' => $patient->user->userType->name,
-            'data' => $patient,
-            'patients' => Patient::getPatientWithUser(),
-            'subdistricts' => Subdistrict::getAllSubdistricts(),
-            'puskesmas' => Puskesmas::getAllPuskesmas(),
+            'title'         => $patient->user->userType->name,
+            'data'          => $patient,
+            'patients'      => Patient::getPatientWithUser(),
+            'subdistricts'  => Subdistrict::getAllSubdistricts(),
+            'puskesmas'     => Puskesmas::getAllPuskesmas(),
         ];
 
         return view('patient-edit', $data);
@@ -55,7 +60,7 @@ class PatientController extends Controller
             'height' => 'nullable|numeric|digits_between:1,3',
             'weight' => 'nullable|numeric|digits_between:1,3',
             'blood_type' => 'nullable|in:A,B,AB,O',
-            'diagnosis_date' => 'required|date_format:d/m/Y|before_or_equal:today',
+            // 'diagnosis_date' => 'required|date_format:d/m/Y|before_or_equal:today',
             'puskesmas_id' => 'required|exists:puskesmas,id',
         ];
     
@@ -82,7 +87,7 @@ class PatientController extends Controller
     
         return response()->json([
             'status' => true,
-            'message' => 'Data pasien berhasil diperbarui.',
+            'message' => 'Data Pasien berhasil diperbarui.',
         ], 200);
     }
     

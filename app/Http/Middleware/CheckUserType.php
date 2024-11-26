@@ -8,31 +8,18 @@ use Illuminate\Support\Facades\Auth;
 
 class CheckUserType
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
-     */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next, $userTypes)
     {
-        // Memeriksa apakah pengguna sudah terautentikasi
         if (Auth::check()) {
-            // Memeriksa apakah user_type_id pengguna adalah 4
-            if (Auth::user()->user_type_id == 4) {
-                // Menghapus semua data sesi
-                $request->session()->flush();
+            $allowedTypes = explode('-', $userTypes);
 
-                // Mengalihkan ke halaman login dengan pesan error
-                return redirect('login')->with('error', 'Akses ditolak! Anda tidak memiliki izin untuk mengakses halaman ini.');
+            if (!in_array(Auth::user()->user_type_id, $allowedTypes)) {
+                return redirect('/');
             }
         } else {
-            // Mengalihkan ke halaman login jika pengguna belum terautentikasi
-            return redirect('login');
+            return redirect('/');
         }
 
-        // Melanjutkan ke permintaan berikutnya jika tidak ada masalah
         return $next($request);
     }
 }

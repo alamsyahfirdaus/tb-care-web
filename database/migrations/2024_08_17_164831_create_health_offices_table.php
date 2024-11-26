@@ -18,8 +18,8 @@ class CreateHealthOfficesTable extends Migration
             $table->integer('office_type_id')->nullable();
             $table->text('office_address')->nullable();
             $table->foreignId('district_id')->nullable()->constrained('districts')->onUpdate('cascade')->onDelete('cascade');
-            $table->string('telephone')->nullable();
-            $table->string('email')->nullable();
+            $table->string('office_phone')->nullable();
+            $table->string('office_email')->nullable();
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade')->onUpdate('cascade');
         });
     }

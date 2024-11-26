@@ -3,7 +3,13 @@
     <div class="container-fluid">
         <div class="card card-primary card-outline">
             <div class="card-header py-2">
-                <h3 class="card-title pt-1">{{ empty($data->id) ? 'Daftar ' . $title : 'Edit ' . $title }}</h3>
+                <h3 class="card-title pt-1">
+                    @if (isset($data) && $data->id == Auth::id())
+                        Edit Profil
+                    @else
+                        {{ isset($data) && $data->id ? 'Edit ' . $title : 'Daftar ' . $title }}
+                    @endif
+                </h3>
                 <div class="card-tools">
                     @if ($user_type_id == 1)
                         @if (empty($data->id))
@@ -12,8 +18,8 @@
                                 <i class="fas fa-plus"></i>
                             </a>
                         @else
-                            <a href="{{ url()->previous() }}" class="btn btn-primary btn-sm" title="Tutup Formulir">
-                                <i class="fas fa-times"></i>
+                            <a href="{{ url()->previous() }}" class="btn btn-primary btn-sm" title="Sebelumnya">
+                                <i class="fas fa-angle-double-left"></i>
                             </a>
                         @endif
                     @else
@@ -34,16 +40,16 @@
                                         <tr>
                                             <th style="width: 5%; text-align: center;">No</th>
                                             <th>Nama</th>
-                                            <th>Email</th>
-                                            <th>Telepon</th>
+                                            <th>Jenis<span style="color: #fff; font-size: 10px;">_</span>Kelamin</th>
+                                            <th>No.<span style="color: #fff; font-size: 10px;">_</span>Handphone</th>
                                             @if ($user_type_id == 2)
-                                                <th>Dinas<span style="color: #fff;">_</span>Kesehatan</th>
-                                                <th>Alamat<span style="color: #fff;">_</span>Kantor</th>
+                                                <th>Dinas<span style="color: #fff; font-size: 10px;">_</span>Kesehatan</th>
+                                                {{-- <th>Alamat<span style="color: #fff; font-size: 10px;">_</span>Kantor</th> --}}
                                             @elseif ($user_type_id == 3)
-                                                <th>PJTB/Kader</th>
-                                                <th>Puskesmas</th>
-                                            @elseif ($user_type_id == 4)
-                                                <th>Puskesmas</th>
+                                                <th>Koordinator</th>
+                                                {{-- <th>Puskesmas</th> --}}
+                                            {{-- @elseif ($user_type_id == 4) --}}
+                                                {{-- <th>Puskesmas</th> --}}
                                             @endif
                                             <th style="width: 5%; text-align: center;">Aksi</th>
                                         </tr>
@@ -53,28 +59,24 @@
                                             <tr>
                                                 <td style="text-align: center;">{{ $key + 1 }}</td>
                                                 <td>{{ $item->name }}</td>
-                                                <td>{{ $item->email }}</td>
+                                                <td>{{ $item->gender }}</td>
                                                 <td>{{ $item->telephone ?? '-' }}</td>
                                                 @if ($user_type_id == 2)
                                                     @php
-                                                        $user = \App\Models\HealthOffice::with('district.province')
-                                                            ->where('user_id', $item->id)
-                                                            ->first();
-
-                                                        $officeType = $user->office_type_id ? \App\Models\HealthOffice::getOfficeTypes($user->office_type_id) : '-';
-                                                        $officeAddress = $user->office_address ?? '-';
-                                                        $districtName = $user->district->name ?? '-';
-                                                        $provinceName = $user->district->province->name ?? '-';
+                                                        $healthOffice = \App\Models\HealthOffice::getHealthOfficeByUserId(
+                                                            $item->id,
+                                                        );
                                                     @endphp
-
-                                                    <td>{{ $officeType }}</td>
                                                     <td>
-                                                        {{ $officeAddress }}
-                                                        @if ($user && $user->district_id)
-                                                            <hr style="margin: 8px 0;">
-                                                            {{ $districtName }} - Prov. {{ $provinceName }}
-                                                        @endif
+                                                        {{ $healthOffice['office_type'] ?? '-' }}
                                                     </td>
+                                                    {{-- <td>
+                                                        {{ $healthOffice['office_address'] ?? '-' }}
+                                                        @if ($healthOffice && $healthOffice['office_district'])
+                                                            <hr class="my-1">
+                                                            <small>{{ $healthOffice['office_district'] }}</small>
+                                                        @endif
+                                                    </td> --}}
                                                 @elseif (in_array($user_type_id, [3, 4]))
                                                     @php
                                                         $model =
@@ -89,12 +91,16 @@
                                                             : null;
                                                     @endphp
                                                     @if ($user_type_id == 3)
-                                                        <td>{{ $user->coord_type_id ? \App\Models\Coordinator::getCoordTypes($user->coord_type_id,
-                                                        ) : '-' }}</td>
+                                                        <td>{{ $user && $user->coord_type_id ? \App\Models\Coordinator::getCoordTypes($user->coord_type_id) : '-' }}
+                                                        </td>
                                                     @endif
-                                                    <td>
+                                                    {{-- <td>
                                                         {{ $puskesmas ? $puskesmas['name'] : '-' }}
-                                                    </td>
+                                                        @if ($puskesmas && $puskesmas['area'])
+                                                            <hr class="my-1">
+                                                            <small>{{ $puskesmas['area'] }}</small>
+                                                        @endif
+                                                    </td> --}}
                                                 @endif
 
                                                 <td style="text-align: center;">
@@ -140,7 +146,8 @@
                                 @method('PUT')
                             @endif
                             <div class="form-group row">
-                                <label for="name" class="col-sm-3 col-form-label">Nama</label>
+                                <label for="name" class="col-sm-3 col-form-label">Nama<small
+                                        class="text-danger">*</small></label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control" name="name" id="name"
                                         placeholder="Masukan Nama" autocomplete="off"
@@ -149,18 +156,19 @@
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label for="gender" class="col-sm-3 col-form-label">Jenis Kelamin</label>
+                                <label for="gender" class="col-sm-3 col-form-label">Jenis Kelamin<small
+                                        class="text-danger">*</small></label>
                                 <div class="col-sm-9">
+                                    @php
+                                        $listGender = ['Laki-laki', 'Perempuan'];
+                                    @endphp
                                     <select class="form-control select2" name="gender" id="gender" style="width: 100%;">
                                         <option value="">Pilih Jenis Kelamin</option>
-                                        <option value="Laki-laki"
-                                            {{ isset($data) && $data->gender == 'Laki-laki' ? 'selected' : '' }}>
-                                            Laki-laki
-                                        </option>
-                                        <option value="Perempuan"
-                                            {{ isset($data) && $data->gender == 'Perempuan' ? 'selected' : '' }}>
-                                            Perempuan
-                                        </option>
+                                        @foreach ($listGender as $gender)
+                                            <option value="{{ $gender }}"
+                                                {{ isset($data) && $data->gender == $gender ? 'selected' : '' }}>
+                                                {{ $gender }}</option>
+                                        @endforeach
                                     </select>
                                     <span id="error-gender" class="error invalid-feedback"></span>
                                 </div>
@@ -179,17 +187,18 @@
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control datetimepicker-input"
                                         data-target="#reservationdate" data-toggle="datetimepicker" name="date_of_birth"
-                                        id="date_of_birth" placeholder="Tanggal Lahir"
+                                        id="date_of_birth" placeholder="Masukan Tanggal Lahir"
                                         value="{{ isset($data) && $data->date_of_birth ? \Carbon\Carbon::parse($data->date_of_birth)->format('d/m/Y') : '' }}"
                                         autocomplete="off">
                                     <span id="error-date_of_birth" class="error invalid-feedback"></span>
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label for="telephone" class="col-sm-3 col-form-label">Telepon</label>
+                                <label for="telephone" class="col-sm-3 col-form-label">No. Handphone<small
+                                        class="text-danger">*</small></label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control" name="telephone" id="telephone"
-                                        placeholder="Masukan Telepon (Handphone)" autocomplete="off"
+                                        placeholder="Masukan No. Handphone" autocomplete="off"
                                         value="{{ isset($data) ? $data->telephone : '' }}">
                                     <span id="error-telephone" class="error invalid-feedback"></span>
                                 </div>
@@ -203,39 +212,39 @@
                                     <span id="error-email" class="error invalid-feedback"></span>
                                 </div>
                             </div>
-                            <div class="form-group row">
-                                <label for="password" class="col-sm-3 col-form-label">Password</label>
-                                <div class="col-sm-9">
-                                    <div class="input-group">
-                                        <input type="password" class="form-control" name="password" id="password"
-                                            placeholder="{{ empty($data) ? 'Masukkan Password (password default adalah email)' : 'Biarkan kosong jika tidak ingin mengubah password' }}">
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-default" id="btn-password"><i
-                                                    class="fas fa-eye-slash"></i></button>
-                                        </div>
+                            @if (isset($data))
+                                <div class="form-group row">
+                                    <label for="username" class="col-sm-3 col-form-label">Username<small
+                                            class="text-danger">*</small></label>
+                                    <div class="col-sm-9">
+                                        <input type="text" class="form-control" name="username" id="username"
+                                            placeholder="Masukan Username" autocomplete="off"
+                                            value="{{ isset($data) ? $data->username : '' }}">
+                                        <span id="error-username" class="error invalid-feedback"></span>
                                     </div>
-                                    <span id="error-password" class="error invalid-feedback"></span>
                                 </div>
-                            </div>
+                                <div class="form-group row">
+                                    <label for="password" class="col-sm-3 col-form-label">Password</label>
+                                    <div class="col-sm-9">
+                                        <input type="password" class="form-control" name="password" id="password"
+                                            placeholder="{{ empty($data) ? 'Masukkan Password' : 'Masukkan Password (biarkan kosong jika tidak ingin mengubahnya)' }}">
+                                        <span id="error-password" class="error invalid-feedback"></span>
+                                    </div>
+                                </div>
+                            @endif
                             <div class="form-group row">
                                 <label for="profile" class="col-sm-3 col-form-label">Foto Profile</label>
                                 <div class="col-sm-9">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" name="profile" id="profile"
-                                            placeholder="Pilih File" readonly
-                                            value="{{ isset($data) && $data->profile ? $data->profile : '' }}"
-                                            style="background-color: #ffffff;">
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-default" id="btn-profile"><i
-                                                    class="fas fa-image"></i></button>
-                                        </div>
-                                    </div>
+                                    <input type="text" class="form-control" name="profile" id="profile"
+                                        placeholder="Pilih File" readonly
+                                        value="{{ isset($data) && $data->profile ? $data->profile : '' }}"
+                                        style="background-color: #ffffff;">
                                     <span id="error-profile" class="error invalid-feedback"></span>
                                 </div>
                             </div>
                             @if (isset($data) && $data->profile)
                                 <div class="form-group row">
-                                    <div class="offset-sm-2 col-sm-9">
+                                    <div class="offset-sm-3 col-sm-9">
                                         <div class="custom-control custom-checkbox">
                                             <input type="checkbox" name="terms" class="custom-control-input"
                                                 id="remove-profile">
@@ -263,13 +272,8 @@
     </div>
     <script>
         $(function() {
-            @if (empty($data->id))
-                $('#email').keyup(function(e) {
-                    $('#password').val($(this).val()).keyup();
-                });
-            @endif
 
-            $('#btn-profile, #profile').click(function() {
+            $('#profile').click(function() {
                 $('#image').click();
             });
 

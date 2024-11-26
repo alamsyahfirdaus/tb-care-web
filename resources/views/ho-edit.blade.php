@@ -6,8 +6,8 @@
                 <h3 class="card-title pt-1">{{ 'Edit Detail ' . $title }}</h3>
                 <div class="card-tools">
                     <a href="{{ route('user.show', ['id' => base64_encode($data->user_id)]) }}" class="btn btn-primary btn-sm"
-                        title="Tutup Data {{ $title }}">
-                        <i class="fas fa-times"></i>
+                        title="Sebelumnya">
+                        <i class="fas fa-angle-double-left"></i>
                     </a>
                 </div>
             </div>
@@ -31,7 +31,8 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="office_type_id" class="col-sm-3 col-form-label">Dinas Kesehatan</label>
+                        <label for="office_type_id" class="col-sm-3 col-form-label">Dinas Kesehatan<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <select name="office_type_id" id="office_type_id" class="form-control select2"
                                 style="width: 100%;">
@@ -47,14 +48,16 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="office_address" class="col-sm-3 col-form-label">Alamat Kantor</label>
+                        <label for="office_address" class="col-sm-3 col-form-label">Alamat Kantor<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <textarea class="form-control" name="office_address" id="office_address" placeholder="Masukan Alamat Kantor">{{ isset($data->office_address) ? $data->office_address : '' }}</textarea>
                             <span id="error-office_address" class="error invalid-feedback"></span>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="district_id" class="col-sm-3 col-form-label">Kabupaten/Kota</label>
+                        <label for="district_id" class="col-sm-3 col-form-label">Kabupaten/Kota<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <select name="district_id" id="district_id" class="form-control select2" style="width: 100%;">
                                 <option value="">Pilih Kabupaten/Kota</option>
@@ -69,27 +72,21 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="telephone" class="col-sm-3 col-form-label">Nomor Telepon</label>
+                        <label for="office_phone" class="col-sm-3 col-form-label">Telepon Kantor</label>
                         <div class="col-sm-9">
-                            <input type="text" class="form-control" name="telephone" id="telephone"
-                                placeholder="Masukan Nomor Telepon" autocomplete="off"
-                                value="{{ isset($data) ? $data->telephone : '' }}">
-                            <span id="error-telephone" class="error invalid-feedback"></span>
+                            <input type="text" class="form-control" name="office_phone" id="office_phone"
+                                placeholder="Masukan Telepon Kantor" autocomplete="off"
+                                value="{{ isset($data) ? $data->office_phone : '' }}">
+                            <span id="error-office_phone" class="error invalid-feedback"></span>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="email" class="col-sm-3 col-form-label">Alamat Email</label>
+                        <label for="office_email" class="col-sm-3 col-form-label">Email Kantor</label>
                         <div class="col-sm-9">
-                            <input type="text" class="form-control" name="email" id="email"
-                                placeholder="Masukan Alamat Email" autocomplete="off"
-                                value="{{ isset($data) ? $data->email : '' }}">
-                            <span id="error-email" class="error invalid-feedback"></span>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="offset-sm-3 col-sm-9">
-                            <small style="font-style: italic;">*) Nomor telepon dan alamat email harus sesuai dengan alamat
-                                kantor.</small>
+                            <input type="text" class="form-control" name="office_email" id="office_email"
+                                placeholder="Masukan Email Kantor" autocomplete="off"
+                                value="{{ isset($data) ? $data->office_email : '' }}">
+                            <span id="error-office_email" class="error invalid-feedback"></span>
                         </div>
                     </div>
                     <div class="form-group row">

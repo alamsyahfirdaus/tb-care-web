@@ -79,7 +79,7 @@ class UserController extends Controller
         }
 
         $data = [
-            'title'         => $user->userType->name,
+            'title'         => $user->id == Auth::id() ? 'Profil Saya' : $user->userType->name,
             'users'         => User::with('userType')->orderByDesc('id')->get(),
             'data'          => $user,
             'user_type_id'  => $user->user_type_id,
@@ -89,7 +89,7 @@ class UserController extends Controller
             'coord_types'   => Coordinator::getCoordTypes(),
         ];
 
-        if ($user->user_type_id == 1) {
+        if ($user->id == Auth::id() || $user->user_type_id == 1) {
             return view('user-index', $data);
         } else {
             if ($user->user_type_id == 2) {
@@ -108,10 +108,10 @@ class UserController extends Controller
         }
     }
 
-    public function show($id)
+    public function show($id = null)
     {
-        $userId = base64_decode($id);
-        $user = User::with('userType')->find($userId);
+        $userId = $id ? base64_decode($id) : Auth::id();
+        $user   = User::with('userType')->find($userId);
 
         if (!$user) {
             return redirect()->back();
@@ -124,10 +124,10 @@ class UserController extends Controller
         }
 
         $data = [
-            'title' => $userTypeId == 1 ? 'Profil Saya' : $user->userType->name,
-            'user' => $user,
-            'user_type_id' => $userTypeId,
-            'users' => User::where('user_type_id', $userTypeId)->orderBy('name', 'asc')->get()
+            'title'         => $user->id == Auth::id() ? 'Profil Saya' : $user->userType->name,
+            'user'          => $user,
+            'user_type_id'  => $userTypeId,
+            'users'         => User::where('user_type_id', $userTypeId)->orderBy('name', 'asc')->get()
         ];
 
         $userDetail = $this->getUserDetail($userTypeId, $user->id);
@@ -198,12 +198,12 @@ class UserController extends Controller
                     : '-',
                 'Alamat Kantor' => $userDetail->office_address ?? '-',
                 'Kabupaten/Kota' => $userDetail->district_id ? District::getDistrictById($userDetail->district_id)['name'] : '-',
-                'Nomor Telepon' => $userDetail->telephone ?? '-',
-                'Alamat Email' => $userDetail->email ?? '-'
+                'Telepon Kantor' => $userDetail->office_phone ?? '-',
+                'Email Kantor' => $userDetail->office_email ?? '-'
             ];
         } elseif ($userTypeId == 3) {
             $listData = [
-                'PJTB/Kader' => $userDetail->coord_type_id ? Coordinator::getCoordTypes($userDetail->coord_type_id) : '-',
+                'Koordinator' => $userDetail->coord_type_id ? Coordinator::getCoordTypes($userDetail->coord_type_id) : '-',
                 'Puskesmas' => $userDetail->puskesmas_id ? Puskesmas::getPuskesmasById($userDetail->puskesmas_id)['name'] : '-',
             ];
         } elseif ($userTypeId == 4) {
@@ -215,8 +215,8 @@ class UserController extends Controller
                 'Tinggi Badan' => $userDetail->height ? $userDetail->height . ' Cm' : '-',
                 'Berat Badan' => $userDetail->weight ? $userDetail->weight . ' Kg' : '-',
                 'Golongan Darah' => $userDetail->blood_type ?? '-',
-                'Tanggal Diagnosis' => isset($userDetail->diagnosis_date) ? \Carbon\Carbon::parse($userDetail->diagnosis_date)->format('d F Y') : '-',
-                'Tempat Berobat (Puskesmas)' => $userDetail->puskesmas_id ? Puskesmas::getPuskesmasById($userDetail->puskesmas_id)['name'] : '-',
+                // 'Tanggal Diagnosis' => isset($userDetail->diagnosis_date) ? \App\Helpers\DateHelper::convertDate($userDetail->diagnosis_date) : '-',
+                'Puskesmas' => $userDetail->puskesmas_id ? Puskesmas::getPuskesmasById($userDetail->puskesmas_id)['name'] : '-',
             ];
         }
 
@@ -227,18 +227,18 @@ class UserController extends Controller
     {
         date_default_timezone_set('Asia/Jakarta');
 
-        $user = User::find(base64_decode($id));
-
-        if (!$user) {
-            $user = new User();
-        }
+        $user = User::find(base64_decode($id)) ?? new User();
 
         $validatedData = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 Rule::unique('users', 'email')->ignore($user->id)
+            ],
+            'username' => [
+                empty($user->id) ? 'nullable' : 'required',
+                Rule::unique('users', 'username')->ignore($user->id)
             ],
             'telephone' => [
                 'required',
@@ -246,37 +246,76 @@ class UserController extends Controller
                 'digits_between:10,15',
                 Rule::unique('users', 'telephone')->ignore($user->id)
             ],
-            'password' => [
-                empty($user->id) ? 'required' : 'nullable',
-                'string',
-                'min:8'
-            ],
+            'password' => ['nullable', 'string', 'min:8'],
             'user_type_id' => ['required', 'exists:user_types,id'],
             'gender' => ['required', 'in:Laki-laki,Perempuan'],
-            'place_of_birth' => ['required', 'string', 'max:255'],
-            'date_of_birth' => ['required', 'date_format:d/m/Y', 'before_or_equal:today'],
+            'place_of_birth' => [
+                $request->input('user_type_id') == 1 ? 'nullable' : 'required',
+                'string',
+                'max:255'
+            ],
+            'date_of_birth' => [
+                $request->input('user_type_id') == 1 ? 'nullable' : 'required',
+                'date_format:d/m/Y',
+                'before_or_equal:today'
+            ],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
-            'office_type_id' => empty($user->id) && $request->input('user_type_id') == 2 ? ['required', 'in:1,2'] : ['nullable'],
-            'office_address' =>  empty($user->id) && $request->input('user_type_id') == 2 ? ['required', 'string', 'max:255'] : ['nullable'],
-            'district_id' => empty($user->id) && $request->input('user_type_id') == 2 ? ['required', 'exists:districts,id'] : ['nullable'],
-            'coord_type_id' => empty($user->id) && $request->input('coord_type_id') == 3 ? ['required', 'in:1,2'] : ['nullable'],
-            'puskesmas_id' => empty($user->id) && $request->input('user_type_id') == 3 || empty($user->id) && $request->input('user_type_id') == 4 ? ['required', 'exists:puskesmas,id'] : ['nullable'],
+            'office_type_id' => [
+                empty($user->id) && $request->input('user_type_id') == 2 ? 'required' : 'nullable',
+                'in:1,2'
+            ],
+            'office_address' => [
+                empty($user->id) && $request->input('user_type_id') == 2 ? 'required' : 'nullable',
+                'string',
+                'max:255'
+            ],
+            'district_id' => [
+                empty($user->id) && $request->input('user_type_id') == 2 ? 'required' : 'nullable',
+                'exists:districts,id'
+            ],
+            'coord_type_id' => [
+                empty($user->id) && $request->input('user_type_id') == 3 ? 'required' : 'nullable',
+                'in:1,2'
+            ],
+            'puskesmas_id' => [
+                empty($user->id) && in_array($request->input('user_type_id'), [3, 4]) ? 'required' : 'nullable',
+                'exists:puskesmas,id'
+            ]
         ]);
 
         $user->name = $validatedData['name'];
         $user->email = $validatedData['email'];
 
-        $username = $username = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validatedData['email'])[0]);
-        $user->username = $username;
+        if (empty($user->id) && empty($validatedData['email'])) {
+            $nameParts = explode(' ', trim($validatedData['name']));
+            $username = strtolower(preg_replace("/[^a-zA-Z]/", "", $nameParts[0]));
+            if (count($nameParts) > 1) {
+                $username .= strtolower(preg_replace("/[^a-zA-Z]/", "", $nameParts[1]));
+            }
 
-        if (isset($validatedData['password']) && !empty($validatedData['password'])) {
-            $user->password = Hash::make($validatedData['password']);
+            $originalUsername = $username;
+            $counter = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = $originalUsername . $counter;
+                $counter++;
+            }
+
+            $password = Hash::make($username);
+        } elseif ($validatedData['username']) {
+            $username = $validatedData['username'];
+            $password = $validatedData['password'] ? Hash::make($validatedData['password']) : $user->password;
+        } else {
+            $username = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validatedData['email'])[0]);
+            $password = Hash::make($username);
         }
+
+        $user->username = $username;
+        $user->password = $password;
         $user->user_type_id = $validatedData['user_type_id'];
         $user->telephone = $validatedData['telephone'];
         $user->gender = $validatedData['gender'];
-        $user->place_of_birth = $validatedData['place_of_birth'];
-        $user->date_of_birth = \DateTime::createFromFormat('d/m/Y', $validatedData['date_of_birth'])->format('Y-m-d');
+        $user->place_of_birth = $validatedData['place_of_birth'] ?? null;
+        $user->date_of_birth = $validatedData['date_of_birth'] ? \DateTime::createFromFormat('d/m/Y', $validatedData['date_of_birth'])->format('Y-m-d') : null;
 
         if ($request->hasFile('image')) {
             if ($user->profile) {
@@ -290,57 +329,64 @@ class UserController extends Controller
             $imageName = $username . '-' . date('YmdHi') . '.' . $uploadImage->getClientOriginalExtension();
             $uploadImage->move(config('constants.UPLOAD_PATH'), $imageName);
             $user->profile = $imageName;
-        } else {
-            if ($request->input('remove_image')) {
-                if ($user->profile) {
-                    $oldImagePath = config('constants.UPLOAD_PATH') . '/' . $user->profile;
-                    if (File::exists($oldImagePath)) {
-                        File::delete($oldImagePath);
-                    }
-                    $user->profile = null;
+        } elseif ($request->input('remove_image')) {
+            if ($user->profile) {
+                $oldImagePath = config('constants.UPLOAD_PATH') . '/' . $user->profile;
+                if (File::exists($oldImagePath)) {
+                    File::delete($oldImagePath);
                 }
+                $user->profile = null;
             }
         }
 
         $user->save();
 
-        if ($request->input('user_type_id') == 2) {
-            $healthOffice = HealthOffice::where('user_id', $user->id)->first();
+        switch ($request->input('user_type_id')) {
+            case 2:
+                $healthOffice = HealthOffice::firstOrNew(['user_id' => $user->id]);
+                $healthOffice->office_type_id = $request->input('office_type_id');
+                $healthOffice->office_address = $request->input('office_address');
+                $healthOffice->district_id = $request->input('district_id');
+                $healthOffice->save();
+                break;
 
-            if (!$healthOffice) {
-                $healthOffice = new HealthOffice();
-                $healthOffice->user_id = $user->id;
-            }
-            $healthOffice->office_type_id = $request->input('office_type_id');
-            $healthOffice->office_address = $request->input('office_address');
-            $healthOffice->district_id = $request->input('district_id');
-            $healthOffice->save();
-        } elseif ($request->input('user_type_id') == 3) {
-            $pjtb = Pjtb::where('user_id', $user->id)->first();
-            if (!$pjtb) {
-                $pjtb = new Pjtb();
-                $pjtb->user_id = $user->id;
-            }
-            $pjtb->coord_type_id = $request->input('coord_type_id');
-            $pjtb->puskesmas_id = $request->input('puskesmas_id');
-            $pjtb->save();
-        } elseif ($request->input('user_type_id') == 4) {
-            $patient = Patient::where('user_id', $user->id)->first();
-            if (!$patient) {
-                $patient = new Patient();
-                $patient->user_id = $user->id;
-            }
-            $patient->puskesmas_id = $request->input('puskesmas_id');
-            $patient->save();
+            case 3:
+                $pjtb = Pjtb::firstOrNew(['user_id' => $user->id]);
+                $pjtb->coord_type_id = $request->input('coord_type_id');
+                $pjtb->puskesmas_id = $request->input('puskesmas_id');
+                $pjtb->save();
+                break;
+
+            case 4:
+                $patient = Patient::firstOrNew(['user_id' => $user->id]);
+                $patient->puskesmas_id = $request->input('puskesmas_id');
+                $patient->save();
+                break;
         }
 
-        $data = [
-            'status' => true,
-            'message' => 'Data ' . $request->input('user_type') . ' berhasil disimpan.',
-            'url' => $request->input('user_type_id') != 1 || Auth::id() == $user->id ? route('user.show', ['id' => base64_encode($user->id)]) : route('user.list', ['id' => base64_encode($request->input('user_type_id'))]),
-        ];
+        $data['status'] = true;
+
+        $redirectUrl = $this->determineRedirectUrl($user, $request);
+
+        if ($redirectUrl) {
+            $data['message'] = 'Data ' . $request->input('user_type') . ' berhasil disimpan.';
+            $data['url'] = $redirectUrl;
+        } else {
+            $data['previous'] = true;
+        }
 
         return response()->json($data, 200);
+    }
+
+    private function determineRedirectUrl(User $user, Request $request): ?string
+    {
+        if ($user->id != Auth::id()) {
+            if ($request->input('user_type_id') != 1) {
+                return route('user.show', ['id' => base64_encode($user->id)]);
+            }
+            return route('user.list', ['id' => base64_encode($request->input('user_type_id'))]);
+        }
+        return null;
     }
 
     public function destroy($id): RedirectResponse
@@ -361,47 +407,5 @@ class UserController extends Controller
         }
 
         return redirect()->back();
-    }
-
-    public function updateTreatment(Request $request, $id): JsonResponse
-    {
-        $patient = Patient::findOrFail(base64_decode($id));
-
-        $validatedData = $request->validate([
-            'nik' => [
-                'nullable',
-                'numeric',
-                Rule::when(function ($input) {
-                    return $input->nik != '0';
-                }, ['digits:16']),
-                Rule::unique('patients', 'nik')->ignore($patient->id)->where(function ($query) {
-                    return $query->whereNotNull('nik')->where('nik', '!=', '0');
-                }),
-            ],
-            'address' => ['required', 'string', 'max:255'],
-            'subdistrict_id' => ['required', 'exists:subdistricts,id'],
-            'diagnosis_date' => ['required', 'date_format:d/m/Y'],
-            'puskesmas_id' => ['required', 'exists:puskesmas,id'],
-        ]);
-
-        if ($patient->user) {
-            $patient->user->update([
-                'address' => $validatedData['address'],
-            ]);
-        }
-
-        $patient->update([
-            'nik' => $validatedData['nik'],
-            'subdistrict_id' => $validatedData['subdistrict_id'],
-            'puskesmas_id' => $validatedData['puskesmas_id'],
-            'diagnosis_date' => \DateTime::createFromFormat('d/m/Y', $validatedData['diagnosis_date'])->format('Y-m-d'),
-        ]);
-
-        $data = [
-            'success' => true,
-            'message' => 'Data pengobatan berhasil diperbarui.',
-        ];
-
-        return response()->json($data, 200);
     }
 }

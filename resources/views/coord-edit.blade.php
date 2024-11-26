@@ -3,11 +3,11 @@
     <div class="container-fluid">
         <div class="card card-primary card-outline">
             <div class="card-header py-2">
-                <h3 class="card-title pt-1">{{ 'Edit Detail ' . $title }}</h3>
+                <h3 class="card-title pt-1">{{ 'Edit ' . $title }}</h3>
                 <div class="card-tools">
                     <a href="{{ route('user.show', ['id' => base64_encode($data->user_id)]) }}" class="btn btn-primary btn-sm"
-                        title="Tutup Data {{ $title }}">
-                        <i class="fas fa-times"></i>
+                        title="Sebelumnya">
+                        <i class="fas fa-angle-double-left"></i>
                     </a>
                 </div>
             </div>
@@ -30,11 +30,12 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="coord_type_id" class="col-sm-3 col-form-label">PJTB/Kader</label>
+                        <label for="coord_type_id" class="col-sm-3 col-form-label">Koordinator<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <select name="coord_type_id" id="coord_type_id" class="form-control select2"
                                 style="width: 100%;">
-                                <option value="">Pilih PJTB/Kader</option>
+                                <option value="">Pilih Koordinator</option>
                                 @foreach ($coord_types as $key => $value)
                                     <option value="{{ $key }}"
                                         {{ isset($data) && $data->coord_type_id == $key ? 'selected' : '' }}>
@@ -46,14 +47,15 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label for="puskesmas_id" class="col-sm-3 col-form-label">Puskesmas</label>
+                        <label for="puskesmas_id" class="col-sm-3 col-form-label">Puskesmas<small
+                            class="text-danger">*</small></label>
                         <div class="col-sm-9">
                             <select name="puskesmas_id" id="puskesmas_id" class="form-control select2" style="width: 100%;">
                                 <option value="">Pilih Puskesmas</option>
-                                @foreach ($puskesmas as $key => $value)
-                                    <option value="{{ $key }}"
-                                        {{ isset($data) && $data->puskesmas_id == $key ? 'selected' : '' }}>
-                                        {{ $value }}
+                                @foreach ($puskesmas as $key => $item)
+                                    <option value="{{ $item['id'] }}"
+                                        {{ isset($data) && $data->puskesmas_id == $item['id'] ? 'selected' : '' }}>
+                                        {{ $item['puskesmas'] }}
                                     </option>
                                 @endforeach
                             </select>

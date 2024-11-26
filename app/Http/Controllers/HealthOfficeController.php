@@ -24,11 +24,11 @@ class HealthOfficeController extends Controller
         }
 
         $data = [
-            'title' => $coord->user->userType->name,
-            'data' => $coord,
-            'health_offices' => HealthOffice::getHoWithUser(),
-            'office_types' => HealthOffice::getOfficeTypes(),
-            'districts' => District::getAllDistricts(),
+            'title'          => $coord->user->userType->name,
+            'data'           => $coord,
+            'health_offices' => HealthOffice::getHealthOfficeWithUser(),
+            'office_types'   => HealthOffice::getOfficeTypes(),
+            'districts'      => District::getAllDistricts(),
         ];
 
         return view('ho-edit', $data);
@@ -42,16 +42,16 @@ class HealthOfficeController extends Controller
             'office_type_id' => 'required|in:1,2',
             'office_address' => 'required|string|max:255',
             'district_id' => 'required|exists:districts,id',
-            'telephone' => [
+            'office_phone' => [
                 'nullable',
                 'numeric',
                 'digits_between:10,15',
-                'unique:health_offices,telephone,' . $id,
+                'unique:health_offices,office_phone,' . $id,
             ],
-            'email' => [
+            'office_email' => [
                 'nullable',
                 'email',
-                'unique:health_offices,email,' . $id,
+                'unique:health_offices,office_email,' . $id,
             ],
         ];
 
@@ -61,8 +61,8 @@ class HealthOfficeController extends Controller
 
         if (!$coord) {
             return response()->json([
-                'status' => false,
-                'message' => 'Admin dinkes tidak ditemukan.',
+                'status'  => false,
+                'message' => 'Data Admin Dinkes tidak ditemukan.',
             ], 404);
         }
 
@@ -73,8 +73,8 @@ class HealthOfficeController extends Controller
         $coord->update($updateData);
 
         return response()->json([
-            'status' => true,
-            'message' => 'Data admin dinkes berhasil diperbarui.',
+            'status'  => true,
+            'message' => 'Data Admin Dinkes berhasil diperbarui.',
         ], 200);
     }
 }
