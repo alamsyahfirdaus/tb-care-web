@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\DateHelper;
+use App\Models\MedicationRecord;
 use App\Models\Patient;
 use App\Models\PatientTreatment;
 use App\Models\TreatmentType;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,13 +69,24 @@ class PatientTreatmentController extends Controller
             $treatment = new PatientTreatment();
         }
 
-        $validatedData = $request->validate([
+        $rules = [
             'patient_id' => ['required', 'exists:patients,id'],
             'treatment_type_id' => ['required', 'exists:treatment_types,id'],
             'diagnosis_date' => ['required', 'date_format:d/m/Y', 'before_or_equal:today'],
-            'start_date' => ['required', 'date_format:d/m/Y', 'after_or_equal:diagnosis_date'],
             'medication_time' => ['required', 'regex:/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/'],
-        ]);
+            'prescription' => ['nullable', 'array'],
+            'prescription.*' => ['nullable', 'string'],
+        ];
+
+        $completedTreatment = MedicationRecord::countRecords($treatment->id);
+
+        $startDateRule = $completedTreatment > 0
+            ? 'after_or_equal:' . DateHelper::convertDate($treatment->start_date)
+            : 'after_or_equal:' . DateHelper::convertDate($request->input('diagnosis_date'));
+            
+        $rules['start_date'] = ['required', 'date_format:d/m/Y', $startDateRule];
+
+        $validatedData = $request->validate($rules);
 
         $treatment->patient_id = $validatedData['patient_id'];
         $treatment->treatment_type_id = $validatedData['treatment_type_id'];
@@ -86,11 +100,21 @@ class PatientTreatmentController extends Controller
         $medicationTime24hr = \DateTime::createFromFormat('h:i A', $medicationTime12hr)->format('H:i');
         $treatment->medication_time = $medicationTime24hr;
 
+        if (!empty($validatedData['prescription'])) {
+            $filteredPrescription = array_filter($validatedData['prescription'], function ($item) {
+                return !is_null($item) && trim($item) !== '';
+            });
+
+            $treatment->prescription = !empty($filteredPrescription) ? json_encode($filteredPrescription) : null;
+        } else {
+            $treatment->prescription = null;
+        }
+
         $treatment->save();
 
         $data = array(
             'status'    => true,
-            'message'   => 'Data Pengobatan berhasil disimpan.',
+            'message'   => 'Pengobatan Pasien berhasil disimpan.',
             'url'       => route('treatment.show', ['id' => base64_encode($treatment->id)])
         );
 
@@ -127,11 +151,11 @@ class PatientTreatmentController extends Controller
         $treatment = PatientTreatment::find(base64_decode($id));
 
         if (!$treatment) {
-            return redirect()->route('treatments')->with('error', 'Data Pengobatan tidak ditemukan.');
+            return redirect()->route('treatments')->with('error', 'Pengobatan Pasien tidak ditemukan.');
         }
 
         $treatment->delete();
 
-        return redirect()->route('treatments')->with('success', 'Data Pengobatan berhasil dihapus.');
+        return redirect()->route('treatments')->with('success', 'Pengobatan Pasien berhasil dihapus.');
     }
 }

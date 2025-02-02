@@ -29,7 +29,7 @@
                                             <th>Nama<span style="color: #fff; font-size: 10px;">_</span>Pasien</th>
                                             <th>Tanggal<span style="color: #fff; font-size: 10px;">_</span>Diagnosis</th>
                                             <th>Jenis<span style="color: #fff; font-size: 10px;">_</span>Pengobatan</th>
-                                            <th>Keterangan</th>
+                                            <th>Status<span style="color: #fff; font-size: 10px;">_</span>Pengobatan</th>
                                             <th style="width: 5%; text-align: center;">Aksi</th>
                                         </tr>
                                     </thead>
@@ -41,7 +41,22 @@
                                                 <td>{{ $item['diagnosis_date'] ? \App\Helpers\DateHelper::convertDate($item['diagnosis_date']) : '-' }}
                                                 </td>
                                                 <td>{{ $item['treatment_type'] }}</td>
-                                                <td>{{ $item['treatment_status'] ?? '-' }}</td>
+                                                <td>
+                                                    @php
+                                                        $completedTreatment = \App\Models\MedicationRecord::countRecords(
+                                                            $item['id'],
+                                                        );
+                                                        $totalTreatmentCount = count(
+                                                            \App\Models\PatientTreatment::getTreatmentDateRange(
+                                                                $item['id'],
+                                                            ),
+                                                        );
+                                                    @endphp
+
+                                                    {{ $completedTreatment == $totalTreatmentCount ? 'Selesai' : 'Berjalan' }}
+                                                    {{ $completedTreatment }} dari {{ $totalTreatmentCount }} Hari
+                                                </td>
+
                                                 <td style="text-align: center;">
                                                     <div class="btn-group">
                                                         <button type="button"
@@ -135,27 +150,59 @@
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label for="start_date" class="col-sm-3 col-form-label">Tgl. Mulai Pengobatan<small
+                                <label for="start_date" class="col-sm-3 col-form-label">Tgl. Mulai Minum Obat<small
                                         class="text-danger">*</small></label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control datetimepicker-input"
                                         data-target="#reservationdate" data-toggle="datetimepicker" name="start_date"
-                                        id="start_date" placeholder="Masukan Tgl. Mulai Pengobatan"
+                                        id="start_date" placeholder="Masukan Tgl. Mulai Minum Obat"
                                         value="{{ isset($data) && $data['start_date'] ? \Carbon\Carbon::parse($data['start_date'])->format('d/m/Y') : '' }}"
                                         autocomplete="off">
                                     <span id="error-start_date" class="error invalid-feedback"></span>
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label for="medication_time" class="col-sm-3 col-form-label">Jam Minum Obat<small
+                                <label for="medication_time" class="col-sm-3 col-form-label">Jadwal Minum Obat<small
                                         class="text-danger">*</small></label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control timepicker-input" data-target="#timepicker"
                                         data-toggle="datetimepicker" name="medication_time" id="medication_time"
-                                        placeholder="Masukan Jam Minum Obat"
+                                        placeholder="Masukan Jadwal Minum Obat"
                                         value="{{ isset($data) && $data['medication_time'] ? \Carbon\Carbon::parse($data['medication_time'])->format('H:i') : '' }}"
                                         autocomplete="off">
                                     <span id="error-medication_time" class="error invalid-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="prescription" class="col-sm-3 col-form-label">Resep Obat</label>
+                                <div class="col-sm-9" id="prescription-container">
+                                    @if (isset($data) && ($prescriptions = json_decode($data['prescription'], true)))
+                                        @foreach ($prescriptions as $key => $item)
+                                            <div class="input-group {{ $key > 0 ? 'mt-2' : '' }}">
+                                                <input type="text" class="form-control" name="prescription[]"
+                                                    placeholder="Masukan Resep Obat" value="{{ $item }}"
+                                                    autocomplete="off">
+                                                <span class="input-group-append">
+                                                    <button type="button" class="btn btn-danger btn-flat"
+                                                        onclick="removePrescription(this);">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    @endif
+                                    <div
+                                        class="input-group {{ isset($data) && ($prescriptions = json_decode($data['prescription'], true)) ? 'mt-2' : '' }}">
+                                        <input type="text" class="form-control" name="prescription[]"
+                                            placeholder="Masukan Resep Obat" autocomplete="off">
+                                        <span class="input-group-append">
+                                            <button type="button" class="btn btn-success btn-flat"
+                                                onclick="addPrescription();">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <span id="error-prescription" class="error invalid-feedback"></span>
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -171,4 +218,45 @@
             </div>
         </div>
     </div>
+    <script>
+        function addPrescription() {
+            var isValid = true;
+
+            $('input[name="prescription[]"]').each(function() {
+                if ($(this).val().trim() === '') {
+                    isValid = false;
+                    $(this).addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            if (!isValid) {
+                $('#error-prescription').text('Resep Obat harus diisi').show();
+            } else {
+                $('#error-prescription').text('').hide();
+
+                var newInput = `
+                        <div class="input-group mt-2">
+                            <input type="text" class="form-control" name="prescription[]" placeholder="Masukan Resep Obat" autocomplete="off">
+                            <span class="input-group-append">
+                                <button type="button" class="btn btn-danger btn-flat" onclick="removePrescription(this);"><i class="fas fa-minus"></i></button>
+                            </span>
+                        </div>
+                    `;
+
+                $('#prescription-container').append(newInput);
+            }
+        }
+
+        function removePrescription(button) {
+            $(button).closest('.input-group').remove();
+
+            if ($('input[name="prescription[]"]').val().trim() !== '') {
+                $('#error-prescription').text('').hide();
+            }
+        }
+    </script>
+
+
 @endsection

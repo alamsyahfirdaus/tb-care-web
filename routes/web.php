@@ -7,8 +7,11 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PuskesmasController;
 use App\Http\Controllers\HealthOfficeController;
 use App\Http\Controllers\CoordinatorController;
+use App\Http\Controllers\EducationalMaterialController;
+use App\Http\Controllers\MedicationRecordController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PatientTreatmentController;
+use App\Http\Controllers\ScreeningController;
 use App\Http\Controllers\TreatmentTypeController;
 
 /*
@@ -26,12 +29,17 @@ use App\Http\Controllers\TreatmentTypeController;
 //     return view('welcome');
 // });
 
-Route::get('/', [LoginController::class, 'index'])->name('login')->middleware('guest');
+Route::get('/', [HomeController::class, 'dashboard'])->name('dash')->middleware('guest');
 
 Route::controller(LoginController::class)->group(function () {
     Route::get('login', 'index')->name('login')->middleware('guest');
     Route::post('login', 'authenticate');
     Route::get('logout', 'logout')->name('logout');
+});
+
+Route::controller(ScreeningController::class)->group(function () {
+    Route::get('screening', 'index')->name('screening');
+    Route::post('screening/process', 'process')->name('process.screening');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -90,13 +98,21 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('{id}', [TreatmentTypeController::class, 'destroy'])->name('trtype.delete');
         });
 
-        //PatientTreatmentController
+        // PatientTreatmentController
         Route::get('treatments', [PatientTreatmentController::class, 'index'])->name('treatments');
         Route::prefix('treatment')->group(function () {
             Route::get('{id}/edit', [PatientTreatmentController::class, 'edit'])->name('treatment.edit');
             Route::get('{id}/show', [PatientTreatmentController::class, 'show'])->name('treatment.show');
             Route::match(['post', 'put'], 'save/{id?}', [PatientTreatmentController::class, 'save'])->name('treatment.save');
             Route::delete('{id}', [PatientTreatmentController::class, 'destroy'])->name('treatment.delete');
+        });
+        // EducationalMaterialController
+        Route::get('materials', [EducationalMaterialController::class, 'index'])->name('materials');
+        Route::prefix('material')->group(function () {
+            Route::get('{id}/edit', [EducationalMaterialController::class, 'edit'])->name('material.edit');
+            Route::get('{id}/show', [EducationalMaterialController::class, 'show'])->name('material.show');
+            Route::match(['post', 'put'], 'save/{id?}', [EducationalMaterialController::class, 'save'])->name('material.save');
+            Route::delete('{id}', [EducationalMaterialController::class, 'destroy'])->name('material.delete');
         });
     });
 
@@ -113,5 +129,13 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['checkrole:1-2-3-4'])->group(function () {
         // UpdateProfile
         Route::match(['post', 'put'], 'user/save/{id?}', [UserController::class, 'save'])->name('user.save');
+        // MedicationRecordController
+        Route::get('medlogs', [MedicationRecordController::class, 'index'])->name('medlogs');
+        Route::prefix('medlog')->group(function () {
+            Route::get('{id}/edit', [MedicationRecordController::class, 'edit'])->name('medlog.edit');
+            Route::get('{id}/show', [MedicationRecordController::class, 'show'])->name('medlog.show');
+            Route::match(['post', 'put'], 'save/{id?}', [MedicationRecordController::class, 'save'])->name('medlog.save');
+            Route::delete('{id}', [MedicationRecordController::class, 'destroy'])->name('medlog.delete');
+        });
     });
 });

@@ -38,7 +38,7 @@
                                                 <td style="text-align: center;">{{ $key + 1 }}</td>
                                                 <td>{{ $item['treatment_type'] }}</td>
                                                 <td>{{ $item['duration'] }}</td>
-                                                <td>{{ $item['description   '] ?? '-' }}</td>
+                                                <td>{{ $item['description'] ?? '-' }}</td>
                                                 <td style="text-align: center;">
                                                     <div class="btn-group">
                                                         <button type="button"

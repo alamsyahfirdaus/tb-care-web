@@ -8,7 +8,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 
-    <title>Sistem Layanan Tuberkulosis</title>
+    <title>Sistem Pengobatan Tuberkulosis</title>
 
     <meta name="description" content="" />
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico" />
@@ -69,7 +69,7 @@
                                 <span id="error-password" class="error invalid-feedback"></span>
                             </div>
                             <div class="mb-3">
-                                <button class="btn btn-primary d-grid w-100 fw-bolder" type="submit">Masuk</button>
+                                <button class="btn btn-primary d-grid w-100 fw-bolder" type="submit">Login</button>
                             </div>
                         </form>
                         {{-- <p class="text-center">

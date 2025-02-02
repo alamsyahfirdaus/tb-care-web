@@ -22,7 +22,8 @@ class CreatePatientTreatmentsTable extends Migration
             $table->date('start_date'); // Tanggal mulai pengobatan
             $table->date('end_date')->nullable(); // Tanggal selesai pengobatan
             $table->time('medication_time')->nullable(); // Waktu pengingat untuk minum obat
-            $table->integer('treatment_status')->nullable(); // Status pengobatan (ongoing, completed, failed, etc.)
+            $table->json('prescription')->nullable(); // Resep obat
+            $table->integer('treatment_status')->nullable(); // Status pengobatan (berjalan, selesai, gagal, dll.)
             // $table->timestamps();
         });
     }

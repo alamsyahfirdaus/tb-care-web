@@ -187,8 +187,15 @@ return [
         'description' => 'Deskripsi',
         'patient_id' => 'Nama Pasien',
         'treatment_type_id' => 'Jenis Pengobatan',
-        'start_date' => 'Tgl. Mulai Pengobatan',
-        'medication_time' => 'Jam Minum Obat',
+        'start_date' => 'Tgl. Mulai Minum Obat',
+        'medication_time' => 'Jadwal Minum Obat',
+        'prescription' => 'Resep Obat',
+        'title_material' => 'Judul Materi',
+        'material_type' => 'Jenis Materi',
+        'material_file' => 'File Materi',
+        'material_url' => 'Tautan Video',
+        'is_publish' => 'Publish',
+        'thumbnail' => 'Gambar Sampul',
     ],
 
 ];

@@ -241,6 +241,7 @@
                                         style="background-color: #ffffff;">
                                     <span id="error-profile" class="error invalid-feedback"></span>
                                 </div>
+                                <input type="file" name="image" id="image" style="display: none;">
                             </div>
                             @if (isset($data) && $data->profile)
                                 <div class="form-group row">
@@ -258,7 +259,6 @@
                             @endif
                             <div class="form-group row">
                                 <input type="hidden" name="user_type_id" value="{{ $user_type_id }}">
-                                <input type="file" name="image" id="image" style="display: none;">
                                 <div class="offset-sm-3 col-sm-9">
                                     <button type="submit" class="btn btn-primary btn-sm"><i
                                             class="fas fa-save mr-1"></i> Simpan</button>

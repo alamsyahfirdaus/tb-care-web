@@ -48,6 +48,7 @@ class PatientTreatment extends Model
                     'start_date'         => $treatment->start_date,
                     'end_date'           => $treatment->end_date,
                     'medication_time'    => $treatment->medication_time,
+                    'prescription'       => $treatment->prescription,
                     'treatment_status'   => $treatment->status,
                 ];
             })

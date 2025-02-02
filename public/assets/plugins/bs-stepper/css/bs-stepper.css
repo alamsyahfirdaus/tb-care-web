@@ -17,7 +17,7 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.5;
-  color: #6c757d;
+  color: #fff;
   text-align: center;
   text-decoration: none;
   white-space: nowrap;
@@ -110,7 +110,7 @@
   margin: .25rem;
   line-height: 1em;
   color: #fff;
-  background-color: #6c757d;
+  background-color: #fff;
   border-radius: 1em;
 }
 

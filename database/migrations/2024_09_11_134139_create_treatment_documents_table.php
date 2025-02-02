@@ -13,15 +13,12 @@ class CreateTreatmentDocumentsTable extends Migration
      */
     public function up()
     {
-        Schema::create('treatment_documents', function (Blueprint $table) {
-            $table->id(); // ID utama tabel
-            $table->foreignId('patient_treatment_id') // Foreign key untuk pengobatan pasien
-                  ->constrained('patient_treatments') // Mengacu pada tabel 'patient_treatments'
-                  ->onDelete('cascade') // Menghapus baris terkait jika baris di tabel 'patient_treatments' dihapus
-                  ->onUpdate('cascade'); // Memperbarui baris terkait jika baris di tabel 'patient_treatments' diperbarui
-            $table->string('document_name'); // Nama atau deskripsi bukti pengobatan
-            $table->string('document_path'); // Lokasi file atau URL bukti pengobatan
-            $table->timestamps();
+        Schema::create('medication_records', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('patient_treatment_id')->constrained('patient_treatments')->onDelete('cascade')->onUpdate('cascade');
+            $table->string('photo')->nullable();
+            $table->datetime('taken_at');
+            // $table->timestamps();
         });
     }
 

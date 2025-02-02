@@ -39,7 +39,13 @@
             background-color: #007bff;
             border-bottom: 1px solid #007bff;
             height: 57px;
-            text-align: center;
+        }
+
+        .brand-image-text {
+            color: white;
+            font-weight: bold;
+            font-size: 28px;
+            padding-left: 16px;
         }
 
         .brand-text {
@@ -53,7 +59,6 @@
             aspect-ratio: 1 / 1;
         }
 
-
         .content-wrapper {
             background-color: white;
         }
@@ -62,17 +67,10 @@
             color: white;
         }
 
-
         .main-footer a {
             color: #869099;
         }
 
-        /* .card-footer .btn,
-        .modal-footer .btn,
-        td .btn-group .btn,
-        .bs-stepper-content div .btn,
-        .offset-sm-2 .btn,
-        .offset-sm-3 .btn, */
         form .btn-sm,
         .btn-block {
             font-weight: bold;
@@ -146,7 +144,8 @@
 
         <aside class="main-sidebar sidebar-light-primary">
             <a href="javascript:void(0)" id="brand-link" class="brand-link py-2">
-                <span class="brand-text">{{ Config::get('constants.APP_NAME') }}</span>
+                <span class="brand-image-text">TB</span>
+                <span class="brand-text">CARE</span>
             </a>
 
             <div class="sidebar" style="border-right: 1px solid #DEE2E6;">
@@ -178,7 +177,7 @@
                                 <a href="javascript:void(0)"
                                     class="nav-link {{ in_array(Request::segment(1), ['trtypes', 'pkm']) ? 'active' : '' }}">
                                     <i class="nav-icon fas fa-folder-open"></i>
-                                    <p>Master<i class="right fas fa-angle-left"></i></p>
+                                    <p>Data Induk<i class="right fas fa-angle-left"></i></p>
                                 </a>
                                 <ul class="nav nav-treeview">
                                     <li class="nav-item">
@@ -250,6 +249,15 @@
                                     class="nav-link {{ $title == 'Pengobatan' ? 'active' : '' }}">
                                     <i class="nav-icon fas fa-user-md"></i>
                                     <p>Pengobatan</p>
+                                </a>
+                            </li>
+                        @endif
+                        @if (session('role') != 4)
+                            <li class="nav-item">
+                                <a href="{{ route('materials') }}"
+                                    class="nav-link {{ $title == 'Materi Edukasi' ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-newspaper"></i>
+                                    <p>Materi Edukasi</p>
                                 </a>
                             </li>
                         @endif
@@ -326,6 +334,20 @@
                     </script>
                 @endif
             </section>
+            <script>
+                $(document).keydown(function(e) {
+                    if (e.keyCode == 123) {
+                        e.preventDefault();
+                    }
+                    if ((e.ctrlKey && e.shiftKey && e.keyCode == 73) ||
+                        (e.ctrlKey && e.shiftKey && e.keyCode == 74)) {
+                        e.preventDefault();
+                    }
+                    if (e.ctrlKey && e.keyCode == 85) {
+                        e.preventDefault();
+                    }
+                });
+            </script>
         </div>
         <footer class="main-footer">
             Copyright &copy; 2020-{{ date('Y') }} <a href="javascript:void(0)">Alamsyah Firdaus</a>.
@@ -435,26 +457,38 @@
                         }
                     },
                     error: function(xhr, status, error) {
+
                         $.each(xhr.responseJSON.errors, function(field, messages) {
-                            var $field = $('[name="' + field + '"]');
+                            var $field;
+                            if ($('[name="' + field + '"]').attr('type') === 'file') {
+                                $field = $('#' + field);
+                            } else {
+                                $field = $('[name="' + field + '"]');
+                            }
                             $field.addClass('is-invalid');
                             $('#error-' + field).text(messages[0]).show();
+
                             $field.on('keyup change', function() {
                                 $(this).removeClass('is-invalid');
                                 $('#error-' + field).text('').hide();
                             });
-                            if ($field.hasClass('datetimepicker-input')) {
+
+                            if ($field.hasClass('datetimepicker-input') || $field
+                                .hasClass('timepicker-input')) {
                                 $field.click(function() {
                                     $(this).removeClass('is-invalid');
                                     $('#error-' + field).text('').hide();
                                 });
                             }
+
                             if ($field.hasClass('select2')) {
                                 $field.next().find('.select2-selection').addClass(
                                     'border border-danger');
                                 $field.change(function() {
-                                    $(this).next().find('.select2-selection')
-                                        .removeClass('border border-danger');
+                                    $(this).next().find(
+                                            '.select2-selection')
+                                        .removeClass(
+                                            'border border-danger');
                                 });
                             }
                         });
@@ -478,7 +512,6 @@
                     $('#form-data .form-control').val('').change().removeClass('is-invalid');
                 }
             });
-
         });
 
         function deleteData(id) {

@@ -71,7 +71,7 @@ class PuskesmasController extends Controller
 
         $data = array(
             'status' => true,
-            'message' => 'Data Puskesmas berhasil disimpan.',
+            'message' => 'Puskesmas berhasil disimpan.',
         );
 
         if (!$puskesmas->wasRecentlyCreated) {
@@ -86,11 +86,11 @@ class PuskesmasController extends Controller
         $puskesmas = Puskesmas::find(base64_decode($id));
 
         if (!$puskesmas) {
-            return redirect()->route('pkm')->with('error', 'Data Puskesmas tidak ditemukan.');
+            return redirect()->route('pkm')->with('error', 'Puskesmas tidak ditemukan.');
         }
 
         $puskesmas->delete();
 
-        return redirect()->route('pkm')->with('success', 'Data Puskesmas berhasil dihapus.');
+        return redirect()->route('pkm')->with('success', 'Puskesmas berhasil dihapus.');
     }
 }

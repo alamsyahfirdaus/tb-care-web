@@ -28,7 +28,6 @@ class TreatmentTypeController extends Controller
         $data = [
             'title'     => 'Jenis Pengobatan',
             'data'      => $trtypes,
-            'trtypes'   => TreatmentType::all(),
         ];
 
         return view('treatment-type-index', $data);
@@ -61,7 +60,7 @@ class TreatmentTypeController extends Controller
 
         $data = array(
             'status' => true,
-            'message' => 'Data Jenis Pengobatan berhasil disimpan.',
+            'message' => 'Jenis Pengobatan berhasil disimpan.',
         );
 
         if (!$trtypes->wasRecentlyCreated) {
@@ -76,11 +75,11 @@ class TreatmentTypeController extends Controller
         $trtypes = TreatmentType::find(base64_decode($id));
 
         if (!$trtypes) {
-            return redirect()->route('trtypes')->with('error', 'Data Jenis Pengobatan tidak ditemukan.');
+            return redirect()->route('trtypes')->with('error', 'Jenis Pengobatan tidak ditemukan.');
         }
 
         $trtypes->delete();
 
-        return redirect()->route('trtypes')->with('success', 'Data Jenis Pengobatan berhasil dihapus.');
+        return redirect()->route('trtypes')->with('success', 'Jenis Pengobatan berhasil dihapus.');
     }
 }

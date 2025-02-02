@@ -74,7 +74,7 @@ class LoginController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('login')->with([
+        return redirect('/')->with([
             'logout' => true,
         ])->withHeaders([
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
