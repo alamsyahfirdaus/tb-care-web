@@ -36,9 +36,9 @@
                 @elseif($data['material_file'])
                     @if (strpos($data['material_file'], '.pdf') !== false)
                         <div class="material_file" style="width: 100%;">
-                            <object data="{{ asset('storage/materials/' . $data['material_file']) }}" type="application/pdf"
+                            <object data="{{ Storage::url('materials/' . $data['material_file']) }}" type="application/pdf"
                                 style="width: 100%; height: 600px;">
-                                <a href="{{ asset('storage/materials/' . $data['material_file']) }}"
+                                <a href="{{ Storage::url('materials/' . $data['material_file']) }}"
                                     class="btn btn-block btn-primary">
                                     <i class="fas fa-download mr-1"></i> Unduh Materi
                                 </a>
@@ -46,7 +46,7 @@
                         </div>
                     @elseif (in_array(pathinfo($data['material_file'], PATHINFO_EXTENSION), ['jpg', 'jpeg', 'png']))
                         <div class="material_file" style="text-align: center; width: 100%;">
-                            <img src="{{ asset('storage/materials/' . $data['material_file']) }}" alt="Material Image"
+                            <img src="{{ Storage::url('materials/' . $data['material_file']) }}" alt="Material Image"
                                 style="width: 50%;">
                         </div>
                     @endif

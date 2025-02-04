@@ -286,7 +286,7 @@ class UserController extends Controller
         $user->name = $validatedData['name'];
         $user->email = $validatedData['email'];
 
-        if (empty($user->id) && empty($validatedData['email'])) {
+        if (empty($user->id) && empty($validatedData['email']) && !isset($validatedData['username'])) {
             $nameParts = explode(' ', trim($validatedData['name']));
             $username = strtolower(preg_replace("/[^a-zA-Z]/", "", $nameParts[0]));
             if (count($nameParts) > 1) {
@@ -301,11 +301,11 @@ class UserController extends Controller
             }
 
             $password = Hash::make($username);
-        } elseif ($validatedData['username']) {
+        } elseif (isset($validatedData['username'])) {
             $username = $validatedData['username'];
             $password = $validatedData['password'] ? Hash::make($validatedData['password']) : $user->password;
         } else {
-            $username = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validatedData['email'])[0]);
+            $username = isset($validatedData['username']) ? $validatedData['username'] : preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validatedData['email'])[0]);
             $password = Hash::make($username);
         }
 
@@ -344,22 +344,55 @@ class UserController extends Controller
         switch ($request->input('user_type_id')) {
             case 2:
                 $healthOffice = HealthOffice::firstOrNew(['user_id' => $user->id]);
-                $healthOffice->office_type_id = $request->input('office_type_id');
-                $healthOffice->office_address = $request->input('office_address');
-                $healthOffice->district_id = $request->input('district_id');
+
+                $office_type_id = $request->input('office_type_id') ?
+                    $request->input('office_type_id') : (isset($healthOffice->id) && $healthOffice->office_type_id ?
+                        $healthOffice->office_type_id :
+                        null);
+
+                $office_address = $request->input('office_address') ?
+                    $request->input('office_address') : (isset($healthOffice->id) && $healthOffice->office_address ?
+                        $healthOffice->office_address :
+                        null);
+
+                $district_id = $request->input('district_id') ?
+                    $request->input('district_id') : (isset($healthOffice->id) && $healthOffice->district_id ?
+                        $healthOffice->district_id :
+                        null);
+
+                $healthOffice->office_type_id = $office_type_id;
+                $healthOffice->office_address = $office_address;
+                $healthOffice->district_id = $district_id;
                 $healthOffice->save();
                 break;
 
             case 3:
                 $pjtb = Pjtb::firstOrNew(['user_id' => $user->id]);
-                $pjtb->coord_type_id = $request->input('coord_type_id');
-                $pjtb->puskesmas_id = $request->input('puskesmas_id');
+
+                $coord_type_id = $request->input('coord_type_id') ?
+                    $request->input('coord_type_id') : (isset($pjtb->id) && $pjtb->coord_type_id ?
+                        $pjtb->coord_type_id :
+                        null);
+
+                $puskesmas_id = $request->input('puskesmas_id') ?
+                    $request->input('puskesmas_id') : (isset($pjtb->id) && $pjtb->puskesmas_id ?
+                        $pjtb->puskesmas_id :
+                        null);
+
+                $pjtb->coord_type_id = $coord_type_id;
+                $pjtb->puskesmas_id = $puskesmas_id;
                 $pjtb->save();
                 break;
 
             case 4:
                 $patient = Patient::firstOrNew(['user_id' => $user->id]);
-                $patient->puskesmas_id = $request->input('puskesmas_id');
+
+                $puskesmas_id = $request->input('puskesmas_id') ?
+                    $request->input('puskesmas_id') : (isset($patient->id) && $patient->puskesmas_id ?
+                        $patient->puskesmas_id :
+                        null);
+
+                $patient->puskesmas_id = $puskesmas_id;
                 $patient->save();
                 break;
         }

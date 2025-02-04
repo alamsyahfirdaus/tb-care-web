@@ -202,7 +202,7 @@
                     activeStep.find(`input[name="${name}"]`).removeClass('is-invalid');
                 }
 
-                if (categoryId == 10 && activeStep.find(`input[name="${name}"]:checked`).val() == 1) {
+                if (categoryId == 12 && activeStep.find(`input[name="${name}"]:checked`).val() == 1) {
                     let durationInput = activeStep.find(`input[name="category_id_${categoryId}"]`);
                     if (durationInput.val().trim() === '') {
                         isValid = false;

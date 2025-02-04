@@ -99,13 +99,13 @@ Route::middleware(['auth'])->group(function () {
         });
 
         // PatientTreatmentController
-        Route::get('treatments', [PatientTreatmentController::class, 'index'])->name('treatments');
         Route::prefix('treatment')->group(function () {
             Route::get('{id}/edit', [PatientTreatmentController::class, 'edit'])->name('treatment.edit');
             Route::get('{id}/show', [PatientTreatmentController::class, 'show'])->name('treatment.show');
             Route::match(['post', 'put'], 'save/{id?}', [PatientTreatmentController::class, 'save'])->name('treatment.save');
             Route::delete('{id}', [PatientTreatmentController::class, 'destroy'])->name('treatment.delete');
         });
+
         // EducationalMaterialController
         Route::get('materials', [EducationalMaterialController::class, 'index'])->name('materials');
         Route::prefix('material')->group(function () {
@@ -137,5 +137,12 @@ Route::middleware(['auth'])->group(function () {
             Route::match(['post', 'put'], 'save/{id?}', [MedicationRecordController::class, 'save'])->name('medlog.save');
             Route::delete('{id}', [MedicationRecordController::class, 'destroy'])->name('medlog.delete');
         });
+    });
+
+    Route::middleware(['checkrole:1-2-3-4'])->group(function () {
+        // PatientTreatmentController
+        Route::get('treatments', [PatientTreatmentController::class, 'index'])->name('treatments');
+        Route::get('treatments', [PatientTreatmentController::class, 'index'])->name('treatments');
+        Route::match(['get', 'post'], 'take-medicine', [PatientTreatmentController::class, 'takeMedicine'])->name('take.medicine');
     });
 });

@@ -11,17 +11,52 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PatientTreatmentController extends Controller
 {
     public function index()
     {
-        $data = [
-            'title'         => 'Pengobatan',
-            'treatments'    => PatientTreatment::getPatientTreatments(),
-            'patients'      => Patient::getPatientWithUser(),
-            'trtypes'       => TreatmentType::getTreatmentTypes(),
-        ];
+        $data['title'] = 'Pengobatan';
+
+        if (session('role') == 4) {
+            $patientId = Patient::where('user_id', Auth::id())->value('id');
+
+            $patientTreatments = collect();
+
+            $treatments = PatientTreatment::getTreatmentByPatientId($patientId);
+
+            foreach ($treatments as $treatment) {
+                $dateRanges = PatientTreatment::getTreatmentDateRange($treatment['id']);
+
+                foreach ($dateRanges as $date) {
+                    $medicationRecord = MedicationRecord::getRecordByDate($treatment['id'], $date);
+
+                    $hour = $medicationRecord && $medicationRecord['taken_at']
+                        ? Carbon::parse($medicationRecord['taken_at'])->format('H:i:s')
+                        : null;
+
+                    $photo = $medicationRecord && $medicationRecord['photo']
+                        ? Storage::url($medicationRecord['photo'])
+                        : null;
+
+                    $patientTreatments->push([
+                        'date'   => $date,
+                        'hour'   => $hour,
+                        'photo'  => $photo,
+                        'status' => $medicationRecord ? true : false,
+                    ]);
+                }
+            }
+
+            $data['treatments'] = $patientTreatments;
+        } else {
+
+            $data['treatments'] = PatientTreatment::getPatientTreatments();
+            $data['patients']   = Patient::getPatientWithUser();
+            $data['trtypes']    = TreatmentType::getTreatmentTypes();
+        }
 
         return view('patient-treatment-index', $data);
     }
@@ -73,18 +108,19 @@ class PatientTreatmentController extends Controller
             'patient_id' => ['required', 'exists:patients,id'],
             'treatment_type_id' => ['required', 'exists:treatment_types,id'],
             'diagnosis_date' => ['required', 'date_format:d/m/Y', 'before_or_equal:today'],
+            'start_date' => ['required', 'date_format:d/m/Y'],
             'medication_time' => ['required', 'regex:/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/'],
             'prescription' => ['nullable', 'array'],
             'prescription.*' => ['nullable', 'string'],
         ];
 
-        $completedTreatment = MedicationRecord::countRecords($treatment->id);
+        // $completedTreatment = MedicationRecord::countRecords($treatment->id);
 
-        $startDateRule = $completedTreatment > 0
-            ? 'after_or_equal:' . DateHelper::convertDate($treatment->start_date)
-            : 'after_or_equal:' . DateHelper::convertDate($request->input('diagnosis_date'));
-            
-        $rules['start_date'] = ['required', 'date_format:d/m/Y', $startDateRule];
+        // $startDateRule = $completedTreatment > 0
+        //     ? 'after_or_equal:' . DateHelper::convertDate($treatment->start_date)
+        //     : 'after_or_equal:' . DateHelper::convertDate($request->input('diagnosis_date'));
+
+        // $rules['start_date'] = ['required', 'date_format:d/m/Y', $startDateRule];
 
         $validatedData = $request->validate($rules);
 
@@ -157,5 +193,57 @@ class PatientTreatmentController extends Controller
         $treatment->delete();
 
         return redirect()->route('treatments')->with('success', 'Pengobatan Pasien berhasil dihapus.');
+    }
+
+    public function takeMedicine(Request $request)
+    {
+        $patientId = Patient::where('user_id', Auth::id())->value('id');
+
+        $treatment = PatientTreatment::where('patient_id', $patientId)->orderBy('id', 'desc')->first();
+
+        if (isset($treatment->id)) {
+
+            if ($request->hasFile('photo')) {
+
+                $photo = $request->file('photo');
+
+                $validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+
+                if (in_array($photo->getMimeType(), $validTypes)) {
+
+                    $path = $photo->store('photos', 'public');
+
+                    $medicationRecord = MedicationRecord::getRecordByDate($treatment->id, today());
+
+                    if ($medicationRecord) {
+
+                        if ($medicationRecord->photo && file_exists(public_path('storage/' . $medicationRecord->photo))) {
+                            unlink(public_path('storage/' . $medicationRecord->photo));
+                        }
+
+                        $medicationRecord->update([
+                            'photo' => $path,
+                            'taken_at' => now(),
+                        ]);
+                        $message = 'Foto berhasil diperbarui.';
+                    } else {
+                        MedicationRecord::create([
+                            'patient_treatment_id' => $treatment->id,
+                            'photo' => $path,
+                            'taken_at' => now(),
+                        ]);
+                        $message = 'Foto berhasil diunggah.';
+                    }
+
+                    return redirect()->back()->with('success', $message);
+                } else {
+                    return redirect()->back()->with('error', 'Format foto tidak valid. Hanya JPEG, PNG, atau GIF yang diperbolehkan.');
+                }
+            } else {
+                return redirect()->back()->with('error', 'Silakan unggah foto.');
+            }
+        } else {
+            return redirect()->back()->with('error', 'Tidak ada catatan pengobatan yang valid ditemukan.');
+        }
     }
 }

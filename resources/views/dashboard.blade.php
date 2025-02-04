@@ -68,7 +68,7 @@
                                     <div class="col-lg-6 col-12">
                                         <div class="card card-primary card-outline">
                                             <img class="card-img-top p-4"
-                                                src="{{ asset('storage/materials/' . $item['material_file']) }}"
+                                                src="{{ Storage::url('materials/' . $item['material_file']) }}"
                                                 alt="" style="width: 100%; height: 300px;">
                                             <div class="card-body">
                                                 <h6 class="card-title mb-2"><a href=""

@@ -13,6 +13,8 @@ class MedicationRecord extends Model
     protected $primaryKey = 'id';
     public $timestamps = false;
 
+    protected $guarded = [];
+
     public static function getRecordByDate($patient_treatment_id, $current_date)
     {
         return self::where('patient_treatment_id', $patient_treatment_id)

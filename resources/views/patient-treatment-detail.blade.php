@@ -66,6 +66,7 @@
                                 <th style="width: 5%; text-align: center;">No</th>
                                 <th>Tanggal</th>
                                 <th>Jam</th>
+                                <th>Foto</th>
                                 <th>Keterangan</th>
                             </tr>
                         </thead>
@@ -79,7 +80,7 @@
                                     $isToday = \Carbon\Carbon::parse($date)->isToday();
                                     $statusBadge = $treatment
                                         ? 'success|SUDAH MINUM OBAT'
-                                        : ($date > date('Y-m-d')
+                                        : ($date >= date('Y-m-d')
                                             ? 'warning|BELUM MINUM OBAT'
                                             : 'danger|TIDAK MINUM OBAT');
                                     [$badgeClass, $badgeText] = explode('|', $statusBadge);
@@ -89,6 +90,7 @@
                                     <td>{{ \App\Helpers\DateHelper::convertDate($date) }}</td>
                                     <td>{{ $treatment ? \Carbon\Carbon::parse($treatment->taken_at)->format('H:i:s') : '-' }}
                                     </td>
+                                    <td>{!! $treatment && $treatment->photo ? '<img src="' . Storage::url($treatment->photo) . '" alt="Photo" class="img-fluid" style="width: 150px; height: 150px;">' : '' !!}</td>
                                     <td>
                                         <span class="badge badge-{{ $badgeClass }} p-2">{{ $badgeText }}</span>
                                     </td>

@@ -27,6 +27,12 @@
     <link rel="stylesheet" href="{{ asset('assets/plugins/summernote/summernote-bs4.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/dist/css/tbcare.css') }}">
     <style>
+        @media (max-width: 991px) {
+            body:not(.sidebar-open) .main-sidebar {
+                transform: translateX(-250px);
+            }
+        }
+
         body {
             font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
         }
@@ -116,30 +122,34 @@
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
 
     <div class="wrapper">
-        <nav class="main-header navbar navbar-expand navbar-primary navbar-dark">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" data-widget="pushmenu" href="javascript:void(0)" role="button"
-                        style="color: #fff;"><i class="fas fa-bars"></i></a>
-                </li>
-            </ul>
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)"
-                        id="user-profile">
-                        <i class="fas fa-user-alt fa-fw"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right">
-                        <a href="{{ route('profile') }}" class="dropdown-item">
-                            <i class="fas fa-user mr-2"></i> Profil Saya
+        <nav class="main-header navbar navbar-expand navbar-primary navbar-dark" style="height: 57px;">
+            <div class="container-fluid">
+                <a href="javascript:void(0)" class="px-2 d-lg-none">
+                    <span style="color: white; font-weight: bold; font-size: 28px; display: block;">TB CARE</span>
+                </a>
+
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item d-lg-none">
+                        <a class="nav-link px-1" data-widget="pushmenu" href="javascript:void(0)"><i
+                                class="fas fa-bars"></i></a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)"
+                            id="user-profile">
+                            <i class="fas fa-user-alt fa-fw"></i>
                         </a>
-                        <div class="dropdown-divider"></div>
-                        <a href="{{ route('logout') }}" class="dropdown-item">
-                            <i class="fas fa-sign-out-alt mr-2"></i> Keluar
-                        </a>
-                    </div>
-                </li>
-            </ul>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            <a href="{{ route('profile') }}" class="dropdown-item">
+                                <i class="fas fa-user mr-2"></i> Profil Saya
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{{ route('logout') }}" class="dropdown-item">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Keluar
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+            </div>
         </nav>
 
         <aside class="main-sidebar sidebar-light-primary">
@@ -221,13 +231,6 @@
                                     @endforeach
                                 </ul>
                             </li>
-                            {{-- <li class="nav-item">
-                                <a href="{{ route('pkm') }}"
-                                    class="nav-link {{ $title == 'Puskesmas' ? 'active' : '' }}">
-                                    <i class="nav-icon fas fa-hospital"></i>
-                                    <p>Puskesmas</p>
-                                </a>
-                            </li> --}}
                             <li class="nav-item">
                                 <a href="{{ route('treatments') }}"
                                     class="nav-link {{ $title == 'Pengobatan' ? 'active' : '' }}">
@@ -258,6 +261,15 @@
                                     class="nav-link {{ $title == 'Materi Edukasi' ? 'active' : '' }}">
                                     <i class="nav-icon fas fa-newspaper"></i>
                                     <p>Materi Edukasi</p>
+                                </a>
+                            </li>
+                        @endif
+                        @if (session('role') == 4)
+                            <li class="nav-item">
+                                <a href="{{ route('treatments') }}"
+                                    class="nav-link {{ $title == 'Pengobatan' ? 'active' : '' }}">
+                                    <i class="nav-icon fas fa-box"></i>
+                                    <p>Pengobatan</p>
                                 </a>
                             </li>
                         @endif
