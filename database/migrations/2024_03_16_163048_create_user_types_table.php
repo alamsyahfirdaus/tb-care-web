@@ -17,6 +17,7 @@ class CreateUserTypesTable extends Migration
             $table->id('id');
             $table->string('name')->unique();
             $table->text('description')->nullable();
+            $table->timestamps();
         });
     }
 

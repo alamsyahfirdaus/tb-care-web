@@ -17,14 +17,14 @@ class CreateCategoriesTable extends Migration
             $table->id();
             $table->foreignId('screening_id')->constrained('screenings')->onDelete('cascade');
             $table->string('category_name');
-            // $table->timestamps();
+            $table->timestamps();
         });
 
         DB::table('categories')->insert([
             // Data untuk Screening ID 1
             ['screening_id' => 1, 'category_name' => 'Usia 15 Tahun ke Atas'],
             ['screening_id' => 1, 'category_name' => 'Usia Di Bawah 15 Tahun'],
-        ]);        
+        ]);
 
         DB::table('categories')->insert([
             // Data untuk Screening ID 2

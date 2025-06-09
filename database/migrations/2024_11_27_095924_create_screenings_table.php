@@ -16,7 +16,6 @@ class CreateScreeningsTable extends Migration
         Schema::create('screenings', function (Blueprint $table) {
             $table->id();
             $table->string('screening_category');
-            // $table->timestamps();
         });
 
         DB::table('screenings')->insert([

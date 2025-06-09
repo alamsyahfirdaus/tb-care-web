@@ -130,13 +130,13 @@ Route::middleware(['auth'])->group(function () {
         // UpdateProfile
         Route::match(['post', 'put'], 'user/save/{id?}', [UserController::class, 'save'])->name('user.save');
         // MedicationRecordController
-        Route::get('medlogs', [MedicationRecordController::class, 'index'])->name('medlogs');
-        Route::prefix('medlog')->group(function () {
-            Route::get('{id}/edit', [MedicationRecordController::class, 'edit'])->name('medlog.edit');
-            Route::get('{id}/show', [MedicationRecordController::class, 'show'])->name('medlog.show');
-            Route::match(['post', 'put'], 'save/{id?}', [MedicationRecordController::class, 'save'])->name('medlog.save');
-            Route::delete('{id}', [MedicationRecordController::class, 'destroy'])->name('medlog.delete');
-        });
+        // Route::get('medlogs', [MedicationRecordController::class, 'index'])->name('medlogs');
+        // Route::prefix('medlog')->group(function () {
+        //     Route::get('{id}/edit', [MedicationRecordController::class, 'edit'])->name('medlog.edit');
+        //     Route::get('{id}/show', [MedicationRecordController::class, 'show'])->name('medlog.show');
+        //     Route::match(['post', 'put'], 'save/{id?}', [MedicationRecordController::class, 'save'])->name('medlog.save');
+        //     Route::delete('{id}', [MedicationRecordController::class, 'destroy'])->name('medlog.delete');
+        // });
     });
 
     Route::middleware(['checkrole:1-2-3-4'])->group(function () {

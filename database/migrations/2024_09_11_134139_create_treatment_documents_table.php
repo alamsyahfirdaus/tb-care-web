@@ -18,7 +18,6 @@ class CreateTreatmentDocumentsTable extends Migration
             $table->foreignId('patient_treatment_id')->constrained('patient_treatments')->onDelete('cascade')->onUpdate('cascade');
             $table->string('photo')->nullable();
             $table->datetime('taken_at');
-            // $table->timestamps();
         });
     }
 

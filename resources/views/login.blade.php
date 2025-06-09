@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 
-<html lang="en" class="light-style customizer-hide" dir="ltr" data-theme="theme-default"
-    data-assets-path="{{ asset('assets/sneat/') }}" data-template="vertical-menu-template-free">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
@@ -37,7 +36,7 @@
                     <div class="card-body">
                         <div class="app-brand justify-content-center">
                             <a href="" class="app-brand-link gap-2">
-                                <span class="app-brand-text demo text-body fw-bolder">TB Care</span>
+                                <span class="app-brand-text demo text-body" style="font-weight: bold;">TB Care</span>
                             </a>
                         </div>
                         <div id="alert-message">
@@ -53,7 +52,7 @@
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username</label>
                                 <input type="text" class="form-control" id="username" name="username"
-                                    placeholder="Username/Email" autocomplete="off" />
+                                    placeholder="Username" autocomplete="off" />
                                 <span id="error-username" class="error invalid-feedback"></span>
                             </div>
                             <div class="mb-4 form-password-toggle">
@@ -69,7 +68,7 @@
                                 <span id="error-password" class="error invalid-feedback"></span>
                             </div>
                             <div class="mb-3">
-                                <button class="btn btn-primary d-grid w-100 fw-bolder" type="submit">Login</button>
+                                <button class="btn btn-primary d-grid w-100" type="submit">Login</button>
                             </div>
                         </form>
                         {{-- <p class="text-center">

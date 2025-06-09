@@ -15,9 +15,8 @@ class CreatePatientTreatmentsTable extends Migration
     {
         Schema::create('patient_treatments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('patient_id')->constrained('patients')->onDelete('cascade')->onUpdate('cascade'); 
+            $table->foreignId('patient_id')->constrained('patients')->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('treatment_type_id')->nullable()->constrained('treatment_types')->onDelete('set null')->onUpdate('cascade');
-            // $table->foreignId('puskesmas_id')->nullable()->constrained('puskesmas')->onDelete('set null')->onUpdate('cascade');
             $table->date('diagnosis_date'); // Tanggal diagnosis pasien
             $table->date('start_date'); // Tanggal mulai pengobatan
             $table->date('end_date')->nullable(); // Tanggal selesai pengobatan
