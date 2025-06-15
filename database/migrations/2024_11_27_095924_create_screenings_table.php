@@ -17,12 +17,6 @@ class CreateScreeningsTable extends Migration
             $table->id();
             $table->string('screening_category');
         });
-
-        DB::table('screenings')->insert([
-            ['screening_category' => 'Usia'],
-            ['screening_category' => 'Faktor Risiko'],
-            ['screening_category' => 'Skrining Gejala'],
-        ]);
     }
 
     /**
