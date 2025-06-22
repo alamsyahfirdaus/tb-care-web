@@ -22,30 +22,11 @@ class PatientTreatmentsSeeder extends Seeder
                 'diagnosis_date' => Carbon::parse('2024-12-01'),
                 'start_date' => Carbon::parse('2024-12-05'),
                 'end_date' => Carbon::parse('2025-06-05'),
+                'treatment_days' => 100,
                 'medication_time' => '07:00:00',
                 'prescription' => json_encode(['Rifampisin', 'Isoniazid', 'Pirazinamid']),
-                'treatment_status' => 1, // Berjalan
+                'treatment_status' => 'Berjalan',
             ],
-            // [
-            //     'patient_id' => 2,
-            //     'treatment_type_id' => 2, // Kategori 2
-            //     'diagnosis_date' => Carbon::parse('2024-10-15'),
-            //     'start_date' => Carbon::parse('2024-10-20'),
-            //     'end_date' => Carbon::parse('2025-06-20'),
-            //     'medication_time' => '08:00:00',
-            //     'prescription' => json_encode(['Rifampisin', 'Isoniazid', 'Etambutol']),
-            //     'treatment_status' => 2, // Selesai
-            // ],
-            // [
-            //     'patient_id' => 3,
-            //     'treatment_type_id' => 3, // RO
-            //     'diagnosis_date' => Carbon::parse('2023-01-01'),
-            //     'start_date' => Carbon::parse('2023-01-05'),
-            //     'end_date' => Carbon::parse('2025-09-01'),
-            //     'medication_time' => '06:30:00',
-            //     'prescription' => json_encode(['Bedaquiline', 'Linezolid']),
-            //     'treatment_status' => 3, // Gagal
-            // ],
         ]);
     }
 }

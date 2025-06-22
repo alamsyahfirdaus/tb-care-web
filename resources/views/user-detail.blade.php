@@ -68,7 +68,7 @@
                                 $listData = [
                                     'Nama' => $user->name ?? '-',
                                     'Email' => $user->email ?? '-',
-                                    'Telepon/HP' => $user->telephone,
+                                    'Telepon/HP' => $user->phone,
                                     'Jenis Kelamin' => $user->gender ?? '-',
                                     'Tempat, Tanggal Lahir' =>
                                         $user->place_of_birth && $user->date_of_birth

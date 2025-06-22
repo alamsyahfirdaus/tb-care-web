@@ -14,11 +14,24 @@ class UserTypeSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('user_types')->insert([
-            ['id' => 1, 'name' => 'Super Admin',   'description' => 'Akses penuh ke seluruh sistem TB Care'],
-            ['id' => 2, 'name' => 'Admin Dinkes',  'description' => 'Pengelola data Dinas Kesehatan'],
-            ['id' => 3, 'name' => 'Koordinator',   'description' => 'Petugas penghubung Puskesmas dan Dinkes'],
-            ['id' => 4, 'name' => 'Pasien',        'description' => 'Pengguna yang menjalani pengobatan TB'],
-        ]);
+        DB::table('user_types')->insert(
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Administrator',
+                    'description' => 'Akses penuh terhadap sistem dan pengaturan.'
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Pasien',
+                    'description' => 'Pengguna yang menjalani pengobatan TB.'
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Petugas',
+                    'description' => 'Pengguna dari instansi kesehatan (Dinkes, PJTB, Kader) yang membantu penanganan pasien.'
+                ],
+            ]
+        );
     }
 }

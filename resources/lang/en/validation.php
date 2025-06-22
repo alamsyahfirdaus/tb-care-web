@@ -14,7 +14,7 @@ return [
     |
     */
 
-    
+
     'accepted' => $attr . ' harus diterima.',
     'accepted_if' => $attr . ' harus diterima ketika :other adalah :value.',
     'active_url' => $attr . ' bukan URL yang valid.',
@@ -164,7 +164,7 @@ return [
         'name' => 'Nama',
         'user_type_id' => 'Level',
         'subdistrict_id' => 'Kecamatan',
-        'telephone' => 'No. Handphone',
+        'phone' => 'No. Handphone',
         'gender' => 'Jenis Kelamin',
         'place_of_birth' => 'Tempat Lahir',
         'date_of_birth' => 'Tanggal Lahir',

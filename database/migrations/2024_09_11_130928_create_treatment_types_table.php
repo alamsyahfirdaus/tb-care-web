@@ -17,7 +17,7 @@ class CreateTreatmentTypesTable extends Migration
             $table->id();
             $table->string('treatment_type');
             $table->integer('treatment_duration')->nullable();
-            $table->enum('duration_unit', ['minggu', 'bulan', 'tahun'])->nullable();
+            $table->enum('duration_unit', ['day', 'week', 'month', 'year'])->nullable();
             $table->text('description')->nullable();
         });
     }

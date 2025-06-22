@@ -15,14 +15,32 @@ class CreateEducationalMediaTable extends Migration
     {
         Schema::create('educational_materials', function (Blueprint $table) {
             $table->id();
-            $table->string('title_material');
+
+            // Judul materi edukasi
+            $table->string('title_material', 255);
+
+            // Deskripsi materi (opsional)
             $table->text('description')->nullable();
-            $table->enum('material_type', ['file', 'url'])->nullable();
-            $table->string('thumbnail')->nullable();
-            $table->string('material_file')->nullable();
-            $table->string('material_url')->nullable();
+
+            // Jenis materi: image atau video
+            $table->enum('material_type', ['image', 'video'])->nullable();
+
+            // Path file gambar (jika materi berupa gambar)
+            $table->string('image_path')->nullable();
+
+            // URL video (jika materi berupa video)
+            $table->string('video_url')->nullable();
+
+            // Status publikasi
             $table->boolean('is_publish')->default(true);
-            $table->foreignId('user_id')->nullable()->comment('created_by')->constrained('users')->onDelete('set null');
+
+            // User yang membuat materi
+            $table->foreignId('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null')
+                ->comment('user_id');
+
             $table->timestamps();
         });
     }

@@ -48,7 +48,7 @@
                                             @elseif ($user_type_id == 3)
                                                 <th>Koordinator</th>
                                                 {{-- <th>Puskesmas</th> --}}
-                                            {{-- @elseif ($user_type_id == 4) --}}
+                                                {{-- @elseif ($user_type_id == 4) --}}
                                                 {{-- <th>Puskesmas</th> --}}
                                             @endif
                                             <th style="width: 5%; text-align: center;">Aksi</th>
@@ -60,7 +60,7 @@
                                                 <td style="text-align: center;">{{ $key + 1 }}</td>
                                                 <td>{{ $item->name }}</td>
                                                 <td>{{ $item->gender }}</td>
-                                                <td>{{ $item->telephone ?? '-' }}</td>
+                                                <td>{{ $item->phone ?? '-' }}</td>
                                                 @if ($user_type_id == 2)
                                                     @php
                                                         $healthOffice = \App\Models\HealthOffice::getHealthOfficeByUserId(
@@ -194,13 +194,13 @@
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label for="telephone" class="col-sm-3 col-form-label">No. Handphone<small
+                                <label for="phone" class="col-sm-3 col-form-label">No. Handphone<small
                                         class="text-danger">*</small></label>
                                 <div class="col-sm-9">
-                                    <input type="text" class="form-control" name="telephone" id="telephone"
+                                    <input type="text" class="form-control" name="phone" id="phone"
                                         placeholder="Masukan No. Handphone" autocomplete="off"
-                                        value="{{ isset($data) ? $data->telephone : '' }}">
-                                    <span id="error-telephone" class="error invalid-feedback"></span>
+                                        value="{{ isset($data) ? $data->phone : '' }}">
+                                    <span id="error-phone" class="error invalid-feedback"></span>
                                 </div>
                             </div>
                             <div class="form-group row">

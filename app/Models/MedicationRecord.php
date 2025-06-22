@@ -11,7 +11,6 @@ class MedicationRecord extends Model
 
     protected $table = 'medication_records';
     protected $primaryKey = 'id';
-    public $timestamps = false;
 
     protected $guarded = [];
 

@@ -11,7 +11,8 @@ class PatientTreatment extends Model
 
     protected $table = 'patient_treatments';
     protected $primaryKey = 'id';
-    public $timestamps = false;
+
+    protected $guarded = [];
 
     public function patient()
     {
@@ -21,6 +22,11 @@ class PatientTreatment extends Model
     public function treatmentType()
     {
         return $this->belongsTo(TreatmentType::class, 'treatment_type_id');
+    }
+
+    public function visits()
+    {
+        return $this->hasMany(TreatmentVisit::class, 'patient_treatment_id');
     }
 
     public static function getPatientTreatments($filters = [])
@@ -46,7 +52,7 @@ class PatientTreatment extends Model
                 'user_id'            => $treatment->patient->user_id,
                 'username'           => $treatment->patient->user->username,
                 'gender'             => $treatment->patient->user->gender,
-                'telephone'          => $treatment->patient->user->telephone ?? '-',
+                'phone'              => $treatment->patient->user->phone ?? '-',
                 'treatment_type'     => $treatment->treatmentType->treatment_type . ' (' . $treatment->treatmentType->treatment_duration . ' ' . ucfirst($treatment->treatmentType->duration_unit) . ')',
                 'diagnosis_date'     => $treatment->diagnosis_date,
                 'start_date'         => $treatment->start_date,

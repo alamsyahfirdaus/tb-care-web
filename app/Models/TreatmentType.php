@@ -26,24 +26,4 @@ class TreatmentType extends Model
             })
             ->toArray();
     }
-
-    // public static function getTreatmentDuration($treatment_type_id)
-    // {
-    //     $query = self::find($treatment_type_id);
-
-    //     if (!$query) {
-    //         return null;
-    //     }
-
-    //     switch ($query->duration_unit) {
-    //         case 'minggu':
-    //             return $query->treatment_duration . ' week';
-    //         case 'bulan':
-    //             return $query->treatment_duration . ' month';
-    //         case 'tahun':
-    //             return $query->treatment_duration . ' year';
-    //         default:
-    //             return null;
-    //     }
-    // }
 }

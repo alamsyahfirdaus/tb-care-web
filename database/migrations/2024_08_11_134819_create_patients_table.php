@@ -25,6 +25,7 @@ class CreatePatientsTable extends Migration
             $table->string('blood_type', 3)->nullable();
             $table->date('diagnosis_date')->nullable();
             $table->foreignId('puskesmas_id')->nullable()->constrained('puskesmas')->onDelete('set null')->onUpdate('cascade');
+            $table->timestamps();
         });
     }
 

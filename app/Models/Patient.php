@@ -30,6 +30,11 @@ class Patient extends Model
         return $this->belongsTo(Puskesmas::class, 'puskesmas_id');
     }
 
+    public function treatments()
+    {
+        return $this->hasMany(PatientTreatment::class, 'patient_id');
+    }
+
     public static function getPatientWithUser()
     {
         $patients = self::with('user')->get();
@@ -70,12 +75,17 @@ class Patient extends Model
                     'user_id'        => $patient->user_id,
                     'full_name'      => $patient->user->name,
                     'gender'         => $patient->user->gender,
-                    'telephone'      => $patient->user->telephone ?? '-',
+                    'phone'      => $patient->user->phone ?? '-',
                     'username'       => $patient->user->username ?? '-',
                     'email'          => $patient->user->email ?? '-',
                     'puskesmas_name' => $patient->puskesmas->name ?? '-',
                 ];
             })
             ->toArray();
+    }
+
+    public static function getByUserId($userId)
+    {
+        return self::where('user_id', $userId)->first();
     }
 }

@@ -30,7 +30,7 @@ class LoginController extends Controller
                     'gender' => 'Laki-laki',
                     'place_of_birth' => 'Tasikmalaya',
                     'date_of_birth' => '1998-07-31',
-                    'telephone' => '089693839624',
+                    'phone' => '089693839624',
                     'password' => Hash::make('alamsyah'),
                     'user_type_id' => 1,
                     'created_at' => now(),

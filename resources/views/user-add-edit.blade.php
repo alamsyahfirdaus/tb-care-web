@@ -95,13 +95,13 @@
                                     </div>
                                 </div>
                                 <div class="form-group row">
-                                    <label for="telephone" class="col-sm-3 col-form-label">No. Handphone<small
+                                    <label for="phone" class="col-sm-3 col-form-label">No. Handphone<small
                                             class="text-danger">*</small></label>
                                     <div class="col-sm-9">
-                                        <input type="text" class="form-control" name="telephone" id="telephone"
+                                        <input type="text" class="form-control" name="phone" id="phone"
                                             placeholder="Masukan No. Handphone" autocomplete="off"
-                                            value="{{ isset($data) ? $data->telephone : '' }}">
-                                        <span id="error-telephone" class="error invalid-feedback"></span>
+                                            value="{{ isset($data) ? $data->phone : '' }}">
+                                        <span id="error-phone" class="error invalid-feedback"></span>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -367,14 +367,14 @@
 
             function validateStep1() {
                 const name = $('#name').val().trim();
-                const telephone = $('#telephone').val().trim();
+                const phone = $('#phone').val().trim();
                 const gender = $('#gender').val();
                 const placeOfBirth = $('#place_of_birth').val().trim();
                 const dateOfBirth = $('#date_of_birth').val().trim();
 
                 let valid = true;
                 clearValidationErrors([
-                    'name', 'telephone', 'gender', 'place_of_birth', 'date_of_birth',
+                    'name', 'phone', 'gender', 'place_of_birth', 'date_of_birth',
                     'office_type_id', 'office_address', 'district_id', 'puskesmas_id'
                 ]);
 
@@ -383,11 +383,11 @@
                     valid = false;
                 }
 
-                if (telephone === '') {
-                    setValidationError('telephone', 'No. Handphone harus diisi.');
+                if (phone === '') {
+                    setValidationError('phone', 'No. Handphone harus diisi.');
                     valid = false;
-                } else if (!/^\d+$/.test(telephone)) {
-                    setValidationError('telephone', 'No. Handphone harus berupa angka.');
+                } else if (!/^\d+$/.test(phone)) {
+                    setValidationError('phone', 'No. Handphone harus berupa angka.');
                     valid = false;
                 }
 
@@ -454,7 +454,7 @@
                 validateStep1();
             });
 
-            $('#name, #telephone, #gender, #place_of_birth, #date_of_birth, #office_type_id, #office_address, #district_id, #puskesmas_id')
+            $('#name, #phone, #gender, #place_of_birth, #date_of_birth, #office_type_id, #office_address, #district_id, #puskesmas_id')
                 .on('keyup change', function() {
                     $(this).removeClass('is-invalid');
                     $('#error-' + $(this).attr('id')).text('').hide();

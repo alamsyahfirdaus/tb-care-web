@@ -15,10 +15,29 @@ class CreateConsultationRepliesTable extends Migration
     {
         Schema::create('consultation_replies', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('consultation_id')->constrained('consultations')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade')->onUpdate('cascade');
+
+            // Relasi ke konsultasi utama
+            $table->foreignId('consultation_id')
+                ->constrained('consultations')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
+            // Pengirim balasan (user)
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
+            // Isi pesan balasan
             $table->text('message');
-            $table->string('attachment')->nullable(); // opsional, bisa digunakan untuk file URL atau path
+
+            // Lampiran opsional (gambar/dokumen)
+            $table->string('attachment')->nullable();
+
+            // Status apakah sudah dibaca
+            $table->boolean('is_read')->default(false); // false = belum dibaca, true = sudah dibaca
+
+            // Waktu pembuatan dan pembaruan
             $table->timestamps();
         });
     }

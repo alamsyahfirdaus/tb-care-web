@@ -23,12 +23,13 @@ class DatabaseSeeder extends Seeder
         $this->call(ScreeningSeeder::class);
         $this->call(CategorySeeder::class);
         $this->call(EducationalMaterialSeeder::class);
-        $this->call(CoordinatorSeeder::class);
         $this->call(PatientsTableSeeder::class);
-        $this->call(HealthOfficesSeeder::class);
         $this->call(TreatmentTypesSeeder::class);
         $this->call(PatientTreatmentsSeeder::class);
         $this->call(MedicationRecordsSeeder::class);
         $this->call(ConsultationSeeder::class);
+        $this->call(ConsultationReplySeeder::class);
+        $this->call(OfficerSeeder::class);
+        $this->call(TreatmentVisitSeeder::class);
     }
 }

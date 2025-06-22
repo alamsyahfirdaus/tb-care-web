@@ -5,8 +5,8 @@
             <div class="card-header py-2">
                 <h3 class="card-title pt-1">Daftar {{ $title }}</h3>
                 <div class="card-tools">
-                    <a href="{{ route('user.add', ['id' => base64_encode(4)]) }}"
-                        class="btn btn-primary btn-sm" title="Tambah {{ $title }}">
+                    <a href="{{ route('user.add', ['id' => base64_encode(4)]) }}" class="btn btn-primary btn-sm"
+                        title="Tambah {{ $title }}">
                         <i class="fas fa-plus"></i>
                     </a>
                 </div>
@@ -29,7 +29,7 @@
                                     <td style="text-align: center;">{{ $key + 1 }}</td>
                                     <td>{{ $item['full_name'] }}</td>
                                     <td>{{ $item['gender'] }}</td>
-                                    <td>{{ $item['telephone'] }}</td>
+                                    <td>{{ $item['phone'] }}</td>
                                     <td style="text-align: center;">
                                         <div class="btn-group">
                                             <button type="button" class="btn btn-primary btn-sm dropdown-toggle"

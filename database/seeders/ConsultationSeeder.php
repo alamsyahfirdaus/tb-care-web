@@ -17,18 +17,18 @@ class ConsultationSeeder extends Seeder
     {
         DB::table('consultations')->insert([
             [
-                'user_id'   => 1,
-                'title'     => 'Batuk berkepanjangan',
-                'message'   => 'Saya sudah batuk selama lebih dari 3 minggu, apakah saya perlu tes TB?',
-                'status'    => false, // pending
-                'created_at' => Carbon::now(),
+                'user_id'       => 1,
+                'title'         => 'Batuk berkepanjangan',
+                'message'       => 'Saya sudah batuk selama lebih dari 3 minggu, apakah saya perlu tes TB?',
+                'is_answered'    => false, // pending
+                'created_at'    => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ],
             [
                 'user_id'   => 2,
                 'title'     => 'Efek samping obat',
                 'message'   => 'Setelah minum obat TB, saya merasa mual dan pusing. Apakah ini normal?',
-                'status'    => true, // answered
+                'is_answered'    => true, // answered
                 'created_at' => Carbon::now()->subDays(1),
                 'updated_at' => Carbon::now()->subDays(1),
             ],

@@ -18,24 +18,14 @@ class MedicationRecordsSeeder extends Seeder
         DB::table('medication_records')->insert([
             [
                 'patient_treatment_id' => 1,
-                'photo' => 'photos/medication_1.jpg',
-                'taken_at' => Carbon::parse('2025-06-01 07:00:00'),
-            ],
-            // [
-            //     'patient_treatment_id' => 1,
-            //     'photo' => 'photos/medication_2.jpg',
-            //     'taken_at' => Carbon::parse('2025-06-02 07:05:00'),
-            // ],
-            // [
-            //     'patient_treatment_id' => 2,
-            //     'photo' => 'photos/medication_3.jpg',
-            //     'taken_at' => Carbon::parse('2025-05-15 08:00:00'),
-            // ],
-            // [
-            //     'patient_treatment_id' => 3,
-            //     'photo' => 'photos/medication_4.jpg',
-            //     'taken_at' => Carbon::parse('2025-04-01 06:45:00'),
-            // ],
+                // 'taken_at'             => Carbon::parse('2025-06-09 08:15:00'),
+                'photo'                => '1_20250609.jpg',
+                'is_verified'          => true,
+                'late'                 => false,
+                'notes'                => 'Minum obat tepat waktu, kondisi baik.',
+                'created_at'           => now(),
+                'updated_at'           => now(),
+            ]
         ]);
     }
 }

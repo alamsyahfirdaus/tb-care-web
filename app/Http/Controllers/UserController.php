@@ -240,11 +240,11 @@ class UserController extends Controller
                 empty($user->id) ? 'nullable' : 'required',
                 Rule::unique('users', 'username')->ignore($user->id)
             ],
-            'telephone' => [
+            'phone' => [
                 'required',
                 'numeric',
                 'digits_between:10,15',
-                Rule::unique('users', 'telephone')->ignore($user->id)
+                Rule::unique('users', 'phone')->ignore($user->id)
             ],
             'password' => ['nullable', 'string', 'min:8'],
             'user_type_id' => ['required', 'exists:user_types,id'],
@@ -312,7 +312,7 @@ class UserController extends Controller
         $user->username = $username;
         $user->password = $password;
         $user->user_type_id = $validatedData['user_type_id'];
-        $user->telephone = $validatedData['telephone'];
+        $user->phone = $validatedData['phone'];
         $user->gender = $validatedData['gender'];
         $user->place_of_birth = $validatedData['place_of_birth'] ?? null;
         $user->date_of_birth = $validatedData['date_of_birth'] ? \DateTime::createFromFormat('d/m/Y', $validatedData['date_of_birth'])->format('Y-m-d') : null;
