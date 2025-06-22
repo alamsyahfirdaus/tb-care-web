@@ -81,7 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ConsultationController::class, 'index']);                      // Daftar konsultasi
         Route::match(['post', 'put'], '/store', [ConsultationController::class, 'store']); // Simpan / update konsultasi
         Route::delete('/{id}/delete', [ConsultationController::class, 'destroy']);      // Hapus konsultasi
-        Route::post('/reply', [ConsultationController::class, 'saveReply']);            // Simpan / update balasan
+        Route::match(['post', 'put'], '/reply', [ConsultationController::class, 'saveReply']); // Simpan / update balasan
         Route::delete('/{id}/reply', [ConsultationController::class, 'deleteReply']);   // Hapus balasan
     });
 
