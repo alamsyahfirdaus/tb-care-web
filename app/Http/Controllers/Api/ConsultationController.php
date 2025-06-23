@@ -1,9 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Consultation;
 use App\Models\ConsultationReply;
+use App\Models\Officer;
+use App\Models\Patient;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -212,5 +216,94 @@ class ConsultationController extends Controller
         return response()->json([
             'message' => 'Balasan berhasil dihapus.'
         ]);
+    }
+
+    public function getRecipients()
+    {
+        $user = Auth::user();
+
+        // Pasien hanya bisa memilih petugas di wilayah puskesmasnya
+        if ($user->user_type_id == 2) {
+            $patient = Patient::where('user_id', $user->id)->first();
+
+            if (!$patient) {
+                return response()->json(['message' => 'Data pasien tidak ditemukan.'], 404);
+            }
+
+            // Cari petugas (PJTB/Kader) di Puskesmas yang sama
+            $officers = Officer::with('user')
+                ->where('puskesmas_id', $patient->puskesmas_id)
+                ->get()
+                ->map(function ($officer) {
+                    return [
+                        'id'    => $officer->user->id,
+                        'name'  => $officer->user->name,
+                        'email' => $officer->user->email,
+                        'role'  => 'Petugas',
+                    ];
+                });
+
+            return response()->json([
+                'message' => 'Daftar petugas berhasil diambil.',
+                'data'    => $officers
+            ]);
+        }
+
+        // Petugas hanya bisa memilih pasien di wilayah kerjanya (Puskesmas atau Kecamatan)
+        elseif ($user->user_type_id == 3) {
+            $officer = Officer::where('user_id', $user->id)->first();
+
+            if (!$officer) {
+                return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
+            }
+
+            $patientsQuery = Patient::with('user');
+
+            if (in_array($officer->officer_type_id, [3, 4])) {
+                // Petugas Puskesmas: ambil pasien dari Puskesmas yang sama
+                $patientsQuery->where('puskesmas_id', $officer->puskesmas_id);
+            } else {
+                // Petugas Kab/Kota: ambil pasien dari kecamatan dalam kabupaten yang sama
+                $patientsQuery->whereHas('subdistrict', function ($q) use ($officer) {
+                    $q->where('district_id', $officer->district_id);
+                });
+            }
+
+            $patients = $patientsQuery->get()->map(function ($patient) {
+                return [
+                    'id'    => $patient->user->id,
+                    'name'  => $patient->user->name,
+                    'email' => $patient->user->email,
+                    'role'  => 'Pasien',
+                ];
+            });
+
+            return response()->json([
+                'message' => 'Daftar pasien berhasil diambil.',
+                'data'    => $patients
+            ]);
+        }
+
+        // Admin atau selainnya bisa memilih semua user
+        else {
+            $users = User::where('id', '!=', $user->id)->get()->map(function ($u) {
+                return [
+                    'id'    => $u->id,
+                    'name'  => $u->name,
+                    'email' => $u->email,
+                    'role'  => match ($u->user_type_id) {
+                        1 => 'Admin',
+                        2 => 'Pasien',
+                        3 => 'Petugas',
+                        default => 'Lainnya',
+                    },
+                ];
+            });
+
+            return response()->json([
+                'message' => 'Daftar pengguna berhasil diambil.',
+                'data'    => $users
+            ]);
+        }
     }
 }

@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\EducationController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ProfileController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\Api\PuskesmasController;
 use App\Http\Controllers\Api\SubdistrictController;
 use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
-use App\Http\Controllers\ConsultationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}/delete', [ConsultationController::class, 'destroy']);      // Hapus konsultasi
         Route::match(['post', 'put'], '/reply', [ConsultationController::class, 'saveReply']); // Simpan / update balasan
         Route::delete('/{id}/reply', [ConsultationController::class, 'deleteReply']);   // Hapus balasan
+        Route::get('/recipients', [ConsultationController::class, 'getRecipients']); // Ambil daftar penerima untuk konsultasi
     });
 
     // Data Pasien TB
@@ -94,7 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/treatments', [PatientController::class, 'treatmentHistory']);    // Riwayat pengobatan pasien
     });
 
-    // (Optional) 🔎 Skrining TB — aktifkan jika diperlukan
+    // (Optional) Skrining TB — aktifkan jika diperlukan
     // Route::prefix('screening')->group(function () {
     //     Route::get('/questions', [ScreeningController::class, 'questions']);  // Pertanyaan skrining
     //     Route::post('/submit', [ScreeningController::class, 'submit']);      // Submit jawaban skrining
