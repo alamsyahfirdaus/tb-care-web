@@ -42,12 +42,20 @@ class AuthController extends Controller
             ], 403); // Forbidden
         }
 
+
+
         // Hapus token lama (opsional)
-        $user->tokens()->delete();
+        // $user->tokens()->delete();
 
         // Simpan waktu terakhir login
         $user->last_login_at = now();
         $user->save();
+
+        if($user->user_type_id == 2) {
+            // Jika user adalah pasien, ambil data pasien
+            $patient = Patient::where('user_id', $user->id)->first();
+            $user->patient = $patient;
+        }
 
         // Buat token baru
         $token = $user->createToken('api_token')->plainTextToken;
