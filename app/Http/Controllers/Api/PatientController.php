@@ -111,7 +111,9 @@ class PatientController extends Controller
 
                 // Data pengobatan terakhir
                 'patient_treatment_id' => $treatment?->id ?? null,
+                'patient_treatment_type_id' => $treatment?->treatment_type_id ?? null,
                 'treatment_status'     => $treatment?->treatment_status ?? 'Belum Mulai',
+                'diagnosis_date'       => $treatment?->diagnosis_date,
                 'start_date'           => $treatment?->start_date,
                 'end_date'             => $treatment?->end_date,
 
@@ -309,7 +311,9 @@ class PatientController extends Controller
 
             // Pengobatan terakhir
             'patient_treatment_id' => $lastTreatment?->id ?? null,
+            'patient_treatment_type_id' => $lastTreatment?->patient_treatment_id ?? null,
             'treatment_status'     => $lastTreatment?->treatment_status ?? 'Belum Mulai',
+            'diagnosis_date'           => $lastTreatment?->diagnosis_date,
             'start_date'           => $lastTreatment?->start_date,
             'end_date'             => $lastTreatment?->end_date,
 
