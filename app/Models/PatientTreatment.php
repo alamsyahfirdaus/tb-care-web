@@ -29,6 +29,11 @@ class PatientTreatment extends Model
         return $this->hasMany(TreatmentVisit::class, 'patient_treatment_id');
     }
 
+    public function medicationRecords()
+    {
+        return $this->hasMany(MedicationRecord::class, 'patient_treatment_id');
+    }
+
     public static function getPatientTreatments($filters = [])
     {
         $query = self::with(['patient.user', 'treatmentType']);

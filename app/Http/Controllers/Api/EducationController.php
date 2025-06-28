@@ -45,6 +45,7 @@ class EducationController extends Controller
                     : null,
 
                 'is_publish' => $material->is_publish,
+                'created_by' => $material->created_by,
                 'created_at' => $material->created_at->format('Y-m-d'),
             ];
         });

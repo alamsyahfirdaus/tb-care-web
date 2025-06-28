@@ -94,6 +94,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/show', [PatientController::class, 'show']);                      // Detail pasien
         Route::delete('/{id}/delete', [PatientController::class, 'destroy']);              // Hapus data pasien
         Route::get('/{id}/treatments', [PatientController::class, 'treatmentHistory']);    // Riwayat pengobatan pasien
+        Route::get('/adherence', [PatientController::class, 'treatmentAdherence']);        // Tingkat kepatuhan minum obat
     });
 
     // (Optional) Skrining TB — aktifkan jika diperlukan

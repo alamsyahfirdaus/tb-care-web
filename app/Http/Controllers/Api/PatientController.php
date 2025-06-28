@@ -211,6 +211,10 @@ class PatientController extends Controller
                 'address'        => $patient->address,
                 'puskesmas_id'   => $patient->puskesmas_id,
                 'subdistrict_id' => $patient->subdistrict_id,
+                'occupation'     => $patient->occupation,
+                'height'         => $patient->weight,
+                'blood_type'     => $patient->blood_type,
+                'diagnosis_date' => $patient->diagnosis_date,
 
                 // Nama lengkap lokasi (kecamatan, kabupaten, provinsi)
                 'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
@@ -342,6 +346,7 @@ class PatientController extends Controller
             'user_type_id'   => 2, // 2 = Pasien
             'is_active'      => true,
         ]);
+
         $existingUser->save();
 
         // 5. Jika pasien belum ada, buat data pasien baru
@@ -376,7 +381,6 @@ class PatientController extends Controller
             'data'    => $existingPatient->load('user'),
         ]);
     }
-
 
     /* public function showOld($id)
     {
@@ -493,6 +497,10 @@ class PatientController extends Controller
             'address'        => $patient->address,
             'puskesmas_id'   => $patient->puskesmas_id,
             'subdistrict_id' => $patient->subdistrict_id,
+            'occupation'     => $patient->occupation,
+            'height'         => $patient->weight,
+            'blood_type'     => $patient->blood_type,
+            'diagnosis_date' => $patient->diagnosis_date,
 
             // Alamat lengkap (jika tersedia)
             'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
@@ -610,6 +618,131 @@ class PatientController extends Controller
         return response()->json([
             'message' => 'Riwayat pengobatan berhasil diambil.',
             'data'    => $treatmentHistory
+        ]);
+    }
+
+    public function treatmentAdherence()
+    {
+        $user = Auth::user(); // Ambil user yang sedang login
+
+        // ======================
+        // JIKA LOGIN SEBAGAI PASIEN
+        // ======================
+        if ($user->user_type_id == 2) {
+            $patient = Patient::where('user_id', $user->id)->first();
+
+            if (!$patient) {
+                return response()->json([
+                    'message' => 'Data pasien tidak ditemukan.'
+                ], 404);
+            }
+
+            $treatment = PatientTreatment::where('patient_id', $patient->id)
+                ->with('treatmentType')
+                ->withCount([
+                    'medicationRecords as verified_count' => fn($q) =>
+                    $q->where('is_verified', true)
+                ])
+                ->orderByDesc('id')
+                ->first();
+
+            if (!$treatment) {
+                return response()->json([
+                    'message' => 'Belum ada data pengobatan.',
+                    'data' => [
+                        'total_treatment'     => 0,
+                        'total_expected_days' => 0,
+                        'total_verified_days' => 0,
+                        'adherence_average'   => '0%',
+                    ]
+                ]);
+            }
+
+            $expected = $treatment->treatment_days ?? 0;
+            $verified = $treatment->verified_count;
+            $percentage = $expected > 0 ? round(($verified / $expected) * 100, 2) : 0;
+
+            return response()->json([
+                'message' => 'Tingkat kepatuhan pasien berhasil dihitung.',
+                'data' => [
+                    'total_treatment'     => 1,
+                    'total_expected_days' => $expected,
+                    'total_verified_days' => $verified,
+                    'adherence_average'   => $percentage . '%',
+                ]
+            ]);
+        }
+
+        // ======================
+        // JIKA LOGIN SEBAGAI ADMIN / PETUGAS
+        // ======================
+        $patientsQuery = Patient::query(); // Query awal
+
+        if ($user->user_type_id == 3) {
+            // Jika user adalah petugas, ambil info wilayahnya
+            $officer = Officer::where('user_id', $user->id)->first();
+
+            if (!$officer) {
+                return response()->json([
+                    'message' => 'Data petugas tidak ditemukan.'
+                ], 404);
+            }
+
+            // Filter berdasarkan wilayah kerja
+            if (in_array($officer->officer_type_id, [3, 4])) {
+                $patientsQuery->where('puskesmas_id', $officer->puskesmas_id);
+            } else {
+                $patientsQuery->whereHas('puskesmas', function ($q) use ($officer) {
+                    $q->where('district_id', $officer->district_id);
+                });
+            }
+        }
+
+        // Ambil semua ID pasien yang sesuai dengan filter
+        $patientIds = $patientsQuery->pluck('id');
+
+        // Kumpulkan pengobatan terakhir dari setiap pasien
+        $latestTreatments = collect();
+
+        foreach ($patientIds as $pid) {
+            $treatment = PatientTreatment::where('patient_id', $pid)
+                ->orderByDesc('id') // ambil yang terakhir
+                ->withCount([
+                    'medicationRecords as verified_count' => fn($q) =>
+                    $q->where('is_verified', true)
+                ])
+                ->first();
+
+            if ($treatment) {
+                $latestTreatments->push($treatment);
+            }
+        }
+
+        if ($latestTreatments->isEmpty()) {
+            return response()->json([
+                'message' => 'Belum ada data pengobatan terakhir yang tersedia.',
+                'data' => [
+                    'total_treatment'     => 0,
+                    'total_expected_days' => 0,
+                    'total_verified_days' => 0,
+                    'adherence_average'   => '0%',
+                ]
+            ]);
+        }
+
+        // Hitung total harapan & verifikasi
+        $totalExpected = $latestTreatments->sum('treatment_days');
+        $totalVerified = $latestTreatments->sum('verified_count');
+        $percentage = $totalExpected > 0 ? round(($totalVerified / $totalExpected) * 100, 2) : 0;
+
+        return response()->json([
+            'message' => 'Rata-rata tingkat kepatuhan dari pengobatan terakhir pasien berhasil dihitung.',
+            'data' => [
+                'total_treatment'     => $latestTreatments->count(),
+                'total_expected_days' => $totalExpected,
+                'total_verified_days' => $totalVerified,
+                'adherence_average'   => $percentage . '%',
+            ]
         ]);
     }
 }
