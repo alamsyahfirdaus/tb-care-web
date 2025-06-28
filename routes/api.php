@@ -59,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/proof', [TreatmentController::class, 'submitMedicationProof']);  // Upload bukti minum obat
         Route::get('/{id}/history', [TreatmentController::class, 'medicationHistory']); // Riwayat minum obat
         Route::get('/{id}/visits', [TreatmentController::class, 'getVisitsByTreatment']); // Daftar kunjungan dari pengobatan
+        Route::put('/verify', [TreatmentController::class, 'verifyMedicationProof']); // Verifikasi bukti minum obat
     });
 
     // Kunjungan Pasien (Home Visit atau Faskes)

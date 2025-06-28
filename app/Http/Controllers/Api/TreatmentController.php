@@ -273,4 +273,65 @@ class TreatmentController extends Controller
             'data'    => $visits
         ]);
     }
+
+    public function verifyMedicationProof(Request $request)
+    {
+        // 1. Validasi input dari request
+        $validator = Validator::make($request->all(), [
+            'id'                   => 'required|exists:medication_records,id',
+            'patient_treatment_id' => 'nullable|exists:patient_treatments,id',
+            'notes'                => 'nullable|string|max:500',
+        ], [
+            'id.required'                  => 'ID bukti minum obat wajib diisi.',
+            'id.exists'                    => 'Data bukti minum obat tidak ditemukan.',
+            'patient_treatment_id.exists'  => 'Data pengobatan tidak ditemukan.',
+            'notes.string'                 => 'Catatan harus berupa teks.',
+            'notes.max'                    => 'Catatan maksimal 500 karakter.',
+        ]);
+
+        // 2. Jika validasi gagal, kembalikan respons error
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // 3. Ambil data medication record berdasarkan ID dan patient_treatment_id (jika disertakan)
+        $record = MedicationRecord::where('id', $request->id)
+            ->when($request->filled('patient_treatment_id'), function ($query) use ($request) {
+                $query->where('patient_treatment_id', $request->patient_treatment_id);
+            })
+            ->first();
+
+        // Jika data tidak ditemukan, kembalikan respons error
+        if (!$record) {
+            return response()->json([
+                'message' => 'Data bukti minum obat tidak ditemukan.'
+            ], 404);
+        }
+
+        // 4. Perbarui status verifikasi (set ke true jika sebelumnya false)
+        if (!$record->is_verified) {
+            $record->is_verified = true;
+        }
+
+        // Perbarui catatan jika disertakan
+        $record->notes = $request->notes ?? $record->notes;
+
+        // Simpan perubahan
+        $record->save();
+
+        // 5. Kembalikan respons sukses
+        return response()->json([
+            'message' => 'Bukti minum obat berhasil diverifikasi.',
+            'data'    => [
+                'id'                   => $record->id,
+                'patient_treatment_id' => $record->patient_treatment_id,
+                'is_verified'          => $record->is_verified,
+                'notes'                => $record->notes,
+                'updated_at'           => $record->updated_at->format('Y-m-d H:i:s'),
+            ]
+        ]);
+    }
 }

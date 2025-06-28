@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateScreeningsTable extends Migration
+class CreateScreeningQuestionsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,9 +13,9 @@ class CreateScreeningsTable extends Migration
      */
     public function up()
     {
-        Schema::create('screenings', function (Blueprint $table) {
+        Schema::create('screening_questions', function (Blueprint $table) {
             $table->id();
-            $table->string('screening_category');
+            $table->timestamps();
         });
     }
 
@@ -26,6 +26,6 @@ class CreateScreeningsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('screenings');
+        Schema::dropIfExists('screening_questions');
     }
 }

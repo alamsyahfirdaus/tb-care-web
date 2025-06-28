@@ -44,6 +44,7 @@ class EducationController extends Controller
                     ? $material->video_url
                     : null,
 
+                'is_publish' => $material->is_publish,
                 'created_at' => $material->created_at->format('Y-m-d'),
             ];
         });

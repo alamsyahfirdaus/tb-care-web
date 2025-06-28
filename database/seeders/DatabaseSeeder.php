@@ -20,8 +20,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ProvinceSeeder::class);
         $this->call(DistrictSeeder::class);
         $this->call(SubdistrictSeeder::class);
-        $this->call(ScreeningSeeder::class);
-        $this->call(CategorySeeder::class);
         $this->call(EducationalMaterialSeeder::class);
         $this->call(PatientsTableSeeder::class);
         $this->call(TreatmentTypesSeeder::class);
@@ -31,5 +29,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ConsultationReplySeeder::class);
         $this->call(OfficerSeeder::class);
         $this->call(TreatmentVisitSeeder::class);
+        $this->call(NutritionRulesSeeder::class);
     }
 }

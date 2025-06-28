@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
-    public function index(Request $request)
+    /* public function indexOld(Request $request)
     {
         // Ambil filter status pengobatan (opsional)
         $treatmentStatus = $request->post('treatment_status');
@@ -92,13 +92,13 @@ class PatientController extends Controller
                 'address'         => $patient->address,
                 'puskesmas_id'    => $patient->puskesmas_id,
                 'subdistrict_id'  => $patient->subdistrict_id,
-
                 // Lokasi lengkap jika tersedia
                 'subdistrict'     => ($subdistrictName && $districtName && $provinceName)
                     ? "$subdistrictName, $districtName, $provinceName"
                     : null,
 
                 // Informasi akun user terkait pasien
+
                 'name'            => $patient->user->name,
                 'email'           => $patient->user->email,
                 'phone'           => $patient->user->phone,
@@ -110,12 +110,12 @@ class PatientController extends Controller
                 'puskesmas'       => optional($patient->puskesmas)->name,
 
                 // Data pengobatan terakhir
-                'patient_treatment_id' => $treatment?->id ?? null,
+                'patient_treatment_id'      => $treatment?->id ?? null,
                 'patient_treatment_type_id' => $treatment?->treatment_type_id ?? null,
-                'treatment_status'     => $treatment?->treatment_status ?? 'Belum Mulai',
-                'diagnosis_date'       => $treatment?->diagnosis_date,
-                'start_date'           => $treatment?->start_date,
-                'end_date'             => $treatment?->end_date,
+                'treatment_status'          => $treatment?->treatment_status ?? 'Belum Mulai',
+                'diagnosis_date'            => $treatment?->diagnosis_date,
+                'start_date'                => $treatment?->start_date,
+                'end_date'                  => $treatment?->end_date,
 
                 // Kunjungan terakhir (jika ada)
                 'visit_id'       => $visit?->id,
@@ -127,6 +127,135 @@ class PatientController extends Controller
         });
 
         // Kembalikan respons JSON
+        return response()->json([
+            'message' => 'Data pasien berhasil diambil.',
+            'data'    => $patientsData
+        ]);
+    } */
+
+    public function index(Request $request)
+    {
+        // Ambil filter status pengobatan dari request (jika ada)
+        $treatmentStatus = $request->post('treatment_status');
+
+        // Ambil data user yang sedang login
+        $user = Auth::user();
+
+        // Siapkan query untuk mengambil data pasien beserta relasi-relasinya
+        $patientsQuery = Patient::with([
+            'user',         // Relasi ke tabel users
+            'puskesmas',    // Relasi ke puskesmas tempat pasien terdaftar
+            'subdistrict',  // Relasi ke kecamatan pasien
+
+            // Relasi ke data pengobatan (treatments)
+            'treatments' => function ($query) use ($treatmentStatus) {
+                // Filter treatment jika treatment_status diberikan
+                $query->when($treatmentStatus, function ($q) use ($treatmentStatus) {
+                    $q->where('treatment_status', $treatmentStatus);
+                })
+                    ->orderByDesc('start_date') // Urutkan treatment dari yang terbaru
+                    ->with([
+                        // Ambil semua data kunjungan (visits) per treatment, diurutkan dari yang terbaru
+                        'visits' => function ($q) {
+                            $q->orderByDesc('visit_date');
+                        }
+                    ]);
+            }
+        ]);
+
+        // Filter akses berdasarkan peran user
+        if ($user->user_type_id == 1) {
+            // Jika admin, ambil semua data pasien
+            $patients = $patientsQuery->get();
+        } elseif ($user->user_type_id == 3) {
+            // Jika petugas, ambil data berdasarkan wilayah kerjanya
+            $officer = Officer::where('user_id', $user->id)->first();
+
+            // Jika data petugas tidak ditemukan
+            if (!$officer) {
+                return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
+            }
+
+            // Jika petugas puskesmas (tipe 3 atau 4), ambil pasien di puskesmas yang sama
+            if (in_array($officer->officer_type_id, [3, 4])) {
+                $patients = $patientsQuery
+                    ->where('puskesmas_id', $officer->puskesmas_id)
+                    ->get();
+            } else {
+                // Jika petugas kabupaten/kota, ambil pasien dari semua puskesmas di kabupaten yang sama
+                $patients = $patientsQuery
+                    ->whereHas('puskesmas', function ($q) use ($officer) {
+                        $q->where('district_id', $officer->district_id);
+                    })
+                    ->get();
+            }
+        } else {
+            // User tidak memiliki akses
+            return response()->json([
+                'message' => 'Anda tidak memiliki akses untuk melihat data pasien.'
+            ], 403);
+        }
+
+        // Mapping data pasien menjadi format array JSON
+        $patientsData = $patients->map(function ($patient) {
+            // Ambil nama lokasi secara berjenjang
+            $subdistrictName = optional($patient->subdistrict)->name;
+            $districtName    = optional($patient->subdistrict?->district)->name;
+            $provinceName    = optional($patient->subdistrict?->district?->province)->name;
+
+            return [
+                // Data dasar pasien
+                'id'             => $patient->id,
+                'user_id'        => $patient->user_id,
+                'nik'            => $patient->nik,
+                'address'        => $patient->address,
+                'puskesmas_id'   => $patient->puskesmas_id,
+                'subdistrict_id' => $patient->subdistrict_id,
+
+                // Nama lengkap lokasi (kecamatan, kabupaten, provinsi)
+                'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
+                    ? "$subdistrictName, $districtName, $provinceName"
+                    : null,
+
+                // Data user terkait pasien
+                'name'           => $patient->user->name,
+                'email'          => $patient->user->email,
+                'phone'          => $patient->user->phone,
+                'gender'         => $patient->user->gender,
+                'place_of_birth' => $patient->user->place_of_birth,
+                'date_of_birth'  => $patient->user->date_of_birth,
+
+                // Nama puskesmas
+                'puskesmas'      => optional($patient->puskesmas)->name,
+
+                // Daftar seluruh treatment beserta visit masing-masing
+                'treatments'     => $patient->treatments->map(function ($treatment) {
+                    return [
+                        'id'                => $treatment->id,
+                        'treatment_type_id' => $treatment->treatment_type_id,
+                        'treatment_status'  => $treatment->treatment_status,
+                        'diagnosis_date'    => $treatment->diagnosis_date,
+                        'start_date'        => $treatment->start_date,
+                        'end_date'          => $treatment->end_date,
+                        'treatment_days'    => $treatment->treatment_days,
+                        'medication_time'   => $treatment->medication_time,
+
+                        // Daftar semua kunjungan pada treatment ini
+                        'visits' => $treatment->visits->map(function ($visit) {
+                            return [
+                                'id'           => $visit->id,
+                                'visit_date'   => $visit->visit_date,
+                                'visit_time'   => $visit->visit_time,
+                                'visit_status' => $visit->visit_status,
+                                'notes'        => $visit->notes,
+                            ];
+                        }),
+                    ];
+                }),
+            ];
+        });
+
+        // Kembalikan response JSON
         return response()->json([
             'message' => 'Data pasien berhasil diambil.',
             'data'    => $patientsData
@@ -255,7 +384,7 @@ class PatientController extends Controller
         ]);
     }
 
-    public function show($id)
+    /* public function showOld($id)
     {
         // Ambil data pasien beserta relasi terkait
         $patient = Patient::with([
@@ -326,6 +455,92 @@ class PatientController extends Controller
         ];
 
         // Response sukses
+        return response()->json([
+            'message' => 'Detail data pasien berhasil diambil.',
+            'data'    => $patientData
+        ]);
+    } */
+
+    public function show($id)
+    {
+        // Ambil data pasien berdasarkan ID beserta relasi terkait
+        $patient = Patient::with([
+            'user',
+            'puskesmas',
+            'subdistrict.district.province',
+            'treatments' => function ($query) {
+                $query->orderByDesc('start_date') // Urutkan treatment dari terbaru
+                    ->with([
+                        'visits' => function ($q) {
+                            $q->orderByDesc('visit_date'); // Urutkan visit dari terbaru
+                        }
+                    ]);
+            }
+        ])->find($id);
+
+        // Jika data pasien tidak ditemukan
+        if (!$patient) {
+            return response()->json([
+                'message' => 'Data pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        // Ambil nama wilayah berjenjang
+        $subdistrictName = optional($patient->subdistrict)->name;
+        $districtName    = optional($patient->subdistrict?->district)->name;
+        $provinceName    = optional($patient->subdistrict?->district?->province)->name;
+
+        // Susun data lengkap pasien dalam format array
+        $patientData = [
+            // Informasi dasar pasien
+            'id'             => $patient->id,
+            'user_id'        => $patient->user_id,
+            'nik'            => $patient->nik,
+            'address'        => $patient->address,
+            'puskesmas_id'   => $patient->puskesmas_id,
+            'subdistrict_id' => $patient->subdistrict_id,
+
+            // Alamat lengkap (jika tersedia)
+            'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
+                ? "$subdistrictName, $districtName, $provinceName"
+                : null,
+
+            // Informasi user
+            'name'           => $patient->user->name,
+            'email'          => $patient->user->email,
+            'phone'          => $patient->user->phone,
+            'gender'         => $patient->user->gender,
+            'place_of_birth' => $patient->user->place_of_birth,
+            'date_of_birth'  => $patient->user->date_of_birth,
+
+            // Nama puskesmas
+            'puskesmas'      => optional($patient->puskesmas)->name,
+
+            // Daftar seluruh treatment dan seluruh visit-nya
+            'treatments'     => $patient->treatments->map(function ($treatment) {
+                return [
+                    'id'                => $treatment->id,
+                    'treatment_type_id' => $treatment->treatment_type_id,
+                    'treatment_status'  => $treatment->treatment_status,
+                    'diagnosis_date'    => $treatment->diagnosis_date,
+                    'start_date'        => $treatment->start_date,
+                    'end_date'          => $treatment->end_date,
+
+                    // Kumpulan kunjungan dalam treatment ini
+                    'visits' => $treatment->visits->map(function ($visit) {
+                        return [
+                            'id'           => $visit->id,
+                            'visit_date'   => $visit->visit_date,
+                            'visit_time'   => $visit->visit_time,
+                            'visit_status' => $visit->visit_status,
+                            'notes'        => $visit->notes,
+                        ];
+                    }),
+                ];
+            }),
+        ];
+
+        // Kembalikan data dalam bentuk response JSON
         return response()->json([
             'message' => 'Detail data pasien berhasil diambil.',
             'data'    => $patientData
