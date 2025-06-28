@@ -264,41 +264,31 @@ class PatientController extends Controller
 
     public function store(Request $request)
     {
-        // Ambil data pasien dan user yang terkait
+        // 1. Ambil data pasien dan user yang terkait (jika ada)
         $existingPatient = Patient::with('user')->find($request->patient_id);
         $existingUser = $existingPatient?->user;
 
-        // Validasi input
+        // 2. Validasi input
         $validated = $request->validate([
             'nik' => [
                 'required',
                 'digits:16',
-                Rule::unique('patients', 'nik')->ignore($existingPatient?->id),
+                Rule::unique('patients', 'nik')->ignore($existingPatient ? $existingPatient->id : null),
             ],
-            'name' => 'required|string|max:255',
-            'email' => [
-                'required',
-                'email',
-                Rule::unique('users', 'email')->ignore($existingUser?->id),
-            ],
-            'phone' => [
-                'required',
-                'string',
-                'min:10',
-                'max:15',
-                Rule::unique('users', 'phone')->ignore($existingUser?->id),
-            ],
-            'gender'         => 'required|in:L,P',
-            'place_of_birth' => 'required|string|max:100',
-            'date_of_birth'  => 'required|date',
-            'puskesmas_id'   => 'required|exists:puskesmas,id',
-            'subdistrict_id' => 'required|exists:subdistricts,id',
-            'address'        => 'nullable|string',
-            'occupation'     => 'nullable|string',
-            'height'         => 'nullable|integer',
-            'weight'         => 'nullable|integer',
-            'blood_type'     => 'nullable|string|max:3',
-            'diagnosis_date' => 'nullable|date',
+            'name'             => 'required|string|max:255',
+            'email'            => ['required', 'email', Rule::unique('users', 'email')->ignore($existingUser ? $existingUser->id : null)],
+            'phone'            => ['required', 'string', 'min:10', 'max:15', Rule::unique('users', 'phone')->ignore($existingUser ? $existingUser->id : null)],
+            'gender'           => 'required|in:L,P',
+            'place_of_birth'   => 'required|string|max:100',
+            'date_of_birth'    => 'required|date',
+            'puskesmas_id'     => 'required|exists:puskesmas,id',
+            'subdistrict_id'   => 'required|exists:subdistricts,id',
+            'address'          => 'nullable|string',
+            'occupation'       => 'nullable|string',
+            'height'           => 'nullable|integer',
+            'weight'           => 'nullable|integer',
+            'blood_type'       => 'nullable|string|max:3',
+            'diagnosis_date'   => 'nullable|date',
         ], [
             'nik.required'             => 'NIK wajib diisi.',
             'nik.digits'               => 'NIK harus terdiri dari 16 digit.',
@@ -324,22 +314,24 @@ class PatientController extends Controller
             'blood_type.max'          => 'Golongan darah maksimal 3 karakter.',
         ]);
 
-        // Jika user belum ada, buat baru
+        // 3. Jika user belum ada, buat user baru
         if (!$existingUser) {
-            $base = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'])[0]);
-            $username = $base;
+            $baseUsername = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'])[0]);
+            $username = $baseUsername;
             $counter = 1;
+
+            // Hindari duplikasi username
             while (User::where('username', $username)->exists()) {
-                $username = $base . $counter++;
+                $username = $baseUsername . $counter++;
             }
 
             $existingUser = new User([
                 'username' => $username,
-                'password' => Hash::make($username), // Default password = username
+                'password' => Hash::make($username), // Password default = username
             ]);
         }
 
-        // Simpan atau perbarui data user
+        // 4. Simpan atau perbarui data user
         $existingUser->fill([
             'name'           => $validated['name'],
             'email'          => $validated['email'],
@@ -347,19 +339,19 @@ class PatientController extends Controller
             'gender'         => $validated['gender'],
             'place_of_birth' => $validated['place_of_birth'],
             'date_of_birth'  => $validated['date_of_birth'],
-            'user_type_id'   => 2, // Pasien
+            'user_type_id'   => 2, // 2 = Pasien
             'is_active'      => true,
         ]);
         $existingUser->save();
 
-        // Jika pasien belum ada, buat baru
+        // 5. Jika pasien belum ada, buat data pasien baru
         if (!$existingPatient) {
             $existingPatient = new Patient([
                 'user_id' => $existingUser->id,
             ]);
         }
 
-        // Simpan atau perbarui data pasien
+        // 6. Simpan atau perbarui data pasien
         $existingPatient->fill([
             'nik'             => $validated['nik'],
             'address'         => $validated['address'] ?? null,
@@ -371,18 +363,20 @@ class PatientController extends Controller
             'subdistrict_id'  => $validated['subdistrict_id'],
             'puskesmas_id'    => $validated['puskesmas_id'],
         ]);
-
         $existingPatient->save();
 
+        // 7. Tentukan pesan respons
         $message = $request->patient_id
             ? 'Data pasien berhasil diperbarui.'
             : 'Data pasien baru berhasil ditambahkan.';
 
+        // 8. Kembalikan respons JSON
         return response()->json([
             'message' => $message,
             'data'    => $existingPatient->load('user'),
         ]);
     }
+
 
     /* public function showOld($id)
     {
