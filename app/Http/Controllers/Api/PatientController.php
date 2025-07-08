@@ -160,7 +160,8 @@ class PatientController extends Controller
                             $q->orderByDesc('visit_date');
                         }
                     ]);
-            }
+            },
+            
         ]);
 
         // Filter akses berdasarkan peran user
@@ -212,7 +213,8 @@ class PatientController extends Controller
                 'puskesmas_id'   => $patient->puskesmas_id,
                 'subdistrict_id' => $patient->subdistrict_id,
                 'occupation'     => $patient->occupation,
-                'height'         => $patient->weight,
+                'height'         => $patient->height,
+                'weight'         => $patient->weight,
                 'blood_type'     => $patient->blood_type,
                 'diagnosis_date' => $patient->diagnosis_date,
 
@@ -254,6 +256,7 @@ class PatientController extends Controller
                                 'notes'        => $visit->notes,
                             ];
                         }),
+                        'prescription'     => $treatment->prescription ? json_decode($treatment->prescription, true) : null,
                     ];
                 }),
             ];
@@ -498,7 +501,8 @@ class PatientController extends Controller
             'puskesmas_id'   => $patient->puskesmas_id,
             'subdistrict_id' => $patient->subdistrict_id,
             'occupation'     => $patient->occupation,
-            'height'         => $patient->weight,
+            'height'         => $patient->height,
+            'weight'         => $patient->weight,
             'blood_type'     => $patient->blood_type,
             'diagnosis_date' => $patient->diagnosis_date,
 
@@ -525,6 +529,7 @@ class PatientController extends Controller
                     'treatment_type_id' => $treatment->treatment_type_id,
                     'treatment_status'  => $treatment->treatment_status,
                     'diagnosis_date'    => $treatment->diagnosis_date,
+                    'medication_time'    => $treatment->medication_time,
                     'start_date'        => $treatment->start_date,
                     'end_date'          => $treatment->end_date,
 
@@ -538,8 +543,13 @@ class PatientController extends Controller
                             'notes'        => $visit->notes,
                         ];
                     }),
+
+                    'prescription'     => $treatment->prescription ? json_decode($treatment->prescription, true) : null,
+
+
                 ];
             }),
+
         ];
 
         // Kembalikan data dalam bentuk response JSON

@@ -14,8 +14,7 @@ class EducationController extends Controller
     public function index()
     {
         // Ambil semua materi yang dipublish, urut dari yang terbaru
-        $materials = EducationalMaterial::where('is_publish', true)
-            ->orderBy('created_at', 'desc')
+        $materials = EducationalMaterial::orderBy('created_at', 'desc')
             ->get();
 
         // Jika tidak ada data, kirim response kosong
