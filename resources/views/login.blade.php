@@ -13,9 +13,8 @@
     <link rel="icon" type="image/x-icon" href="assets/img/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
-        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('assets/sneat/vendor/fonts/boxicons.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/sneat/vendor/css/core.css') }}"
         class="template-customizer-core-css" />
@@ -28,15 +27,16 @@
     <script src="{{ asset('assets/sneat/js/config.js') }}"></script>
 </head>
 
-<body>
+<body style="font-family: 'Poppins', sans-serif !important">
     <div class="container-xxl">
         <div class="authentication-wrapper authentication-basic container-p-y">
             <div class="authentication-inner">
                 <div class="card">
                     <div class="card-body">
-                        <div class="app-brand justify-content-center">
-                            <a href="" class="app-brand-link gap-2">
-                                <span class="app-brand-text demo text-body" style="font-weight: bold;">TB Care</span>
+                        <div class="app-brand justify-content-center" style="font-size: 16px;">
+                            <a href="/" class="app-brand-link">
+                                <span class="app-brand-text demo" style="font-weight: bold; color: #000;">TB
+                                    Care</span>
                             </a>
                         </div>
                         <div id="alert-message">
@@ -68,7 +68,8 @@
                                 <span id="error-password" class="error invalid-feedback"></span>
                             </div>
                             <div class="mb-3">
-                                <button class="btn btn-primary d-grid w-100" type="submit">Login</button>
+                                <button class="btn btn-primary d-grid w-100" type="submit"
+                                    style="font-weight: bold;">Login</button>
                             </div>
                         </form>
                         {{-- <p class="text-center">

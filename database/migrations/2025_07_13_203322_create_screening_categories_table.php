@@ -16,9 +16,9 @@ class CreateScreeningCategoriesTable extends Migration
         Schema::create('screening_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->integer('min_age')->nullable();
+            $table->integer('max_age')->nullable();
             $table->text('description')->nullable();
-            $table->integer('order')->default(0);
-            $table->timestamps();
         });
     }
 

@@ -29,7 +29,8 @@ use App\Http\Controllers\TreatmentTypeController;
 //     return view('welcome');
 // });
 
-Route::get('/', [HomeController::class, 'dashboard'])->name('dash')->middleware('guest');
+// Route::get('/', [HomeController::class, 'dashboard'])->name('dash')->middleware('guest');
+Route::get('/', [HomeController::class, 'portal'])->name('portal')->middleware('guest');
 
 Route::controller(LoginController::class)->group(function () {
     Route::get('login', 'index')->name('login')->middleware('guest');

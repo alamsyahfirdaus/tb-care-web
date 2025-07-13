@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\EducationController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PuskesmasController;
+use App\Http\Controllers\Api\ScreeningController;
 use App\Http\Controllers\Api\SubdistrictController;
 use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
@@ -97,9 +98,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/adherence', [PatientController::class, 'treatmentAdherence']);        // Tingkat kepatuhan minum obat
     });
 
-    // (Optional) Skrining TB — aktifkan jika diperlukan
-    // Route::prefix('screening')->group(function () {
-    //     Route::get('/questions', [ScreeningController::class, 'questions']);  // Pertanyaan skrining
-    //     Route::post('/submit', [ScreeningController::class, 'submit']);      // Submit jawaban skrining
-    // });
+    // Skrining
+    Route::prefix('screening')->group(function () {
+        // Ambil daftar kategori usia (misalnya: <15 tahun, ≥15 tahun)
+        Route::get('/categories', [ScreeningController::class, 'getAgeCategories']);
+        // Ambil daftar pertanyaan berdasarkan kategori usia
+        Route::post('/questions', [ScreeningController::class, 'getQuestions']);
+        // Kirim jawaban untuk proses skrining
+        Route::post('/submit', [ScreeningController::class, 'submitAnswers']);
+    });
 });

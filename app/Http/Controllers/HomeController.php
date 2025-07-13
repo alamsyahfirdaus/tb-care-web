@@ -32,6 +32,11 @@ class HomeController extends Controller
         return view('dashboard', $data);
     }
 
+    public function portal()
+    {
+        return view('portal');
+    }
+
     private function countTreatment()
     {
         $patientId = Patient::where('user_id', Auth::id())->value('id');

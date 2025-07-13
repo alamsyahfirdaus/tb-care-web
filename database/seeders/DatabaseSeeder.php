@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ConsultationReplySeeder::class);
         $this->call(OfficerSeeder::class);
         $this->call(TreatmentVisitSeeder::class);
-        $this->call(NutritionRulesSeeder::class);
+        $this->call(ScreeningCategoriesSeeder::class);
+        $this->call(ScreeningQuestionsSeeder::class);
     }
 }
