@@ -42,8 +42,6 @@ class AuthController extends Controller
             ], 403); // Forbidden
         }
 
-
-
         // Hapus token lama (opsional)
         // $user->tokens()->delete();
 
@@ -51,7 +49,7 @@ class AuthController extends Controller
         $user->last_login_at = now();
         $user->save();
 
-        if($user->user_type_id == 2) {
+        if ($user->user_type_id == 2) {
             // Jika user adalah pasien, ambil data pasien
             $patient = Patient::where('user_id', $user->id)->first();
             $user->patient = $patient;
@@ -134,7 +132,7 @@ class AuthController extends Controller
             'gender'        => $validatedData['gender'],
             'date_of_birth' => $validatedData['date_of_birth'],
             'user_type_id'  => 2, // 2 = Pasien
-            'is_active'     => false // Default tidak aktif, menunggu verifikasi
+            'is_active'     => true // Default aktif
         ]);
 
         // Simpan data tambahan ke tabel `patients`
@@ -195,7 +193,7 @@ class AuthController extends Controller
             'gender'        => $validatedData['gender'],
             'date_of_birth' => $validatedData['date_of_birth'],
             'user_type_id'  => 3, // 3 = Petugas
-            'is_active'     => false // Default tidak aktif
+            'is_active'     => true // Default aktif
         ]);
 
         // Simpan detail petugas ke tabel `officers`
