@@ -9,6 +9,7 @@ use App\Models\Patient;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\HasApiTokens;
 
 class AuthController extends Controller
 {
@@ -243,4 +244,36 @@ class AuthController extends Controller
             'data'    => $roles
         ]);
     }
+
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->user_type_id == 2) {
+            $user->load('patient');
+        }
+
+        if (in_array($user->user_type_id, [3,4])) {
+            $user->load('officer');
+        }
+
+        return response()->json([
+            'message' => 'Token valid',
+            'user' => $user
+        ]);
+    }
+
+    public function updatePassword()
+    {
+        User::whereBetween('id', [139, 260])
+        ->update([
+            'password' => Hash::make('123456'),
+            'updated_at' => now()
+        ]);
+
+        return response()->json([
+            'message' => 'Password berhasil diperbarui.'
+        ]);
+    }
+
 }

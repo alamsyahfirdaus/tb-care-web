@@ -24,6 +24,16 @@ use App\Http\Controllers\Api\TreatmentVisitController;
 |
 */
 
+Route::middleware('auth:sanctum')->get('/image-bytes/{filename}', function ($filename) {
+    $path = public_path('images/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+});
+
 // Autentikasi Awal
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -37,9 +47,23 @@ Route::prefix('register')->group(function () {
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
 Route::get('/subdistricts', [SubdistrictController::class, 'index']);
+Route::get('/password', [AuthController::class, 'updatePassword']); // Endpoint untuk update password (bisa dipindah ke grup auth jika ingin proteksi)
+
+// Skrining
+Route::prefix('screening')->group(function () {
+    // Ambil daftar kategori usia (misalnya: <15 tahun, ≥15 tahun)
+    Route::get('/categories', [ScreeningController::class, 'getAgeCategories']);
+    // Ambil daftar pertanyaan berdasarkan kategori usia
+    Route::post('/questions', [ScreeningController::class, 'getQuestions']);
+    // Kirim jawaban untuk proses skrining
+    Route::post('/submit', [ScreeningController::class, 'submitAnswers']);
+});
 
 // Route yang membutuhkan autentikasi (sanctum)
 Route::middleware('auth:sanctum')->group(function () {
+
+    // CEK TOKEN / AUTO LOGIN
+    Route::get('/me', [AuthController::class, 'me']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -98,13 +122,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/adherence', [PatientController::class, 'treatmentAdherence']);        // Tingkat kepatuhan minum obat
     });
 
-    // Skrining
-    Route::prefix('screening')->group(function () {
-        // Ambil daftar kategori usia (misalnya: <15 tahun, ≥15 tahun)
-        Route::get('/categories', [ScreeningController::class, 'getAgeCategories']);
-        // Ambil daftar pertanyaan berdasarkan kategori usia
-        Route::post('/questions', [ScreeningController::class, 'getQuestions']);
-        // Kirim jawaban untuk proses skrining
-        Route::post('/submit', [ScreeningController::class, 'submitAnswers']);
-    });
+    Route::get('/image/{filename}', function ($filename) {
+    $path = public_path('images/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path, [
+        'Access-Control-Allow-Origin' => '*'
+    ]);
+});
 });

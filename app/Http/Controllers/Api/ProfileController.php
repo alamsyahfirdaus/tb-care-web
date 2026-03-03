@@ -20,7 +20,7 @@ class ProfileController extends Controller
 
         // Tambahkan URL lengkap ke gambar profil jika ada
         $user->photo = $user->photo
-            ? URL::to('/') . '/storage/images/' . $user->photo
+            ? $user->photo
             : null;
 
         // Kembalikan data profil dalam format JSON
@@ -34,32 +34,17 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        // Validasi input
         $validator = Validator::make($request->all(), [
-            'name'           => 'sometimes|string|max:255',
-            'email'          => 'sometimes|email|unique:users,email,' . $user->id,
-            'phone'          => 'sometimes|string|min:10|max:15',
-            'gender'         => 'sometimes|in:L,P',
-            'date_of_birth'  => 'sometimes|date|before:today',
-            'password'       => 'sometimes|string|min:6',
-            'photo'          => 'sometimes|image|mimes:jpg,jpeg,png|max:2048',
-        ], [
-            'name.string'           => 'Nama harus berupa teks.',
-            'name.max'              => 'Nama maksimal 255 karakter.',
-            'email.email'           => 'Format email tidak valid.',
-            'email.unique'          => 'Email sudah digunakan.',
-            'phone.min'             => 'Nomor HP minimal 10 digit.',
-            'phone.max'             => 'Nomor HP maksimal 15 digit.',
-            'gender.in'             => 'Jenis kelamin harus L (Laki-laki) atau P (Perempuan).',
-            'date_of_birth.date'    => 'Tanggal lahir harus berupa tanggal yang valid.',
-            'date_of_birth.before'  => 'Tanggal lahir harus sebelum hari ini.',
-            'password.min'          => 'Password minimal 6 karakter.',
-            'photo.image'           => 'File harus berupa gambar.',
-            'photo.mimes'           => 'Format gambar harus JPG, JPEG, atau PNG.',
-            'photo.max'             => 'Ukuran gambar maksimal 2 MB.',
+            'name'          => 'sometimes|string|max:255',
+            'email'         => 'sometimes|email|unique:users,email,' . $user->id,
+            'phone'         => 'sometimes|string|min:10|max:15',
+            'gender'        => 'sometimes|in:L,P',
+            'place_of_birth'=> 'sometimes|string|max:255',
+            'date_of_birth' => 'sometimes|date|before:today',
+            'password'      => 'sometimes|string|min:6',
+            'photo'         => 'sometimes|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // Jika validasi gagal
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validasi gagal.',
@@ -69,30 +54,35 @@ class ProfileController extends Controller
 
         $data = $validator->validated();
 
-        // Hash password jika ada
         if (isset($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         }
 
-        // Upload foto baru jika ada
+        // === FOTO PROFIL ===
         if ($request->hasFile('photo')) {
-            // Hapus foto lama jika ada
-            if ($user->photo && Storage::disk('public')->exists('images/' . $user->photo)) {
-                Storage::disk('public')->delete('images/' . $user->photo);
+
+            if (!empty($user->photo)) {
+                $oldPath = public_path('images/' . $user->photo);
+                if (is_file($oldPath)) {
+                    unlink($oldPath);
+                }
             }
 
-            // Simpan foto baru
+            $destinationPath = public_path('images');
+            if (!is_dir($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
             $fileName = Str::random(20) . '.' . $request->file('photo')->getClientOriginalExtension();
-            $request->file('photo')->storeAs('images', $fileName, 'public');
+            $request->file('photo')->move($destinationPath, $fileName);
+
             $data['photo'] = $fileName;
         }
 
-        // Update user
         $user->update($data);
 
-        // Tambahkan URL untuk photo
         $user->photo = $user->photo
-            ? URL::to('/') . '/storage/images/' . $user->photo
+            ? $user->photo
             : null;
 
         return response()->json([

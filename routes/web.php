@@ -29,6 +29,16 @@ use App\Http\Controllers\TreatmentTypeController;
 //     return view('welcome');
 // });
 
+Route::get('/image/{filename}', function ($filename) {
+    $path = public_path('images/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+});
+
 // Route::get('/', [HomeController::class, 'dashboard'])->name('dash')->middleware('guest');
 Route::get('/', [HomeController::class, 'portal'])->name('portal')->middleware('guest');
 

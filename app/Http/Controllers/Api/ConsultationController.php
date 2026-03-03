@@ -37,7 +37,7 @@ class ConsultationController extends Controller
                 'message'        => $item->message,
                 'is_answered'    => $item->is_answered,
                 'attachment'     => $item->attachment
-                    ? asset('storage/images/' . $item->attachment)
+                    ? asset('images/' . $item->attachment)
                     : null,
                 'created_at'     => $item->created_at->format('Y-m-d H:i'),
 
@@ -55,7 +55,7 @@ class ConsultationController extends Controller
                         'id'          => $reply->id,
                         'message'     => $reply->message,
                         'attachment'  => $reply->attachment
-                            ? asset('storage/images/' . $reply->attachment)
+                            ? asset('images/' . $reply->attachment)
                             : null,
                         'is_read'     => $reply->is_read,
                         'created_at'  => $reply->created_at->format('Y-m-d H:i'),

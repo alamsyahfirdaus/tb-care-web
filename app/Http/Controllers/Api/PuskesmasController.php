@@ -17,18 +17,21 @@ class PuskesmasController extends Controller
 
         // Format data untuk response JSON
         $data = $puskesmas->map(function ($item) {
-            // Ambil nama subdistrict, district, dan province jika tersedia, jika tidak akan bernilai null
             $subdistrictName = optional($item->subdistrict)->name;
             $districtName    = optional(optional($item->subdistrict)->district)->name;
             $provinceName    = optional(optional(optional($item->subdistrict)->district)->province)->name;
 
             return [
-                'id'        => $item->id,
-                'name'      => $item->name,
-                'address'   => $item->address,
+                'id'      => $item->id,
 
-                // Gabungkan lokasi administratif menjadi satu string, pisahkan dengan koma
-                // Hanya nilai yang tidak null yang akan digabung (misalnya jika district null, tidak ikut tampil)
+                // Nama Puskesmas + (Subdistrict)
+                'name'    => $subdistrictName
+                    ? $item->name . ' (' . $subdistrictName . ', ' . $districtName . ')'
+                    : $item->name,
+
+                'address' => $item->address,
+
+                // Lokasi administratif lengkap
                 'subdistrict' => implode(', ', array_filter([
                     $subdistrictName,
                     $districtName,
@@ -37,10 +40,10 @@ class PuskesmasController extends Controller
             ];
         });
 
-        // Kembalikan response dalam format JSON
         return response()->json([
             'message' => 'Daftar Puskesmas berhasil diambil.',
             'data'    => $data
         ]);
     }
+
 }

@@ -34,8 +34,8 @@ class EducationController extends Controller
                 'material_type'  => $material->material_type, // image atau video
 
                 // URL file gambar jika tipe 'image'
-                'image_url' => $material->material_type === 'image' && $material->image_path
-                    ? asset('storage/images/' . $material->image_path)
+                'photo' => $material->material_type === 'image' && $material->image_path
+                    ? $material->image_path
                     : null,
 
                 // URL video jika tipe 'video'
@@ -101,21 +101,32 @@ class EducationController extends Controller
             'created_by'     => $user->id,
         ];
 
-        // Upload gambar jika tipe = image
-        if ($request->hasFile('image_file') && $request->material_type === 'image') {
-            // Hapus gambar lama jika update
+        // Upload gambar jika tipe = image (DISAMAKAN DENGAN UPLOAD MINUM OBAT)
+        if ($request->material_type === 'image' && $request->hasFile('image_file')) {
+
+            // 1. Hapus gambar lama jika update
             if ($isUpdate && $material->image_path) {
-                $filePath = 'images/' . $material->image_path;
-                if (Storage::disk('public')->exists($filePath)) {
-                    Storage::disk('public')->delete($filePath);
+                $oldPath = public_path('images/' . $material->image_path);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
                 }
             }
 
-            // Simpan gambar baru
+            // 2. Pastikan folder public/images ada
+            $destinationPath = public_path('images');
+            if (!is_dir($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            // 3. Generate nama file (xxx.jpg)
             $fileName = Str::random(20) . '.' . $request->file('image_file')->getClientOriginalExtension();
-            $request->file('image_file')->storeAs('images', $fileName, 'public');
+
+            // 4. SIMPAN KE public/images (INI YANG BENAR)
+            $request->file('image_file')->move($destinationPath, $fileName);
+
+            // 5. Simpan NAMA FILE SAJA ke database
             $data['image_path'] = $fileName;
-            $data['video_url'] = null; // kosongkan jika sebelumnya adalah video
+            $data['video_url']  = null;
         }
 
         // Simpan data ke database
@@ -150,8 +161,8 @@ class EducationController extends Controller
             'material_type'  => $material->material_type,
 
             // URL file gambar jika tipe 'image'
-            'image_url' => $material->material_type === 'image' && $material->image_path
-                ? asset('storage/images/' . $material->image_path)
+            'photo' => $material->material_type === 'image' && $material->image_path
+                ? $material->image_path
                 : null,
 
             // URL video jika tipe 'video'
@@ -175,14 +186,14 @@ class EducationController extends Controller
     {
         $user = Auth::user();
 
-        // Cek hak akses (misal user_type_id 2 = pasien)
+        // 1. Cek hak akses (user_type_id 2 = pasien)
         if ($user->user_type_id === 2) {
             return response()->json([
                 'message' => 'Anda tidak memiliki izin untuk menghapus materi edukasi.'
             ], 403);
         }
 
-        // Ambil materi
+        // 2. Ambil materi
         $material = EducationalMaterial::find($id);
         if (!$material) {
             return response()->json([
@@ -190,21 +201,29 @@ class EducationController extends Controller
             ], 404);
         }
 
-        // Hapus file gambar jika tipe image dan file-nya ada
-        if (
-            $material->material_type === 'image' &&
-            $material->image_path &&
-            Storage::disk('public')->exists('images/' . $material->image_path)
-        ) {
-            Storage::disk('public')->delete('images/' . $material->image_path);
+        // 3. Hapus file gambar jika tipe image dan file tersedia
+        if ($material->material_type === 'image' && !empty($material->image_path)) {
+
+            $filePath = public_path('images/' . $material->image_path);
+
+            // Pastikan file benar-benar ada sebelum dihapus
+            if (is_file($filePath)) {
+                try {
+                    unlink($filePath);
+                } catch (\Throwable $e) {
+                    // Optional: logging jika diperlukan
+                    // \Log::error('Gagal menghapus file edukasi: ' . $e->getMessage());
+                }
+            }
         }
 
-        // Hapus dari database
+        // 4. Hapus data dari database
         $material->delete();
 
+        // 5. Response sukses
         return response()->json([
             'message' => 'Materi edukasi berhasil dihapus.'
-        ]);
+        ], 200);
     }
 
     public function togglePublish($id)

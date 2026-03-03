@@ -180,7 +180,7 @@ class TreatmentController extends Controller
             'notes.string'                  => 'Catatan harus berupa teks.',
         ]);
 
-        // 2. Jika validasi gagal, kembalikan respons error
+        // 2. Jika validasi gagal
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validasi gagal.',
@@ -188,21 +188,33 @@ class TreatmentController extends Controller
             ], 422);
         }
 
-        // 3. Ambil data pengobatan terkait
+        // 3. Ambil data pengobatan
         $treatment = PatientTreatment::findOrFail($request->patient_treatment_id);
 
-        // 4. Bandingkan waktu saat ini dengan waktu ideal minum obat (format HH:ii)
-        $expectedTime = Carbon::now()->format('H:i');
-        $isLate = $expectedTime > $treatment->medication_time;
+        // 4. Cek keterlambatan minum obat
+        $currentTime = Carbon::now()->format('H:i');
+        $isLate = $currentTime > $treatment->medication_time;
 
-        // 5. Simpan foto bukti minum obat
+        // 5. Upload foto ke public/images
         $fileName = null;
+
         if ($request->hasFile('photo')) {
+
+            $destinationPath = public_path('images');
+
+            // Jika folder images belum ada, buat otomatis
+            if (!is_dir($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            // Nama file aman & unik
             $fileName = Str::random(20) . '.' . $request->file('photo')->getClientOriginalExtension();
-            $request->file('photo')->storeAs('images', $fileName, 'public');
+
+            // Pindahkan file ke public/images
+            $request->file('photo')->move($destinationPath, $fileName);
         }
 
-        // 6. Simpan data ke dalam tabel medication_records
+        // 6. Simpan data ke database
         $record = MedicationRecord::create([
             'patient_treatment_id' => $request->patient_treatment_id,
             'photo'                => $fileName,
@@ -211,50 +223,145 @@ class TreatmentController extends Controller
             'notes'                => $request->notes,
         ]);
 
-        // 7. Kembalikan respons sukses
+        // 7. Response sukses
         return response()->json([
             'message' => 'Bukti minum obat berhasil disimpan.',
             'data'    => $record
         ], 201);
     }
 
-    public function medicationHistory($treatmentId)
-    {
-        // 1. Validasi keberadaan data pengobatan
-        $treatment = PatientTreatment::find($treatmentId);
 
-        if (!$treatment) {
+    // public function submitMedicationProof(Request $request)
+    // {
+    //     // 1. Validasi input dari pengguna
+    //     $validator = Validator::make($request->all(), [
+    //         'patient_treatment_id' => 'required|exists:patient_treatments,id',
+    //         'photo'                => 'required|image|max:2048',
+    //         'notes'                => 'nullable|string',
+    //     ], [
+    //         'patient_treatment_id.required' => 'ID pengobatan wajib diisi.',
+    //         'patient_treatment_id.exists'   => 'Data pengobatan tidak ditemukan.',
+    //         'photo.required'                => 'Foto bukti minum obat wajib diunggah.',
+    //         'photo.image'                   => 'File bukti harus berupa gambar.',
+    //         'photo.max'                     => 'Ukuran gambar tidak boleh melebihi 2MB.',
+    //         'notes.string'                  => 'Catatan harus berupa teks.',
+    //     ]);
+
+    //     // 2. Jika validasi gagal, kembalikan respons error
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'message' => 'Validasi gagal.',
+    //             'errors'  => $validator->errors()
+    //         ], 422);
+    //     }
+
+    //     // 3. Ambil data pengobatan terkait
+    //     $treatment = PatientTreatment::findOrFail($request->patient_treatment_id);
+
+    //     // 4. Bandingkan waktu saat ini dengan waktu ideal minum obat (format HH:ii)
+    //     $expectedTime = Carbon::now()->format('H:i');
+    //     $isLate = $expectedTime > $treatment->medication_time;
+
+    //     // 5. Simpan foto bukti minum obat
+    //     $fileName = null;
+    //     if ($request->hasFile('photo')) {
+    //         $fileName = Str::random(20) . '.' . $request->file('photo')->getClientOriginalExtension();
+    //         $request->file('photo')->storeAs('images', $fileName, 'public');
+    //     }
+
+    //     // 6. Simpan data ke dalam tabel medication_records
+    //     $record = MedicationRecord::create([
+    //         'patient_treatment_id' => $request->patient_treatment_id,
+    //         'photo'                => $fileName,
+    //         'is_verified'          => false,
+    //         'late'                 => $isLate,
+    //         'notes'                => $request->notes,
+    //     ]);
+
+    //     // 7. Kembalikan respons sukses
+    //     return response()->json([
+    //         'message' => 'Bukti minum obat berhasil disimpan.',
+    //         'data'    => $record
+    //     ], 201);
+    // }
+
+    public function medicationHistory($patientId)
+    {
+        // 1. Validasi keberadaan pengobatan pasien
+        $treatments = PatientTreatment::where('patient_id', $patientId)->pluck('id');
+
+        if ($treatments->isEmpty()) {
             return response()->json([
-                'message' => 'Data pengobatan tidak ditemukan.'
+                'message' => 'Data pengobatan pasien tidak ditemukan.'
             ], 404);
         }
 
-        // 2. Ambil semua catatan minum obat berdasarkan treatment_id
-        $records = MedicationRecord::where('patient_treatment_id', $treatmentId)
+        // 2. Ambil seluruh catatan minum obat berdasarkan treatment pasien
+        $records = MedicationRecord::whereIn('patient_treatment_id', $treatments)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. Mapping data untuk respons agar lebih rapi dan jelas
+        // 3. Mapping data (photo_url SUDAH DIPERBAIKI)
         $history = $records->map(function ($record) {
             return [
                 'id'                   => $record->id,
-                'photo_url'           => $record->photo
-                    ? asset('storage/images/' . $record->photo)
+                'patient_treatment_id' => $record->patient_treatment_id,
+                'photo'                => $record->photo
+                    ? $record->photo
                     : null,
-                'is_verified'         => $record->is_verified,
-                'late'                => $record->late,
-                'notes'               => $record->notes,
-                'submitted_at'        => $record->created_at->format('Y-m-d H:i:s'),
-                'submitted_relative'  => $record->created_at->diffForHumans(),
+                'is_verified'          => $record->is_verified,
+                'late'                 => $record->late,
+                'notes'                => $record->notes,
+                'submitted_at'         => $record->created_at->format('Y-m-d H:i:s'),
+                'submitted_relative'   => $record->created_at->diffForHumans(),
             ];
         });
 
-        // 4. Kirim response JSON
+        // 4. Response sukses
         return response()->json([
-            'message' => 'Riwayat minum obat berhasil diambil.',
+            'message' => 'Riwayat minum obat pasien berhasil diambil.',
             'data'    => $history
         ]);
     }
+
+
+    // public function medicationHistory($treatmentId)
+    // {
+    //     // 1. Validasi keberadaan data pengobatan
+    //     $treatment = PatientTreatment::find($treatmentId);
+
+    //     if (!$treatment) {
+    //         return response()->json([
+    //             'message' => 'Data pengobatan tidak ditemukan.'
+    //         ], 404);
+    //     }
+
+    //     // 2. Ambil semua catatan minum obat berdasarkan treatment_id
+    //     $records = MedicationRecord::where('patient_treatment_id', $treatmentId)
+    //         ->orderBy('created_at', 'desc')
+    //         ->get();
+
+    //     // 3. Mapping data untuk respons agar lebih rapi dan jelas
+    //     $history = $records->map(function ($record) {
+    //         return [
+    //             'id'                   => $record->id,
+    //             'photo_url'           => $record->photo
+    //                 ? asset('storage/images/' . $record->photo)
+    //                 : null,
+    //             'is_verified'         => $record->is_verified,
+    //             'late'                => $record->late,
+    //             'notes'               => $record->notes,
+    //             'submitted_at'        => $record->created_at->format('Y-m-d H:i:s'),
+    //             'submitted_relative'  => $record->created_at->diffForHumans(),
+    //         ];
+    //     });
+
+    //     // 4. Kirim response JSON
+    //     return response()->json([
+    //         'message' => 'Riwayat minum obat berhasil diambil.',
+    //         'data'    => $history
+    //     ]);
+    // }
 
     public function getVisitsByTreatment($treatmentId)
     {
