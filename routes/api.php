@@ -38,11 +38,14 @@ Route::middleware('auth:sanctum')->get('/image-bytes/{filename}', function ($fil
 Route::post('/login', [AuthController::class, 'login']);
 
 // Registrasi User Baru (Pasien & Petugas)
-Route::prefix('register')->group(function () {
+/*Route::prefix('register')->group(function () {
     Route::post('/patient', [AuthController::class, 'registerPatient']);   // Registrasi pasien TB
     Route::post('/officer', [AuthController::class, 'registerOfficer']);   // Registrasi petugas (PJTB / Kader)
     Route::get('/roles', [AuthController::class, 'getOfficerRoles']);      // Ambil daftar peran untuk petugas
-});
+});*/
+
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
 
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);

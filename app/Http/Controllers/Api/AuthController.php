@@ -87,8 +87,16 @@ class AuthController extends Controller
         ]);
     }
 
-    // Fungsi untuk registrasi pasien TB
-    public function registerPatient(Request $request)
+    public function register(Request $request)
+    {
+        if ($request->filled('officer_type_id')) {
+            return $this->registerOfficer($request);
+        }
+
+        return $this->registerPatient($request);
+    }
+
+    private function registerPatient(Request $request)
     {
         // Validasi data input dari form
         $validatedData = $request->validate([
@@ -153,78 +161,77 @@ class AuthController extends Controller
         ], 201);
     }
 
-    // Fungsi untuk registrasi petugas (PJTB / Kader)
-    public function registerOfficer(Request $request)
+    private function registerOfficer(Request $request)
     {
-        // Validasi input form petugas
         $validatedData = $request->validate([
-            'name'              => 'required|string|max:255',
-            'email'             => 'required|string|email|unique:users,email',
-            'phone'             => 'required|string|min:10|max:15',
-            'gender'            => 'required|in:L,P',
-            'date_of_birth'     => 'required|date', // Tanggal lahir wajib dan valid
-            'officer_type_id'   => 'required|in:3,4', // 3 = PJTB, 4 = Kader
-            'puskesmas_id'      => 'required|exists:puskesmas,id',
+            'name'            => 'required|string|max:255',
+            'email'           => 'nullable|email|unique:users,email',
+            'phone'           => 'required|string|min:10|max:15|unique:users,phone',
+            'gender'          => 'required|in:L,P',
+            'date_of_birth'   => 'nullable|date',
+            'officer_type_id' => 'required|in:3,4',
+            'puskesmas_id'    => 'required|exists:puskesmas,id',
         ], [
-            'name.required'             => 'Nama wajib diisi.',
-            'email.required'            => 'Email wajib diisi.',
-            'email.email'               => 'Format email tidak valid.',
-            'email.unique'              => 'Email sudah digunakan.',
-            'phone.required'            => 'Nomor HP wajib diisi.',
-            'gender.required'           => 'Jenis kelamin wajib dipilih.',
-            'date_of_birth.required'    => 'Tanggal lahir wajib diisi.',
-            'date_of_birth.date'        => 'Format tanggal lahir tidak valid.',
-            'officer_type_id.required'  => 'Jenis petugas wajib dipilih.',
-            'puskesmas_id.required'     => 'Puskesmas wajib dipilih.',
+            'name.required'            => 'Nama wajib diisi.',
+            'phone.required'           => 'Nomor HP wajib diisi.',
+            'phone.unique'             => 'Nomor HP sudah digunakan.',
+            'gender.required'          => 'Jenis kelamin wajib dipilih.',
+            'officer_type_id.required' => 'Jenis petugas wajib dipilih.',
+            'puskesmas_id.required'    => 'Puskesmas wajib dipilih.',
         ]);
 
-        // Buat username unik dari email
-        $username = $this->generateUsername($validatedData['email']);
+        // Username dibuat dari nomor HP
+        $username = $this->generateUsername($validatedData['phone']);
 
-        // Hash password default dengan username
-        $password = Hash::make($username);
-
-        // Simpan data user petugas ke tabel `users`
         $user = User::create([
             'name'          => $validatedData['name'],
-            'email'         => $validatedData['email'],
+            'email'         => $validatedData['email'] ?? null,
             'username'      => $username,
-            'password'      => $password,
+            'password'      => Hash::make($username),
             'phone'         => $validatedData['phone'],
             'gender'        => $validatedData['gender'],
-            'date_of_birth' => $validatedData['date_of_birth'],
-            'user_type_id'  => 3, // 3 = Petugas
-            'is_active'     => true // Default aktif
+            'date_of_birth' => $validatedData['date_of_birth'] ?? null,
+            'user_type_id'  => 3,
+            'is_active'     => true,
         ]);
 
-        // Simpan detail petugas ke tabel `officers`
         Officer::create([
             'user_id'         => $user->id,
             'officer_type_id' => $validatedData['officer_type_id'],
-            'district_id'     => null, // PJTB dan Kader tidak membutuhkan district
+            'district_id'     => null,
             'puskesmas_id'    => $validatedData['puskesmas_id'],
         ]);
 
-        // Respon sukses
         return response()->json([
             'message' => 'Registrasi petugas berhasil.',
             'user'    => $user,
             'info'    => 'Username dan password awal Anda adalah: ' . $username,
-            'note'    => 'Akun Anda masih menunggu verifikasi dari admin sebelum bisa login.'
         ], 201);
     }
 
-    // Fungsi untuk generate username dari email secara unik
-    private function generateUsername($email)
+    private function generateUsername($name)
     {
-        // Ambil bagian sebelum "@" dan hilangkan karakter non-alfanumerik
-        $base = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $email)[0]);
+        // Ubah menjadi huruf kecil
+        $base = strtolower($name);
+
+        // Hilangkan karakter selain huruf, angka, dan spasi
+        $base = preg_replace('/[^a-z0-9\s]/', '', $base);
+
+        // Hilangkan spasi
+        $base = str_replace(' ', '', $base);
+
+        // Jika hasil kosong
+        if (empty($base)) {
+            $base = 'user';
+        }
+
         $username = $base;
         $counter = 1;
 
-        // Ulangi jika username sudah digunakan
+        // Pastikan username unik
         while (User::where('username', $username)->exists()) {
-            $username = $base . $counter++;
+            $username = $base . $counter;
+            $counter++;
         }
 
         return $username;
@@ -275,5 +282,4 @@ class AuthController extends Controller
             'message' => 'Password berhasil diperbarui.'
         ]);
     }
-
 }
