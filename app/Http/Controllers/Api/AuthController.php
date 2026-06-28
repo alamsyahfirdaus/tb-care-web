@@ -94,7 +94,7 @@ class AuthController extends Controller
         $validatedData = $request->validate([
             'nik'            => 'required|digits:16|unique:patients,nik',
             'name'           => 'required|string|max:255',
-            'email'          => 'required|string|email|unique:users,email',
+            'email'          => 'string|email|unique:users,email',
             'phone'          => 'required|string|min:10|max:15',
             'gender'         => 'required|in:L,P',
             'date_of_birth'  => 'required|date',
@@ -265,7 +265,7 @@ class AuthController extends Controller
 
     public function updatePassword()
     {
-        User::whereBetween('id', [139, 260])
+        User::whereBetween('id', [139, 289])
         ->update([
             'password' => Hash::make('123456'),
             'updated_at' => now()
