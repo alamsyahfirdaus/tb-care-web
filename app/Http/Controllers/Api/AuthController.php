@@ -100,14 +100,14 @@ class AuthController extends Controller
     {
         // Validasi data input dari form
         $validatedData = $request->validate([
-            'nik'            => 'required|digits:16|unique:patients,nik',
+            'nik'            => 'nullable|digits:16|unique:patients,nik',
             'name'           => 'required|string|max:255',
-            'email'          => 'string|email|unique:users,email',
+            'email'          => 'nullable|string|email|unique:users,email',
             'phone'          => 'required|string|min:10|max:15',
             'gender'         => 'required|in:L,P',
-            'date_of_birth'  => 'required|date',
+            'date_of_birth'  => 'nullable|date',
             'puskesmas_id'   => 'required|exists:puskesmas,id',
-            'subdistrict_id' => 'required|exists:subdistricts,id', // Tambahan validasi alamat
+            'subdistrict_id' => 'nullable|exists:subdistricts,id', // Tambahan validasi alamat
         ], [
             'nik.required'           => 'NIK wajib diisi.',
             'nik.digits'             => 'NIK harus terdiri dari 16 digit.',
@@ -126,7 +126,7 @@ class AuthController extends Controller
         ]);
 
         // Buat username otomatis dari email
-        $username = $this->generateUsername($validatedData['email']);
+        $username = $this->generateUsername($validatedData['name']);
 
         // Hash password awal menggunakan username
         $hashedPassword = Hash::make($username);
@@ -134,22 +134,21 @@ class AuthController extends Controller
         // Simpan data user ke tabel `users`
         $user = User::create([
             'name'          => $validatedData['name'],
-            'email'         => $validatedData['email'],
+            'email'         => $validatedData['email'] ?? null,
             'username'      => $username,
             'password'      => $hashedPassword,
             'phone'         => $validatedData['phone'],
             'gender'        => $validatedData['gender'],
-            'date_of_birth' => $validatedData['date_of_birth'],
+            'date_of_birth' => $validatedData['date_of_birth'] ?? null,
             'user_type_id'  => 2, // 2 = Pasien
             'is_active'     => true // Default aktif
         ]);
 
-        // Simpan data tambahan ke tabel `patients`
         Patient::create([
             'user_id'        => $user->id,
-            'nik'            => $validatedData['nik'],
+            'nik'            => $validatedData['nik'] ?? null,
             'puskesmas_id'   => $validatedData['puskesmas_id'],
-            'subdistrict_id' => $validatedData['subdistrict_id'], // Simpan alamat
+            'subdistrict_id' => $validatedData['subdistrict_id'] ?? null,
         ]);
 
         // Respon JSON saat berhasil
@@ -166,7 +165,7 @@ class AuthController extends Controller
         $validatedData = $request->validate([
             'name'            => 'required|string|max:255',
             'email'           => 'nullable|email|unique:users,email',
-            'phone'           => 'required|string|min:10|max:15|unique:users,phone',
+            'phone'           => 'required|string|min:10|max:15',
             'gender'          => 'required|in:L,P',
             'date_of_birth'   => 'nullable|date',
             'officer_type_id' => 'required|in:3,4',
@@ -181,7 +180,7 @@ class AuthController extends Controller
         ]);
 
         // Username dibuat dari nomor HP
-        $username = $this->generateUsername($validatedData['phone']);
+       $username = $this->generateUsername($validatedData['name']);
 
         $user = User::create([
             'name'          => $validatedData['name'],
