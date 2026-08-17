@@ -189,11 +189,23 @@ class TreatmentController extends Controller
         }
 
         // 3. Ambil data pengobatan
-        $treatment = PatientTreatment::findOrFail($request->patient_treatment_id);
+        $treatment = PatientTreatment::findOrFail(
+            $request->patient_treatment_id
+        );
 
-        // 4. Cek keterlambatan minum obat
-        $currentTime = Carbon::now()->format('H:i');
-        $isLate = $currentTime > $treatment->medication_time;
+        // 4. Cek keterlambatan minum obat dengan toleransi 1 jam
+        $now = Carbon::now();
+
+        // Waktu minum obat yang dijadwalkan hari ini
+        $medicationTime = Carbon::today()->setTimeFromTimeString(
+            $treatment->medication_time
+        );
+
+        // Batas toleransi keterlambatan 1 jam
+        $lateLimit = $medicationTime->copy()->addHour();
+
+        // Dianggap terlambat jika melewati batas toleransi
+        $isLate = $now->greaterThan($lateLimit);
 
         // 5. Upload foto ke public/images
         $fileName = null;
@@ -208,17 +220,21 @@ class TreatmentController extends Controller
             }
 
             // Nama file aman & unik
-            $fileName = Str::random(20) . '.' . $request->file('photo')->getClientOriginalExtension();
+            $fileName = Str::random(20) . '.' .
+                $request->file('photo')->getClientOriginalExtension();
 
             // Pindahkan file ke public/images
-            $request->file('photo')->move($destinationPath, $fileName);
+            $request->file('photo')->move(
+                $destinationPath,
+                $fileName
+            );
         }
 
         // 6. Simpan data ke database
         $record = MedicationRecord::create([
             'patient_treatment_id' => $request->patient_treatment_id,
             'photo'                => $fileName,
-            'is_verified'          => false,
+            'is_verified'          => true,
             'late'                 => $isLate,
             'notes'                => $request->notes,
         ]);
@@ -229,7 +245,6 @@ class TreatmentController extends Controller
             'data'    => $record
         ], 201);
     }
-
 
     // public function submitMedicationProof(Request $request)
     // {

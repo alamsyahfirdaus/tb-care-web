@@ -13,16 +13,22 @@ class EducationController extends Controller
 {
     public function index()
     {
-        // Ambil semua materi yang dipublish, urut dari yang terbaru
-        $materials = EducationalMaterial::orderBy('created_at', 'desc')
-            ->get();
+        $user = Auth::user();
+        $query = EducationalMaterial::orderBy('created_at', 'desc');
 
-        // Jika tidak ada data, kirim response kosong
+        // Pasien (user_type_id == 2) hanya boleh melihat materi yang dipublikasikan
+        if ($user && $user->user_type_id === 2) {
+            $query->where('is_publish', 1);
+        }
+
+        $materials = $query->get();
+
+        // Jika tidak ada data, kirim response kosong dengan status 200
         if ($materials->isEmpty()) {
             return response()->json([
                 'message' => 'Belum ada materi edukasi yang tersedia.',
                 'data'    => []
-            ], 404);
+            ], 200);
         }
 
         // Format data untuk dikirim ke frontend
@@ -91,15 +97,27 @@ class EducationController extends Controller
             ? EducationalMaterial::findOrFail($request->id)
             : new EducationalMaterial();
 
+        $wasPublished = $isUpdate ? ($material->is_publish == 1) : false;
+
+        $isPublishInput = 1;
+        if ($request->has('is_publish')) {
+            $val = $request->is_publish;
+            $isPublishInput = ($val == '1' || $val == 'true' || $val === true) ? 1 : 0;
+        }
+
         // Data dasar untuk disimpan
         $data = [
             'title_material' => $request->title_material,
             'description'    => $request->description,
             'material_type'  => $request->material_type,
             'video_url'      => $request->material_type === 'video' ? $request->video_url : null,
-            'is_publish'     => true,
+            'is_publish'     => $isPublishInput,
             'created_by'     => $user->id,
         ];
+
+        if ($request->material_type === 'video') {
+            $data['image_path'] = null;
+        }
 
         // Upload gambar jika tipe = image (DISAMAKAN DENGAN UPLOAD MINUM OBAT)
         if ($request->material_type === 'image' && $request->hasFile('image_file')) {
@@ -132,6 +150,11 @@ class EducationController extends Controller
         // Simpan data ke database
         $material->fill($data)->save();
 
+        // Kirim notifikasi jika baru dipublikasikan
+        if ($material->is_publish == 1 && !$wasPublished) {
+            $this->sendNewMaterialNotification($material);
+        }
+
         return response()->json([
             'message' => $isUpdate
                 ? 'Materi edukasi berhasil diperbarui.'
@@ -151,6 +174,15 @@ class EducationController extends Controller
                 'message' => 'Materi edukasi tidak ditemukan.',
                 'data'    => null
             ], 404);
+        }
+
+        // Pasien (user_type_id == 2) tidak boleh melihat materi draft (is_publish = 0)
+        $user = Auth::user();
+        if ($user && $user->user_type_id === 2 && $material->is_publish !== 1) {
+            return response()->json([
+                'message' => 'Materi edukasi ini belum dipublikasikan.',
+                'data'    => null
+            ], 403);
         }
 
         // Format data untuk response
@@ -230,8 +262,8 @@ class EducationController extends Controller
     {
         $user = Auth::user();
 
-        // Cek hak akses
-        if ($user->user_type_id == 4) {
+        // Cek hak akses (Pasien = 2, Kader = 4 tidak diizinkan mengubah status publikasi)
+        if ($user->user_type_id == 2 || $user->user_type_id == 4) {
             return response()->json([
                 'message' => 'Anda tidak memiliki izin untuk mengubah status publikasi.'
             ], 403);
@@ -245,13 +277,40 @@ class EducationController extends Controller
             ], 404);
         }
 
+        $wasPublished = $material->is_publish == 1;
+
         // Ubah status publikasi
         $material->is_publish = !$material->is_publish;
         $material->save();
+
+        if ($material->is_publish == 1 && !$wasPublished) {
+            $this->sendNewMaterialNotification($material);
+        }
 
         return response()->json([
             'message'    => 'Status publikasi berhasil diperbarui.',
             'is_publish' => $material->is_publish
         ]);
+    }
+
+    private function sendNewMaterialNotification($material)
+    {
+        $tokens = \App\Models\User::whereNotNull('fcm_token')
+            ->where('user_type_id', 2) // Kirim ke pasien saja
+            ->pluck('fcm_token')
+            ->toArray();
+
+        if (empty($tokens)) {
+            return;
+        }
+
+        $title = 'Materi Edukasi Baru';
+        $body = $material->title_material;
+        $data = [
+            'material_id' => (string) $material->id,
+            'type' => 'education',
+        ];
+
+        \App\Services\FcmService::sendNotification($tokens, $title, $body, $data);
     }
 }

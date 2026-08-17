@@ -69,13 +69,20 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         // Ambil token aktif dari user yang sedang login
-        $token = $request->user()?->currentAccessToken();
+        $user = $request->user();
+        $token = $user?->currentAccessToken();
 
         // Jika token tidak ditemukan (belum login atau token tidak valid)
         if (!$token) {
             return response()->json([
                 'message' => 'Tidak ada token yang ditemukan atau pengguna belum login.'
             ], 401); // Unauthorized
+        }
+
+        // Hapus token FCM saat logout
+        if ($user) {
+            $user->fcm_token = null;
+            $user->save();
         }
 
         // Hapus token aktif untuk logout

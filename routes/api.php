@@ -75,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('profile')->group(function () {
         Route::get('/show', [ProfileController::class, 'show']);      // Lihat profil
         Route::put('/update', [ProfileController::class, 'update']);  // Perbarui profil
+        Route::post('/fcm-token', [ProfileController::class, 'updateFcmToken']); // Update token FCM
     });
 
     // Pengobatan Pasien
