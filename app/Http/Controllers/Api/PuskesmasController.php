@@ -13,6 +13,7 @@ class PuskesmasController extends Controller
         // Ambil semua data Puskesmas beserta relasi ke subdistrict, district, dan province
         $puskesmas = Puskesmas::with('subdistrict.district.province')
             ->select('id', 'name', 'address', 'subdistrict_id')
+            ->orderBy('name', 'asc')
             ->get();
 
         // Format data untuk response JSON
@@ -22,10 +23,10 @@ class PuskesmasController extends Controller
             $provinceName    = optional(optional(optional($item->subdistrict)->district)->province)->name;
 
             return [
-                'id'      => $item->id,
+                'id'   => $item->id,
 
-                // Nama Puskesmas + (Subdistrict)
-                'name'    => $subdistrictName
+                // Nama Puskesmas + (Kecamatan, Kabupaten/Kota)
+                'name' => $subdistrictName
                     ? $item->name . ' (' . $subdistrictName . ', ' . $districtName . ')'
                     : $item->name,
 
@@ -45,5 +46,4 @@ class PuskesmasController extends Controller
             'data'    => $data
         ]);
     }
-
 }
