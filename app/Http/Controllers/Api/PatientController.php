@@ -15,124 +15,6 @@ use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
-    /* public function indexOld(Request $request)
-    {
-        // Ambil filter status pengobatan (opsional)
-        $treatmentStatus = $request->post('treatment_status');
-
-        // Ambil data user yang sedang login
-        $user = Auth::user();
-
-        // Inisialisasi query pasien dengan relasi user, puskesmas, dan subdistrict
-        $patientsQuery = Patient::with([
-            'user',         // Relasi ke tabel users
-            'puskesmas',    // Relasi ke puskesmas tempat pasien terdaftar
-            'subdistrict',  // Relasi ke kecamatan pasien
-        ]);
-
-        // Tambahkan relasi treatment (pengobatan) dan hanya ambil yang terbaru + 1 kunjungan terakhir
-        $patientsQuery->with([
-            'treatments' => function ($query) use ($treatmentStatus) {
-                $query->when($treatmentStatus, fn($q) => $q->where('treatment_status', $treatmentStatus))
-                    ->latest() // Urutkan treatment terbaru
-                    ->limit(1) // Ambil satu treatment terakhir
-                    ->with(['visits' => fn($q) => $q->latest()->limit(1)]); // Kunjungan terakhir
-            }
-        ]);
-
-        // Filtering berdasarkan peran pengguna
-        if ($user->user_type_id == 1) {
-            // Admin: ambil semua pasien
-            $patients = $patientsQuery->get();
-        } elseif ($user->user_type_id == 3) {
-            // Petugas: ambil data berdasarkan wilayah kerja
-            $officer = Officer::where('user_id', $user->id)->first();
-
-            if (!$officer) {
-                return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
-            }
-
-            // Petugas puskesmas (tipe 3 atau 4): ambil pasien di puskesmas yang sama
-            if (in_array($officer->officer_type_id, [3, 4])) {
-                $patients = $patientsQuery
-                    ->where('puskesmas_id', $officer->puskesmas_id)
-                    ->get();
-            } else {
-                // Petugas kabupaten/kota: ambil pasien dari seluruh puskesmas dalam 1 kabupaten
-                $patients = $patientsQuery
-                    ->whereHas(
-                        'puskesmas',
-                        fn($q) =>
-                        $q->where('district_id', $officer->district_id)
-                    )
-                    ->get();
-            }
-        } else {
-            // User tanpa hak akses
-            return response()->json([
-                'message' => 'Anda tidak memiliki akses untuk melihat data pasien.'
-            ], 403);
-        }
-
-        // Mapping data pasien menjadi array JSON yang lebih informatif
-        $patientsData = $patients->map(function ($patient) {
-            // Ambil informasi lokasi lengkap jika tersedia
-            $subdistrictName = optional($patient->subdistrict)->name;
-            $districtName    = optional($patient->subdistrict?->district)->name;
-            $provinceName    = optional($patient->subdistrict?->district?->province)->name;
-
-            $treatment = $patient->treatments->first();
-            $visit     = $treatment?->visits->first();
-
-            return [
-                // Data pasien
-                'id'              => $patient->id,
-                'user_id'         => $patient->user_id,
-                'nik'             => $patient->nik,
-                'address'         => $patient->address,
-                'puskesmas_id'    => $patient->puskesmas_id,
-                'subdistrict_id'  => $patient->subdistrict_id,
-                // Lokasi lengkap jika tersedia
-                'subdistrict'     => ($subdistrictName && $districtName && $provinceName)
-                    ? "$subdistrictName, $districtName, $provinceName"
-                    : null,
-
-                // Informasi akun user terkait pasien
-
-                'name'            => $patient->user->name,
-                'email'           => $patient->user->email,
-                'phone'           => $patient->user->phone,
-                'gender'          => $patient->user->gender,
-                'place_of_birth'  => $patient->user->place_of_birth,
-                'date_of_birth'   => $patient->user->date_of_birth,
-
-                // Informasi puskesmas
-                'puskesmas'       => optional($patient->puskesmas)->name,
-
-                // Data pengobatan terakhir
-                'patient_treatment_id'      => $treatment?->id ?? null,
-                'patient_treatment_type_id' => $treatment?->treatment_type_id ?? null,
-                'treatment_status'          => $treatment?->treatment_status ?? 'Belum Mulai',
-                'diagnosis_date'            => $treatment?->diagnosis_date,
-                'start_date'                => $treatment?->start_date,
-                'end_date'                  => $treatment?->end_date,
-
-                // Kunjungan terakhir (jika ada)
-                'visit_id'       => $visit?->id,
-                'visit_date'     => $visit?->visit_date,
-                'visit_time'     => $visit?->visit_time,
-                'visit_status'   => $visit?->visit_status,
-                'notes'          => $visit?->notes,
-            ];
-        });
-
-        // Kembalikan respons JSON
-        return response()->json([
-            'message' => 'Data pasien berhasil diambil.',
-            'data'    => $patientsData
-        ]);
-    } */
-
     public function index(Request $request)
     {
         // Ambil filter status pengobatan dari request (jika ada)
@@ -278,18 +160,18 @@ class PatientController extends Controller
         // 2. Validasi input
         $validated = $request->validate([
             'nik' => [
-                'required',
+                'nullable',
                 'digits:16',
                 Rule::unique('patients', 'nik')->ignore($existingPatient ? $existingPatient->id : null),
             ],
             'name'             => 'required|string|max:255',
-            'email'            => ['required', 'email', Rule::unique('users', 'email')->ignore($existingUser ? $existingUser->id : null)],
+            'email'            => ['nullable', 'email', Rule::unique('users', 'email')->ignore($existingUser ? $existingUser->id : null)],
             'phone'            => ['required', 'string', 'min:10', 'max:15', Rule::unique('users', 'phone')->ignore($existingUser ? $existingUser->id : null)],
             'gender'           => 'required|in:L,P',
             'place_of_birth'   => 'required|string|max:100',
             'date_of_birth'    => 'required|date',
             'puskesmas_id'     => 'required|exists:puskesmas,id',
-            'subdistrict_id'   => 'required|exists:subdistricts,id',
+            'subdistrict_id'   => 'nullable|exists:subdistricts,id',
             'address'          => 'nullable|string',
             'occupation'       => 'nullable|string',
             'height'           => 'nullable|integer',
@@ -384,83 +266,6 @@ class PatientController extends Controller
             'data'    => $existingPatient->load('user'),
         ]);
     }
-
-    /* public function showOld($id)
-    {
-        // Ambil data pasien beserta relasi terkait
-        $patient = Patient::with([
-            'user',
-            'puskesmas',
-            'subdistrict.district.province',
-            'treatments' => fn($q) => $q->latest()->limit(1)->with([
-                'visits' => fn($q) => $q->latest()->limit(1) // ambil kunjungan terakhir
-            ])
-        ])->find($id);
-
-        // Jika pasien tidak ditemukan
-        if (!$patient) {
-            return response()->json([
-                'message' => 'Data pasien tidak ditemukan.'
-            ], 404);
-        }
-
-        // Ambil nama wilayah
-        $subdistrictName = optional($patient->subdistrict)->name;
-        $districtName    = optional($patient->subdistrict?->district)->name;
-        $provinceName    = optional($patient->subdistrict?->district?->province)->name;
-
-        // Ambil pengobatan terakhir dan kunjungan terakhir
-        $lastTreatment = $patient->treatments->first();
-        $lastVisit     = $lastTreatment?->visits->first();
-
-        // Susun data pasien lengkap
-        $patientData = [
-            // Data pasien
-            'id'             => $patient->id,
-            'user_id'        => $patient->user_id,
-            'nik'            => $patient->nik,
-            'address'        => $patient->address,
-            'puskesmas_id'   => $patient->puskesmas_id,
-            'subdistrict_id' => $patient->subdistrict_id,
-
-            // Alamat lengkap (jika tersedia)
-            'subdistrict' => ($subdistrictName && $districtName && $provinceName)
-                ? $subdistrictName . ', ' . $districtName . ', ' . $provinceName
-                : null,
-
-            // Data user
-            'name'           => $patient->user->name,
-            'email'          => $patient->user->email,
-            'phone'          => $patient->user->phone,
-            'gender'         => $patient->user->gender,
-            'place_of_birth' => $patient->user->place_of_birth,
-            'date_of_birth'  => $patient->user->date_of_birth,
-
-            // Nama puskesmas
-            'puskesmas'      => optional($patient->puskesmas)->name,
-
-            // Pengobatan terakhir
-            'patient_treatment_id' => $lastTreatment?->id ?? null,
-            'patient_treatment_type_id' => $lastTreatment?->patient_treatment_id ?? null,
-            'treatment_status'     => $lastTreatment?->treatment_status ?? 'Belum Mulai',
-            'diagnosis_date'           => $lastTreatment?->diagnosis_date,
-            'start_date'           => $lastTreatment?->start_date,
-            'end_date'             => $lastTreatment?->end_date,
-
-            // Kunjungan terakhir
-            'visit_id'       => $lastVisit?->id,
-            'visit_date'     => $lastVisit?->visit_date,
-            'visit_time'     => $lastVisit?->visit_time,
-            'visit_status'   => $lastVisit?->visit_status,
-            'notes'          => $lastVisit?->notes,
-        ];
-
-        // Response sukses
-        return response()->json([
-            'message' => 'Detail data pasien berhasil diambil.',
-            'data'    => $patientData
-        ]);
-    } */
 
     public function show($id)
     {
