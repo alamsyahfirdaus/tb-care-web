@@ -131,6 +131,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/adherence', [PatientController::class, 'treatmentAdherence']);        // Tingkat kepatuhan minum obat
         Route::get('/{id}/medication-schedule', [PatientController::class, 'getMedicationSchedule']); // Jadwal minum obat
         Route::match(['post', 'put'], '/{id}/medication-schedule', [PatientController::class, 'saveMedicationSchedule']); // Simpan/update jadwal minum obat
+        Route::post('/{id}/medication-schedule/store', [PatientController::class, 'storeMedicationSchedule']);
+        Route::match(['post', 'put'], '/medication-schedule', [PatientController::class, 'saveMedicationSchedule']);
     });
 
     Route::get('/image/{filename}', function ($filename) {

@@ -598,10 +598,14 @@ class PatientController extends Controller
         ]);
     }
 
-    public function getMedicationSchedule($id)
+    public function getMedicationSchedule(Request $request, $id = null)
     {
         $user = Auth::user();
-        $patient = Patient::find($id);
+        $patientId = $id ?? $request->input('patient_id');
+        if (!$patientId && $user && $user->user_type_id == 2) {
+            $patientId = optional($user->patient)->id;
+        }
+        $patient = Patient::find($patientId);
 
         if (!$patient) {
             return response()->json([
@@ -628,10 +632,14 @@ class PatientController extends Controller
         ]);
     }
 
-    public function saveMedicationSchedule(Request $request, $id)
+    public function saveMedicationSchedule(Request $request, $id = null)
     {
         $user = Auth::user();
-        $patient = Patient::find($id);
+        $patientId = $id ?? $request->input('patient_id');
+        if (!$patientId && $user && $user->user_type_id == 2) {
+            $patientId = optional($user->patient)->id;
+        }
+        $patient = Patient::find($patientId);
 
         if (!$patient) {
             return response()->json([
@@ -692,5 +700,25 @@ class PatientController extends Controller
                 'is_active'     => (bool) $schedule->is_active,
             ],
         ]);
+    }
+
+    public function storeMedicationSchedule(Request $request, $id = null)
+    {
+        return $this->saveMedicationSchedule($request, $id);
+    }
+
+    public function updateMedicationSchedule(Request $request, $id = null)
+    {
+        return $this->saveMedicationSchedule($request, $id);
+    }
+
+    public function saveSchedule(Request $request, $id = null)
+    {
+        return $this->saveMedicationSchedule($request, $id);
+    }
+
+    public function storeSchedule(Request $request, $id = null)
+    {
+        return $this->saveMedicationSchedule($request, $id);
     }
 }
