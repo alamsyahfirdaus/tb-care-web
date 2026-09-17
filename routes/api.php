@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PuskesmasController;
 use App\Http\Controllers\Api\ScreeningController;
+use App\Http\Controllers\Api\OfficerController;
 use App\Http\Controllers\Api\SubdistrictController;
 use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
@@ -50,6 +51,7 @@ Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
 Route::get('/subdistricts', [SubdistrictController::class, 'index']);
+Route::get('/subdistricts/{id}/villages', [SubdistrictController::class, 'getVillages']);
 Route::get('/password', [AuthController::class, 'updatePassword']); // Endpoint untuk update password (bisa dipindah ke grup auth jika ingin proteksi)
 
 // Skrining
@@ -77,6 +79,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update', [ProfileController::class, 'update']);  // Perbarui profil
         Route::post('/fcm-token', [ProfileController::class, 'updateFcmToken']); // Update token FCM
     });
+
+    // Wilayah Binaan Kader
+    Route::get('/officer/kader-areas', [OfficerController::class, 'getKaderAreas']);
 
     // Pengobatan Pasien
     Route::prefix('treatments')->group(function () {

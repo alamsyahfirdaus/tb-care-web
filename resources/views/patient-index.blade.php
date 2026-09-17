@@ -20,6 +20,7 @@
                                 <th>Nama</th>
                                 <th>Jenis<span style="color: #fff; font-size: 10px;">_</span>Kelamin</th>
                                 <th>No.<span style="color: #fff; font-size: 10px;">_</span>Handphone</th>
+                                <th>Wilayah</th>
                                 <th style="width: 5%; text-align: center;">Aksi</th>
                             </tr>
                         </thead>
@@ -30,6 +31,16 @@
                                     <td>{{ $item['full_name'] }}</td>
                                     <td>{{ $item['gender'] }}</td>
                                     <td>{{ $item['phone'] }}</td>
+                                    <td>
+                                        @if (!empty($item['village_name']) && $item['village_name'] != '-')
+                                            {{ $item['village_name'] }}
+                                            @if (!empty($item['rw']) && $item['rw'] != '-')
+                                                <br><small class="text-muted">RW {{ $item['rw'] }}{{ (!empty($item['rt']) && $item['rt'] != '-') ? ' / RT ' . $item['rt'] : '' }}</small>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
                                     <td style="text-align: center;">
                                         <div class="btn-group">
                                             <button type="button" class="btn btn-primary btn-sm dropdown-toggle"

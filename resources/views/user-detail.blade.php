@@ -122,6 +122,158 @@
                 </div>
             </div>
         @endif
+
+        @if (isset($officer) && $officer && $officer->isKader())
+            <div class="card card-success card-outline mt-3">
+                <div class="card-header py-2">
+                    <h3 class="card-title pt-1 font-weight-bold">
+                        <i class="fas fa-map-marked-alt mr-1"></i> Wilayah Binaan Kader
+                    </h3>
+                    @if (!empty($can_manage_kader_area))
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modal-add-area">
+                                <i class="fas fa-plus mr-1"></i> Tambah Wilayah Binaan
+                            </button>
+                        </div>
+                    @endif
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">No</th>
+                                    <th>Kecamatan</th>
+                                    <th>Desa / Kelurahan</th>
+                                    <th>RW</th>
+                                    <th>RT</th>
+                                    @if (!empty($can_manage_kader_area))
+                                        <th style="width: 100px; text-align: center;">Aksi</th>
+                                    @endif
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($kader_areas as $index => $area)
+                                    <tr>
+                                        <td class="text-center">{{ $index + 1 }}</td>
+                                        <td>{{ optional($area->subdistrict)->name ?? '-' }}</td>
+                                        <td><strong>{{ optional($area->village)->name ?? '-' }}</strong></td>
+                                        <td><span class="badge badge-info">RW {{ $area->rw }}</span></td>
+                                        <td>
+                                            @if ($area->rt)
+                                                <span class="badge badge-secondary">RT {{ $area->rt }}</span>
+                                            @else
+                                                <span class="badge badge-success">Semua RT (RW Binaan Penuh)</span>
+                                            @endif
+                                        </td>
+                                        @if (!empty($can_manage_kader_area))
+                                            <td class="text-center">
+                                                <form action="{{ route('kader-area.delete', ['id' => $area->id]) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus wilayah binaan ini?');" style="display:inline;">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-danger btn-xs" title="Hapus Wilayah">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        @endif
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="{{ !empty($can_manage_kader_area) ? 6 : 5 }}" class="text-center text-muted py-4">
+                                            <em>Belum ada wilayah binaan yang ditetapkan untuk Kader ini.</em>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            @if (!empty($can_manage_kader_area))
+                {{-- Modal Tambah Wilayah Binaan --}}
+                <div class="modal fade" id="modal-add-area" tabindex="-1" role="dialog" aria-labelledby="modalAddAreaLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <form action="{{ route('kader-area.store') }}" method="POST" id="form-add-area">
+                                @csrf
+                                <input type="hidden" name="officer_id" value="{{ $officer->id }}">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title" id="modalAddAreaLabel"><i class="fas fa-map-marker-alt mr-1"></i> Tambah Wilayah Binaan</h5>
+                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label for="area_subdistrict_id">Kecamatan <span class="text-danger">*</span></label>
+                                        <select class="form-control" name="subdistrict_id" id="area_subdistrict_id" required>
+                                            <option value="">-- Pilih Kecamatan --</option>
+                                            @foreach ($subdistricts as $sub)
+                                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="area_village_id">Desa / Kelurahan <span class="text-danger">*</span></label>
+                                        <select class="form-control" name="village_id" id="area_village_id" required disabled>
+                                            <option value="">-- Pilih Kecamatan Terlebih Dahulu --</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="area_rw">RW <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" name="rw" id="area_rw" placeholder="Contoh: 05" maxlength="5" required>
+                                        <small class="form-text text-muted">Nomor RW wajib diisi.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="area_rt">RT <span class="text-muted">(Opsional)</span></label>
+                                        <input type="text" class="form-control" name="rt" id="area_rt" placeholder="Contoh: 01" maxlength="5">
+                                        <small class="form-text text-muted">Kosongkan jika kader membina seluruh RT dalam RW tersebut.</small>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i> Simpan Wilayah</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    $(document).ready(function() {
+                        $('#area_subdistrict_id').on('change', function() {
+                            var subdistrictId = $(this).val();
+                            var $villageSelect = $('#area_village_id');
+                            $villageSelect.empty().prop('disabled', true);
+                            $villageSelect.append('<option value="">Memuat desa/kelurahan...</option>');
+
+                            if (subdistrictId) {
+                                $.ajax({
+                                    url: '{{ url("kader-area/villages") }}/' + subdistrictId,
+                                    type: 'GET',
+                                    dataType: 'json',
+                                    success: function(data) {
+                                        $villageSelect.empty();
+                                        $villageSelect.append('<option value="">-- Pilih Desa/Kelurahan --</option>');
+                                        $.each(data, function(index, village) {
+                                            $villageSelect.append('<option value="' + village.id + '">' + village.name + '</option>');
+                                        });
+                                        $villageSelect.prop('disabled', false);
+                                    },
+                                    error: function() {
+                                        $villageSelect.empty().append('<option value="">Gagal memuat data desa</option>');
+                                    }
+                                });
+                            } else {
+                                $villageSelect.empty().append('<option value="">-- Pilih Kecamatan Terlebih Dahulu --</option>');
+                            }
+                        });
+                    });
+                </script>
+            @endif
+        @endif
     </div>
 
     <script>

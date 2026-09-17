@@ -115,6 +115,7 @@ class AuthController extends Controller
             'date_of_birth'  => 'nullable|date',
             'puskesmas_id'   => 'required|exists:puskesmas,id',
             'subdistrict_id' => 'nullable|exists:subdistricts,id', // Tambahan validasi alamat
+            'treatment_start_date' => 'nullable|date|before_or_equal:today',
         ], [
             'nik.required'           => 'NIK wajib diisi.',
             'nik.digits'             => 'NIK harus terdiri dari 16 digit.',
@@ -130,6 +131,8 @@ class AuthController extends Controller
             'date_of_birth.date'     => 'Format tanggal lahir tidak valid.',
             'subdistrict_id.required' => 'Alamat (kecamatan) wajib dipilih.',
             'subdistrict_id.exists'  => 'Kecamatan tidak ditemukan.',
+            'treatment_start_date.date' => 'Format tanggal mulai pengobatan tidak valid.',
+            'treatment_start_date.before_or_equal' => 'Tanggal mulai pengobatan tidak boleh di masa depan.',
         ]);
 
         // Buat username otomatis dari email
@@ -152,10 +155,11 @@ class AuthController extends Controller
         ]);
 
         Patient::create([
-            'user_id'        => $user->id,
-            'nik'            => $validatedData['nik'] ?? null,
-            'puskesmas_id'   => $validatedData['puskesmas_id'],
-            'subdistrict_id' => $validatedData['subdistrict_id'] ?? null,
+            'user_id'              => $user->id,
+            'nik'                  => $validatedData['nik'] ?? null,
+            'puskesmas_id'         => $validatedData['puskesmas_id'],
+            'subdistrict_id'       => $validatedData['subdistrict_id'] ?? null,
+            'treatment_start_date' => $validatedData['treatment_start_date'] ?? null,
         ]);
 
         // Respon JSON saat berhasil

@@ -19,6 +19,11 @@ class Subdistrict extends Model
         return $this->belongsTo(District::class, 'district_id');
     }
 
+    public function villages()
+    {
+        return $this->hasMany(Village::class, 'subdistrict_id');
+    }
+
     public static function getAllSubdistricts()
     {
         $districtId = $provinceId = null;

@@ -64,6 +64,38 @@
                         </div>
                     </div>
                     <div class="form-group row">
+                        <label for="village_id" class="col-sm-3 col-form-label">Desa / Kelurahan</label>
+                        <div class="col-sm-9">
+                            <select name="village_id" id="village_id" class="form-control select2"
+                                style="width: 100%;">
+                                <option value="">Pilih Desa / Kelurahan</option>
+                                @foreach ($villages as $village)
+                                    <option value="{{ $village->id }}"
+                                        {{ isset($data) && $data->village_id == $village->id ? 'selected' : '' }}>
+                                        {{ $village->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <span id="error-village_id" class="error invalid-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="rw" class="col-sm-3 col-form-label">RW</label>
+                        <div class="col-sm-3">
+                            <input type="text" class="form-control" name="rw" id="rw"
+                                placeholder="Contoh: 05" maxlength="5" autocomplete="off"
+                                value="{{ isset($data) ? $data->rw : '' }}">
+                            <span id="error-rw" class="error invalid-feedback"></span>
+                        </div>
+                        <label for="rt" class="col-sm-2 col-form-label text-sm-right">RT</label>
+                        <div class="col-sm-4">
+                            <input type="text" class="form-control" name="rt" id="rt"
+                                placeholder="Contoh: 01" maxlength="5" autocomplete="off"
+                                value="{{ isset($data) ? $data->rt : '' }}">
+                            <span id="error-rt" class="error invalid-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
                         <label for="occupation" class="col-sm-3 col-form-label">Pekerjaan</label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" name="occupation" id="occupation"
@@ -122,6 +154,15 @@
                         </div>
                     </div> --}}
                     <div class="form-group row">
+                        <label for="treatment_start_date" class="col-sm-3 col-form-label">Tanggal Mulai Pengobatan</label>
+                        <div class="col-sm-9">
+                            <input type="date" class="form-control" name="treatment_start_date"
+                                id="treatment_start_date" max="{{ date('Y-m-d') }}"
+                                value="{{ isset($data) && $data->treatment_start_date ? \Carbon\Carbon::parse($data->treatment_start_date)->format('Y-m-d') : '' }}">
+                            <span id="error-treatment_start_date" class="error invalid-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
                         <label for="puskesmas_id" class="col-sm-3 col-form-label">Puskesmas<small
                             class="text-danger">*</small></label>
                         <div class="col-sm-9">
@@ -155,6 +196,34 @@
                 if (patientId) {
                     var url = '{{ route('patient.edit', ['id' => ':id']) }}';
                     window.location.href = url.replace(':id', patientId);
+                }
+            });
+
+            $('#subdistrict_id').change(function() {
+                var subdistrictId = $(this).val();
+                var $villageSelect = $('#village_id');
+                $villageSelect.empty().append('<option value="">Memuat...</option>');
+                if (subdistrictId) {
+                    $.ajax({
+                        url: '{{ url("kader-area/villages") }}/' + subdistrictId,
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(data) {
+                            $villageSelect.empty();
+                            $villageSelect.append('<option value="">Pilih Desa / Kelurahan</option>');
+                            $.each(data, function(index, item) {
+                                $villageSelect.append('<option value="' + item.id + '">' + item.name + '</option>');
+                            });
+                            $villageSelect.trigger('change');
+                        },
+                        error: function() {
+                            $villageSelect.empty().append('<option value="">Gagal memuat desa</option>');
+                            $villageSelect.trigger('change');
+                        }
+                    });
+                } else {
+                    $villageSelect.empty().append('<option value="">Pilih Desa / Kelurahan</option>');
+                    $villageSelect.trigger('change');
                 }
             });
         });

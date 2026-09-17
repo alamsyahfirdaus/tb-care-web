@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subdistrict;
+use App\Models\Village;
 use Illuminate\Http\Request;
 
 class SubdistrictController extends Controller
@@ -28,6 +29,26 @@ class SubdistrictController extends Controller
         return response()->json([
             'message' => 'Data kecamatan berhasil diambil.',
             'data'    => $formatted
+        ]);
+    }
+
+    public function getVillages($id)
+    {
+        $subdistrict = Subdistrict::find($id);
+
+        if (!$subdistrict) {
+            return response()->json([
+                'message' => 'Kecamatan tidak ditemukan.'
+            ], 404);
+        }
+
+        $villages = Village::where('subdistrict_id', $id)
+            ->orderBy('name', 'asc')
+            ->get(['id', 'code', 'name', 'subdistrict_id']);
+
+        return response()->json([
+            'message' => 'Data desa/kelurahan berhasil diambil.',
+            'data'    => $villages
         ]);
     }
 }

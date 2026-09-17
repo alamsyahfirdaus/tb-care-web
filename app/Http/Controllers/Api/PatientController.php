@@ -7,6 +7,8 @@ use App\Models\Officer;
 use App\Models\Patient;
 use App\Models\PatientTreatment;
 use App\Models\User;
+use App\Models\Village;
+use App\Policies\PatientPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -18,94 +20,79 @@ class PatientController extends Controller
     public function index(Request $request)
     {
         // Ambil filter status pengobatan dari request (jika ada)
-        $treatmentStatus = $request->post('treatment_status');
+        $treatmentStatus = $request->post('treatment_status') ?: $request->get('treatment_status');
 
         // Ambil data user yang sedang login
         $user = Auth::user();
 
-        // Siapkan query untuk mengambil data pasien beserta relasi-relasinya
-        $patientsQuery = Patient::with([
-            'user',         // Relasi ke tabel users
-            'puskesmas',    // Relasi ke puskesmas tempat pasien terdaftar
-            'subdistrict',  // Relasi ke kecamatan pasien
-
-            // Relasi ke data pengobatan (treatments)
-            'treatments' => function ($query) use ($treatmentStatus) {
-                // Filter treatment jika treatment_status diberikan
-                $query->when($treatmentStatus, function ($q) use ($treatmentStatus) {
-                    $q->where('treatment_status', $treatmentStatus);
-                })
-                    ->orderByDesc('start_date') // Urutkan treatment dari yang terbaru
-                    ->with([
-                        // Ambil semua data kunjungan (visits) per treatment, diurutkan dari yang terbaru
-                        'visits' => function ($q) {
-                            $q->orderByDesc('visit_date');
-                        }
-                    ]);
-            },
-            
-        ]);
-
-        // Filter akses berdasarkan peran user
-        if ($user->user_type_id == 1) {
-            // Jika admin, ambil semua data pasien
-            $patients = $patientsQuery->get();
-        } elseif ($user->user_type_id == 3) {
-            // Jika petugas, ambil data berdasarkan wilayah kerjanya
-            $officer = Officer::where('user_id', $user->id)->first();
-
-            // Jika data petugas tidak ditemukan
-            if (!$officer) {
-                return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
-            }
-
-            // Jika petugas puskesmas (tipe 3 atau 4), ambil pasien di puskesmas yang sama
-            if (in_array($officer->officer_type_id, [3, 4])) {
-                $patients = $patientsQuery
-                    ->where('puskesmas_id', $officer->puskesmas_id)
-                    ->get();
-            } else {
-                // Jika petugas kabupaten/kota, ambil pasien dari semua puskesmas di kabupaten yang sama
-                $patients = $patientsQuery
-                    ->whereHas('puskesmas', function ($q) use ($officer) {
-                        $q->where('district_id', $officer->district_id);
-                    })
-                    ->get();
-            }
-        } else {
-            // User tidak memiliki akses
+        // Validasi akses awal
+        if (!in_array($user->user_type_id, [1, 2, 3])) {
             return response()->json([
                 'message' => 'Anda tidak memiliki akses untuk melihat data pasien.'
             ], 403);
         }
 
+        // Siapkan query dengan centralized scope accessibleBy
+        $patientsQuery = Patient::accessibleBy($user)->with([
+            'user',
+            'puskesmas',
+            'village',
+            'subdistrict.district.province',
+            'treatments' => function ($query) use ($treatmentStatus) {
+                $query->when($treatmentStatus, function ($q) use ($treatmentStatus) {
+                    $q->where('treatment_status', $treatmentStatus);
+                })
+                    ->orderByDesc('start_date')
+                    ->with([
+                        'visits' => function ($q) {
+                            $q->orderByDesc('visit_date');
+                        }
+                    ]);
+            },
+        ]);
+
+        // Filter pencarian nama / NIK jika disediakan
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $patientsQuery->where(function ($q) use ($search) {
+                $q->where('nik', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $patients = $patientsQuery->get();
+
         // Mapping data pasien menjadi format array JSON
         $patientsData = $patients->map(function ($patient) {
-            // Ambil nama lokasi secara berjenjang
+            $villageName     = optional($patient->village)->name;
             $subdistrictName = optional($patient->subdistrict)->name;
             $districtName    = optional($patient->subdistrict?->district)->name;
             $provinceName    = optional($patient->subdistrict?->district?->province)->name;
 
             return [
-                // Data dasar pasien
                 'id'             => $patient->id,
                 'user_id'        => $patient->user_id,
                 'nik'            => $patient->nik,
                 'address'        => $patient->address,
                 'puskesmas_id'   => $patient->puskesmas_id,
                 'subdistrict_id' => $patient->subdistrict_id,
+                'village_id'     => $patient->village_id,
+                'village_name'   => $villageName,
+                'rw'             => $patient->rw,
+                'rt'             => $patient->rt,
                 'occupation'     => $patient->occupation,
                 'height'         => $patient->height,
                 'weight'         => $patient->weight,
                 'blood_type'     => $patient->blood_type,
                 'diagnosis_date' => $patient->diagnosis_date,
+                'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
 
-                // Nama lengkap lokasi (kecamatan, kabupaten, provinsi)
                 'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                     ? "$subdistrictName, $districtName, $provinceName"
                     : null,
 
-                // Data user terkait pasien
                 'name'           => $patient->user->name,
                 'email'          => $patient->user->email,
                 'phone'          => $patient->user->phone,
@@ -113,10 +100,8 @@ class PatientController extends Controller
                 'place_of_birth' => $patient->user->place_of_birth,
                 'date_of_birth'  => $patient->user->date_of_birth,
 
-                // Nama puskesmas
                 'puskesmas'      => optional($patient->puskesmas)->name,
 
-                // Daftar seluruh treatment beserta visit masing-masing
                 'treatments'     => $patient->treatments->map(function ($treatment) {
                     return [
                         'id'                => $treatment->id,
@@ -128,7 +113,6 @@ class PatientController extends Controller
                         'treatment_days'    => $treatment->treatment_days,
                         'medication_time'   => $treatment->medication_time,
 
-                        // Daftar semua kunjungan pada treatment ini
                         'visits' => $treatment->visits->map(function ($visit) {
                             return [
                                 'id'           => $visit->id,
@@ -144,7 +128,6 @@ class PatientController extends Controller
             ];
         });
 
-        // Kembalikan response JSON
         return response()->json([
             'message' => 'Data pasien berhasil diambil.',
             'data'    => $patientsData
@@ -153,8 +136,32 @@ class PatientController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Ambil data pasien dan user yang terkait (jika ada)
-        $existingPatient = Patient::with('user')->find($request->patient_id);
+        $user = Auth::user();
+        $isUpdate = $request->filled('patient_id');
+
+        // 1. Otorisasi create/update awal
+        $existingPatient = null;
+        if ($isUpdate) {
+            $existingPatient = Patient::with('user')->find($request->patient_id);
+            if (!$existingPatient) {
+                return response()->json([
+                    'message' => 'Data pasien tidak ditemukan.'
+                ], 404);
+            }
+
+            if (!$existingPatient->isAccessibleBy($user)) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang mengubah data pasien di luar wilayah binaan Anda.'
+                ], 403);
+            }
+        } else {
+            if (!in_array($user->user_type_id, [1, 3])) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki akses untuk menambahkan pasien.'
+                ], 403);
+            }
+        }
+
         $existingUser = $existingPatient?->user;
 
         // 2. Validasi input
@@ -172,12 +179,16 @@ class PatientController extends Controller
             'date_of_birth'    => 'required|date',
             'puskesmas_id'     => 'required|exists:puskesmas,id',
             'subdistrict_id'   => 'nullable|exists:subdistricts,id',
+            'village_id'       => 'nullable|exists:villages,id',
+            'rw'               => 'nullable|string|max:5',
+            'rt'               => 'nullable|string|max:5',
             'address'          => 'nullable|string',
             'occupation'       => 'nullable|string',
             'height'           => 'nullable|integer',
             'weight'           => 'nullable|integer',
             'blood_type'       => 'nullable|string|max:3',
             'diagnosis_date'   => 'nullable|date',
+            'treatment_start_date' => 'nullable|date|before_or_equal:today',
         ], [
             'nik.required'             => 'NIK wajib diisi.',
             'nik.digits'               => 'NIK harus terdiri dari 16 digit.',
@@ -192,38 +203,56 @@ class PatientController extends Controller
             'phone.unique'             => 'Nomor HP sudah digunakan oleh pengguna lain.',
             'gender.required'          => 'Jenis kelamin wajib dipilih.',
             'gender.in'                => 'Jenis kelamin harus L (Laki-laki) atau P (Perempuan).',
-            'place_of_birth.required' => 'Tempat lahir wajib diisi.',
-            'place_of_birth.max'      => 'Tempat lahir maksimal 100 karakter.',
-            'date_of_birth.required'  => 'Tanggal lahir wajib diisi.',
-            'date_of_birth.date'      => 'Format tanggal lahir tidak valid.',
-            'puskesmas_id.required'   => 'Puskesmas wajib dipilih.',
-            'puskesmas_id.exists'     => 'Puskesmas tidak ditemukan.',
-            'subdistrict_id.required' => 'Kecamatan wajib dipilih.',
-            'subdistrict_id.exists'   => 'Kecamatan tidak ditemukan.',
-            'blood_type.max'          => 'Golongan darah maksimal 3 karakter.',
+            'place_of_birth.required'  => 'Tempat lahir wajib diisi.',
+            'date_of_birth.required'   => 'Tanggal lahir wajib diisi.',
+            'treatment_start_date.required' => 'Tanggal mulai pengobatan wajib diisi.',
+            'treatment_start_date.date'     => 'Format tanggal mulai pengobatan tidak valid.',
+            'treatment_start_date.before_or_equal' => 'Tanggal mulai pengobatan tidak boleh di masa depan.',
+            'puskesmas_id.required'    => 'Puskesmas wajib dipilih.',
+            'puskesmas_id.exists'      => 'Puskesmas tidak ditemukan.',
         ]);
 
-        // 3. Jika user belum ada, buat user baru
+        // 3. Verifikasi Wilayah Wewenang untuk Kader
+        if ($user->user_type_id == 3 && $user->officer && $user->officer->isKader()) {
+            // Jangan mempercayai puskesmas_id dari client; gunakan puskesmas milik officer
+            $validated['puskesmas_id'] = $user->officer->puskesmas_id;
+
+            $policy = app(PatientPolicy::class);
+            $hasAuthority = $policy->canAssignTerritory(
+                $user,
+                $validated['village_id'] ?? null,
+                $validated['rw'] ?? null,
+                $validated['rt'] ?? null,
+                $validated['puskesmas_id']
+            );
+
+            if (!$hasAuthority) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang menggunakan wilayah tersebut.'
+                ], 403);
+            }
+        }
+
+        // 4. Jika user akun pasien belum ada, buat user baru
         if (!$existingUser) {
-            $baseUsername = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'])[0]);
-            $username = $baseUsername;
+            $baseUsername = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'] ?? $validated['phone'])[0]);
+            $username = $baseUsername ?: 'user';
             $counter = 1;
 
-            // Hindari duplikasi username
             while (User::where('username', $username)->exists()) {
                 $username = $baseUsername . $counter++;
             }
 
             $existingUser = new User([
                 'username' => $username,
-                'password' => Hash::make($username), // Password default = username
+                'password' => Hash::make($username),
             ]);
         }
 
-        // 4. Simpan atau perbarui data user
+        // 5. Simpan data user
         $existingUser->fill([
             'name'           => $validated['name'],
-            'email'          => $validated['email'],
+            'email'          => $validated['email'] ?? null,
             'phone'          => $validated['phone'],
             'gender'         => $validated['gender'],
             'place_of_birth' => $validated['place_of_birth'],
@@ -231,92 +260,112 @@ class PatientController extends Controller
             'user_type_id'   => 2, // 2 = Pasien
             'is_active'      => true,
         ]);
-
         $existingUser->save();
 
-        // 5. Jika pasien belum ada, buat data pasien baru
+        // 6. Jika pasien belum ada, buat data pasien baru
         if (!$existingPatient) {
             $existingPatient = new Patient([
                 'user_id' => $existingUser->id,
             ]);
         }
 
-        // 6. Simpan atau perbarui data pasien
+        // Sinkronisasi subdistrict_id jika village_id diberikan
+        $subdistrictId = $validated['subdistrict_id'] ?? null;
+        if (!empty($validated['village_id'])) {
+            $village = Village::find($validated['village_id']);
+            if ($village && $village->subdistrict_id) {
+                $subdistrictId = $village->subdistrict_id;
+            }
+        }
+
+        // 7. Simpan atau perbarui data pasien
         $existingPatient->fill([
-            'nik'             => $validated['nik'],
+            'nik'             => $validated['nik'] ?? null,
             'address'         => $validated['address'] ?? null,
+            'subdistrict_id'  => $subdistrictId,
+            'village_id'      => $validated['village_id'] ?? null,
+            'rw'              => $validated['rw'] ?? null,
+            'rt'              => $validated['rt'] ?? null,
             'occupation'      => $validated['occupation'] ?? null,
             'height'          => $validated['height'] ?? null,
             'weight'          => $validated['weight'] ?? null,
             'blood_type'      => $validated['blood_type'] ?? null,
             'diagnosis_date'  => $validated['diagnosis_date'] ?? null,
-            'subdistrict_id'  => $validated['subdistrict_id'],
+            'treatment_start_date' => array_key_exists('treatment_start_date', $validated) ? $validated['treatment_start_date'] : ($existingPatient?->treatment_start_date ?? null),
             'puskesmas_id'    => $validated['puskesmas_id'],
         ]);
         $existingPatient->save();
 
-        // 7. Tentukan pesan respons
-        $message = $request->patient_id
+        $message = $isUpdate
             ? 'Data pasien berhasil diperbarui.'
             : 'Data pasien baru berhasil ditambahkan.';
 
-        // 8. Kembalikan respons JSON
         return response()->json([
             'message' => $message,
-            'data'    => $existingPatient->load('user'),
-        ]);
+            'data'    => $existingPatient->load(['user', 'village', 'subdistrict', 'puskesmas']),
+        ], $isUpdate ? 200 : 201);
     }
 
     public function show($id)
     {
+        $user = Auth::user();
+
         // Ambil data pasien berdasarkan ID beserta relasi terkait
         $patient = Patient::with([
             'user',
             'puskesmas',
+            'village',
             'subdistrict.district.province',
             'treatments' => function ($query) {
-                $query->orderByDesc('start_date') // Urutkan treatment dari terbaru
+                $query->orderByDesc('start_date')
                     ->with([
                         'visits' => function ($q) {
-                            $q->orderByDesc('visit_date'); // Urutkan visit dari terbaru
+                            $q->orderByDesc('visit_date');
                         }
                     ]);
             }
         ])->find($id);
 
-        // Jika data pasien tidak ditemukan
         if (!$patient) {
             return response()->json([
                 'message' => 'Data pasien tidak ditemukan.'
             ], 404);
         }
 
-        // Ambil nama wilayah berjenjang
+        // Proteksi IDOR: Cek otorisasi terpusat
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
+
+        $villageName     = optional($patient->village)->name;
         $subdistrictName = optional($patient->subdistrict)->name;
         $districtName    = optional($patient->subdistrict?->district)->name;
         $provinceName    = optional($patient->subdistrict?->district?->province)->name;
 
-        // Susun data lengkap pasien dalam format array
         $patientData = [
-            // Informasi dasar pasien
             'id'             => $patient->id,
             'user_id'        => $patient->user_id,
             'nik'            => $patient->nik,
             'address'        => $patient->address,
             'puskesmas_id'   => $patient->puskesmas_id,
             'subdistrict_id' => $patient->subdistrict_id,
+            'village_id'     => $patient->village_id,
+            'village_name'   => $villageName,
+            'rw'             => $patient->rw,
+            'rt'             => $patient->rt,
             'occupation'     => $patient->occupation,
             'height'         => $patient->height,
             'weight'         => $patient->weight,
             'blood_type'     => $patient->blood_type,
             'diagnosis_date' => $patient->diagnosis_date,
+            'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
 
-            // Alamat lengkap (jika tersedia)
             'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                 ? "$subdistrictName, $districtName, $provinceName"
                 : null,
 
-            // Informasi user
             'name'           => $patient->user->name,
             'email'          => $patient->user->email,
             'phone'          => $patient->user->phone,
@@ -324,21 +373,19 @@ class PatientController extends Controller
             'place_of_birth' => $patient->user->place_of_birth,
             'date_of_birth'  => $patient->user->date_of_birth,
 
-            // Nama puskesmas
             'puskesmas'      => optional($patient->puskesmas)->name,
 
-            // Daftar seluruh treatment dan seluruh visit-nya
             'treatments'     => $patient->treatments->map(function ($treatment) {
                 return [
                     'id'                => $treatment->id,
                     'treatment_type_id' => $treatment->treatment_type_id,
                     'treatment_status'  => $treatment->treatment_status,
                     'diagnosis_date'    => $treatment->diagnosis_date,
-                    'medication_time'    => $treatment->medication_time,
                     'start_date'        => $treatment->start_date,
                     'end_date'          => $treatment->end_date,
+                    'treatment_days'    => $treatment->treatment_days,
+                    'medication_time'   => $treatment->medication_time,
 
-                    // Kumpulan kunjungan dalam treatment ini
                     'visits' => $treatment->visits->map(function ($visit) {
                         return [
                             'id'           => $visit->id,
@@ -348,16 +395,11 @@ class PatientController extends Controller
                             'notes'        => $visit->notes,
                         ];
                     }),
-
                     'prescription'     => $treatment->prescription ? json_decode($treatment->prescription, true) : null,
-
-
                 ];
             }),
-
         ];
 
-        // Kembalikan data dalam bentuk response JSON
         return response()->json([
             'message' => 'Detail data pasien berhasil diambil.',
             'data'    => $patientData
@@ -366,7 +408,7 @@ class PatientController extends Controller
 
     public function destroy($id)
     {
-        // Cari data pasien berdasarkan ID
+        $user = Auth::user();
         $patient = Patient::with('user')->find($id);
 
         if (!$patient) {
@@ -375,22 +417,26 @@ class PatientController extends Controller
             ], 404);
         }
 
-        // Ambil user terkait
-        $user = $patient->user;
+        // Proteksi IDOR: Cek otorisasi terpusat
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang menghapus pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
 
-        // Hapus gambar jika ada
-        if ($user && $user->photo) {
-            $filePath = 'images/' . $user->photo;
+        $patientUser = $patient->user;
+
+        if ($patientUser && $patientUser->photo) {
+            $filePath = 'images/' . $patientUser->photo;
             if (Storage::disk('public')->exists($filePath)) {
                 Storage::disk('public')->delete($filePath);
             }
         }
 
-        // Hapus user (otomatis hapus pasien jika ada foreign key cascade)
-        if ($user) {
-            $user->delete();
+        if ($patientUser) {
+            $patientUser->delete();
         } else {
-            $patient->delete(); // fallback jika user tidak ditemukan
+            $patient->delete();
         }
 
         return response()->json([
@@ -400,23 +446,27 @@ class PatientController extends Controller
 
     public function treatmentHistory($id)
     {
-        // Cari data pasien
+        $user = Auth::user();
         $patient = Patient::find($id);
 
-        // Jika pasien tidak ditemukan
         if (!$patient) {
             return response()->json([
                 'message' => 'Data pasien tidak ditemukan.'
             ], 404);
         }
 
-        // Ambil semua data pengobatan pasien, urutkan dari terbaru
+        // Proteksi IDOR: Cek otorisasi
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses riwayat pengobatan pasien ini.'
+            ], 403);
+        }
+
         $treatments = PatientTreatment::with('treatmentType')
             ->where('patient_id', $id)
             ->orderByDesc('start_date')
             ->get();
 
-        // Format data pengobatan
         $treatmentHistory = $treatments->map(function ($treatment) {
             return [
                 'treatment_type'   => optional($treatment->treatmentType)->treatment_type,
@@ -429,7 +479,6 @@ class PatientController extends Controller
             ];
         });
 
-        // Kembalikan data dalam format JSON
         return response()->json([
             'message' => 'Riwayat pengobatan berhasil diambil.',
             'data'    => $treatmentHistory
@@ -438,11 +487,9 @@ class PatientController extends Controller
 
     public function treatmentAdherence()
     {
-        $user = Auth::user(); // Ambil user yang sedang login
+        $user = Auth::user();
 
-        // ======================
-        // JIKA LOGIN SEBAGAI PASIEN
-        // ======================
+        // 1. Pasien mandiri
         if ($user->user_type_id == 2) {
             $patient = Patient::where('user_id', $user->id)->first();
 
@@ -488,40 +535,15 @@ class PatientController extends Controller
             ]);
         }
 
-        // ======================
-        // JIKA LOGIN SEBAGAI ADMIN / PETUGAS
-        // ======================
-        $patientsQuery = Patient::query(); // Query awal
-
-        if ($user->user_type_id == 3) {
-            // Jika user adalah petugas, ambil info wilayahnya
-            $officer = Officer::where('user_id', $user->id)->first();
-
-            if (!$officer) {
-                return response()->json([
-                    'message' => 'Data petugas tidak ditemukan.'
-                ], 404);
-            }
-
-            // Filter berdasarkan wilayah kerja
-            if (in_array($officer->officer_type_id, [3, 4])) {
-                $patientsQuery->where('puskesmas_id', $officer->puskesmas_id);
-            } else {
-                $patientsQuery->whereHas('puskesmas', function ($q) use ($officer) {
-                    $q->where('district_id', $officer->district_id);
-                });
-            }
-        }
-
-        // Ambil semua ID pasien yang sesuai dengan filter
+        // 2. Admin & Petugas (Scoped to accessible patients)
+        $patientsQuery = Patient::accessibleBy($user);
         $patientIds = $patientsQuery->pluck('id');
 
-        // Kumpulkan pengobatan terakhir dari setiap pasien
         $latestTreatments = collect();
 
         foreach ($patientIds as $pid) {
             $treatment = PatientTreatment::where('patient_id', $pid)
-                ->orderByDesc('id') // ambil yang terakhir
+                ->orderByDesc('id')
                 ->withCount([
                     'medicationRecords as verified_count' => fn($q) =>
                     $q->where('is_verified', true)
@@ -545,7 +567,6 @@ class PatientController extends Controller
             ]);
         }
 
-        // Hitung total harapan & verifikasi
         $totalExpected = $latestTreatments->sum('treatment_days');
         $totalVerified = $latestTreatments->sum('verified_count');
         $percentage = $totalExpected > 0 ? round(($totalVerified / $totalExpected) * 100, 2) : 0;

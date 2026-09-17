@@ -30,9 +30,101 @@ class Patient extends Model
         return $this->belongsTo(Puskesmas::class, 'puskesmas_id');
     }
 
+    public function village()
+    {
+        return $this->belongsTo(Village::class, 'village_id');
+    }
+
     public function treatments()
     {
         return $this->hasMany(PatientTreatment::class, 'patient_id');
+    }
+
+    /**
+     * Centralized patient access scope for all roles.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param \App\Models\User $user
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeAccessibleBy($query, User $user)
+    {
+        // 1. Administrator (user_type_id = 1): Full access to all patients
+        if ($user->user_type_id == 1) {
+            return $query;
+        }
+
+        // 2. Pasien (user_type_id = 2): Only self
+        if ($user->user_type_id == 2) {
+            return $query->where('user_id', $user->id);
+        }
+
+        // 3. Petugas (user_type_id = 3)
+        if ($user->user_type_id == 3) {
+            $officer = $user->officer;
+            if (!$officer) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            // Dinkes Provinsi (officer_type_id = 1)
+            if ($officer->officer_type_id == 1) {
+                if ($officer->district_id) {
+                    $district = District::find($officer->district_id);
+                    if ($district && $district->province_id) {
+                        return $query->whereHas('subdistrict.district', function ($q) use ($district) {
+                            $q->where('province_id', $district->province_id);
+                        });
+                    }
+                }
+                return $query;
+            }
+
+            // Dinkes Kab/Kota (officer_type_id = 2)
+            if ($officer->officer_type_id == 2) {
+                return $query->whereHas('subdistrict', function ($q) use ($officer) {
+                    $q->where('district_id', $officer->district_id);
+                });
+            }
+
+            // PJTB Puskesmas (officer_type_id = 3): All patients in the Puskesmas
+            if ($officer->officer_type_id == 3) {
+                return $query->where('puskesmas_id', $officer->puskesmas_id);
+            }
+
+            // Kader Puskesmas (officer_type_id = 4): Strictly scoped to assigned kader_areas
+            if ($officer->officer_type_id == 4) {
+                $areas = $officer->kaderAreas;
+                if ($areas->isEmpty()) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('puskesmas_id', $officer->puskesmas_id)
+                    ->where(function ($q) use ($areas) {
+                        foreach ($areas as $area) {
+                            $q->orWhere(function ($sub) use ($area) {
+                                $sub->where('village_id', $area->village_id)
+                                    ->where('rw', $area->rw);
+                                if (!is_null($area->rt) && $area->rt !== '') {
+                                    $sub->where('rt', $area->rt);
+                                }
+                            });
+                        }
+                    });
+            }
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * Check whether this patient can be accessed by the given user.
+     *
+     * @param \App\Models\User $user
+     * @return bool
+     */
+    public function isAccessibleBy(User $user): bool
+    {
+        return self::where('id', $this->id)->accessibleBy($user)->exists();
     }
 
     public static function getPatientWithUser()

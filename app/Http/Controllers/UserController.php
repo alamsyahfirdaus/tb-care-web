@@ -12,6 +12,9 @@ use App\Models\HealthOffice;
 use App\Models\Patient;
 use App\Models\Subdistrict;
 use App\Models\Coordinator;
+use App\Models\Officer;
+use App\Models\KaderArea;
+use App\Models\Village;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -142,6 +145,25 @@ class UserController extends Controller
             $data['user_detail'] = $this->listUserDetail($userDetail);
         }
 
+        $officer = Officer::with(['kaderAreas.village', 'kaderAreas.subdistrict', 'puskesmas'])->where('user_id', $user->id)->first();
+        $data['officer'] = $officer;
+        if ($officer && $officer->isKader()) {
+            $data['kader_areas'] = $officer->kaderAreas;
+            $data['subdistricts'] = Subdistrict::orderBy('name', 'asc')->get();
+
+            $currentUser = Auth::user();
+            $canManage = false;
+            if ($currentUser && $currentUser->user_type_id == 1) {
+                $canManage = true;
+            } elseif ($currentUser && $currentUser->user_type_id == 3) {
+                $pjtb = Officer::where('user_id', $currentUser->id)->first();
+                if ($pjtb && $pjtb->officer_type_id == 3 && $pjtb->puskesmas_id == $officer->puskesmas_id) {
+                    $canManage = true;
+                }
+            }
+            $data['can_manage_kader_area'] = $canManage;
+        }
+
         return view('user-detail', $data);
     }
 
@@ -216,6 +238,7 @@ class UserController extends Controller
                 'Berat Badan' => $userDetail->weight ? $userDetail->weight . ' Kg' : '-',
                 'Golongan Darah' => $userDetail->blood_type ?? '-',
                 // 'Tanggal Diagnosis' => isset($userDetail->diagnosis_date) ? \App\Helpers\DateHelper::convertDate($userDetail->diagnosis_date) : '-',
+                'Tanggal Mulai Pengobatan' => !empty($userDetail->treatment_start_date) ? \Carbon\Carbon::parse($userDetail->treatment_start_date)->translatedFormat('d F Y') : 'Tanggal mulai pengobatan belum dicatat.',
                 'Puskesmas' => $userDetail->puskesmas_id ? Puskesmas::getPuskesmasById($userDetail->puskesmas_id)['name'] : '-',
             ];
         }

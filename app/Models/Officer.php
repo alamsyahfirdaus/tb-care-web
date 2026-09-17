@@ -28,4 +28,14 @@ class Officer extends Model
     {
         return $this->belongsTo(District::class, 'district_id');
     }
+
+    public function kaderAreas()
+    {
+        return $this->hasMany(KaderArea::class, 'officer_id');
+    }
+
+    public function isKader()
+    {
+        return (int)$this->officer_type_id === 4;
+    }
 }

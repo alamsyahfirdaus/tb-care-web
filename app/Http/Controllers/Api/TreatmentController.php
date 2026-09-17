@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MedicationRecord;
+use App\Models\Patient;
 use App\Models\PatientTreatment;
 use App\Models\TreatmentType;
 use App\Models\TreatmentVisit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -42,7 +44,6 @@ class TreatmentController extends Controller
             'treatment_status.in'         => 'Status pengobatan harus salah satu dari: Berjalan, Selesai, Gagal, Meninggal.',
         ]);
 
-        // Jika validasi gagal, kembalikan response error
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validasi gagal.',
@@ -50,19 +51,39 @@ class TreatmentController extends Controller
             ], 422);
         }
 
-        // 2. Tentukan apakah ini proses update atau create
-        $isUpdate = $request->filled('id');
-        $treatment = $isUpdate
-            ? PatientTreatment::findOrFail($request->id)
-            : new PatientTreatment();
+        $user = Auth::user();
 
-        // 3. Tetapkan tanggal diagnosis dan tanggal mulai (default ke hari ini jika tidak diisi)
+        // 2. Proteksi Otorisasi Wilayah Pasien
+        $patient = Patient::find($request->patient_id);
+        if (!$patient) {
+            return response()->json(['message' => 'Pasien tidak ditemukan dalam sistem.'], 404);
+        }
+
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang membuat pengobatan untuk pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
+
+        // 3. Tentukan apakah ini proses update atau create
+        $isUpdate = $request->filled('id');
+        if ($isUpdate) {
+            $treatment = PatientTreatment::with('patient')->find($request->id);
+            if (!$treatment) {
+                return response()->json(['message' => 'Data pengobatan tidak ditemukan.'], 404);
+            }
+            if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
+                return response()->json(['message' => 'Anda tidak memiliki wewenang mengubah pengobatan pasien ini.'], 403);
+            }
+        } else {
+            $treatment = new PatientTreatment();
+        }
+
+        // 4. Tetapkan tanggal diagnosis dan tanggal mulai
         $diagnosisDate = $request->diagnosis_date ?? now()->toDateString();
         $startDate     = $request->start_date ?? $diagnosisDate;
 
-        // 4. Hitung tanggal selesai pengobatan hanya jika:
-        // - sedang create
-        // - atau terjadi perubahan treatment_type_id atau start_date
+        // 5. Hitung tanggal selesai pengobatan
         $endDate = null;
         if (!$isUpdate || $request->hasAny(['treatment_type_id', 'start_date'])) {
             $treatmentType = TreatmentType::find($request->treatment_type_id);
@@ -71,30 +92,28 @@ class TreatmentController extends Controller
                 $startDateCarbon = Carbon::parse($startDate);
                 $unit = strtolower($treatmentType->duration_unit);
 
-                // Hitung tanggal selesai berdasarkan unit durasi
                 $endDate = match ($unit) {
-                    'day'   => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration),
-                    'week'  => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration),
-                    'month' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration),
-                    'year'  => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration),
-                    default => null,
+                    'day', 'days'     => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration),
+                    'week', 'weeks'   => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration),
+                    'month', 'months' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration),
+                    'year', 'years'   => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration),
+                    default           => null,
                 };
             }
         }
 
-        // 5. Simpan data ke dalam database
+        // 6. Simpan data ke dalam database
         $treatment->patient_id        = $request->patient_id;
         $treatment->treatment_type_id = $request->treatment_type_id;
         $treatment->diagnosis_date    = $diagnosisDate;
         $treatment->start_date        = $startDate;
         $treatment->end_date          = $endDate;
-        $treatment->treatment_days    = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate));
+        $treatment->treatment_days    = $endDate ? Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) : 0;
         $treatment->medication_time   = $request->medication_time;
         $treatment->prescription      = $request->prescription ? json_encode($request->prescription) : null;
         $treatment->treatment_status  = $request->treatment_status;
         $treatment->save();
 
-        // 6. Response sukses
         return response()->json([
             'message' => $isUpdate
                 ? 'Data pengobatan berhasil diperbarui.'
@@ -103,22 +122,48 @@ class TreatmentController extends Controller
         ], $isUpdate ? 200 : 201);
     }
 
-    public function destroy($id)
+    public function show($id)
     {
-        // Cari data pengobatan berdasarkan ID
-        $treatment = PatientTreatment::find($id);
+        $treatment = PatientTreatment::with(['patient.user', 'treatmentType', 'visits'])->find($id);
 
-        // Jika data tidak ditemukan, kembalikan response error
         if (!$treatment) {
             return response()->json([
                 'message' => 'Data pengobatan tidak ditemukan.'
             ], 404);
         }
 
-        // Hapus data pengobatan
+        $user = Auth::user();
+        if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses pengobatan pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
+
+        return response()->json([
+            'message' => 'Detail data pengobatan berhasil diambil.',
+            'data'    => $treatment
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $treatment = PatientTreatment::with('patient')->find($id);
+
+        if (!$treatment) {
+            return response()->json([
+                'message' => 'Data pengobatan tidak ditemukan.'
+            ], 404);
+        }
+
+        $user = Auth::user();
+        if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang menghapus pengobatan pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
+
         $treatment->delete();
 
-        // Kembalikan response sukses
         return response()->json([
             'message' => 'Data pengobatan berhasil dihapus.'
         ], 200);
@@ -134,7 +179,6 @@ class TreatmentController extends Controller
 
     public function updateTreatmentStatus(Request $request)
     {
-        // Validasi masukan
         $validator = Validator::make($request->all(), [
             'id'               => 'required|exists:patient_treatments,id',
             'treatment_status' => 'required|in:Berjalan,Selesai,Gagal,Meninggal',
@@ -145,7 +189,6 @@ class TreatmentController extends Controller
             'treatment_status.in'       => 'Status pengobatan harus salah satu dari: Berjalan, Selesai, Gagal, Meninggal.',
         ]);
 
-        // Jika validasi gagal
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validasi gagal.',
@@ -153,8 +196,15 @@ class TreatmentController extends Controller
             ], 422);
         }
 
-        // Ambil dan update status pengobatan
-        $treatment = PatientTreatment::findOrFail($request->id);
+        $treatment = PatientTreatment::with('patient')->findOrFail($request->id);
+
+        $user = Auth::user();
+        if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengubah status pengobatan pasien ini.'
+            ], 403);
+        }
+
         $treatment->treatment_status = $request->treatment_status;
         $treatment->save();
 
@@ -166,7 +216,6 @@ class TreatmentController extends Controller
 
     public function submitMedicationProof(Request $request)
     {
-        // 1. Validasi input dari pengguna
         $validator = Validator::make($request->all(), [
             'patient_treatment_id' => 'required|exists:patient_treatments,id',
             'photo'                => 'required|image|max:2048',
@@ -180,7 +229,6 @@ class TreatmentController extends Controller
             'notes.string'                  => 'Catatan harus berupa teks.',
         ]);
 
-        // 2. Jika validasi gagal
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validasi gagal.',
@@ -188,49 +236,31 @@ class TreatmentController extends Controller
             ], 422);
         }
 
-        // 3. Ambil data pengobatan
-        $treatment = PatientTreatment::findOrFail(
-            $request->patient_treatment_id
-        );
+        $treatment = PatientTreatment::with('patient')->findOrFail($request->patient_treatment_id);
 
-        // 4. Cek keterlambatan minum obat dengan toleransi 1 jam
+        $user = Auth::user();
+        if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengirim bukti minum obat untuk pasien ini.'
+            ], 403);
+        }
+
         $now = Carbon::now();
-
-        // Waktu minum obat yang dijadwalkan hari ini
-        $medicationTime = Carbon::today()->setTimeFromTimeString(
-            $treatment->medication_time
-        );
-
-        // Batas toleransi keterlambatan 1 jam
+        $medicationTime = Carbon::today()->setTimeFromTimeString($treatment->medication_time);
         $lateLimit = $medicationTime->copy()->addHour();
-
-        // Dianggap terlambat jika melewati batas toleransi
         $isLate = $now->greaterThan($lateLimit);
 
-        // 5. Upload foto ke public/images
         $fileName = null;
-
         if ($request->hasFile('photo')) {
-
             $destinationPath = public_path('images');
-
-            // Jika folder images belum ada, buat otomatis
             if (!is_dir($destinationPath)) {
                 mkdir($destinationPath, 0755, true);
             }
 
-            // Nama file aman & unik
-            $fileName = Str::random(20) . '.' .
-                $request->file('photo')->getClientOriginalExtension();
-
-            // Pindahkan file ke public/images
-            $request->file('photo')->move(
-                $destinationPath,
-                $fileName
-            );
+            $fileName = Str::random(20) . '.' . $request->file('photo')->getClientOriginalExtension();
+            $request->file('photo')->move($destinationPath, $fileName);
         }
 
-        // 6. Simpan data ke database
         $record = MedicationRecord::create([
             'patient_treatment_id' => $request->patient_treatment_id,
             'photo'                => $fileName,
@@ -239,70 +269,28 @@ class TreatmentController extends Controller
             'notes'                => $request->notes,
         ]);
 
-        // 7. Response sukses
         return response()->json([
             'message' => 'Bukti minum obat berhasil disimpan.',
             'data'    => $record
         ], 201);
     }
 
-    // public function submitMedicationProof(Request $request)
-    // {
-    //     // 1. Validasi input dari pengguna
-    //     $validator = Validator::make($request->all(), [
-    //         'patient_treatment_id' => 'required|exists:patient_treatments,id',
-    //         'photo'                => 'required|image|max:2048',
-    //         'notes'                => 'nullable|string',
-    //     ], [
-    //         'patient_treatment_id.required' => 'ID pengobatan wajib diisi.',
-    //         'patient_treatment_id.exists'   => 'Data pengobatan tidak ditemukan.',
-    //         'photo.required'                => 'Foto bukti minum obat wajib diunggah.',
-    //         'photo.image'                   => 'File bukti harus berupa gambar.',
-    //         'photo.max'                     => 'Ukuran gambar tidak boleh melebihi 2MB.',
-    //         'notes.string'                  => 'Catatan harus berupa teks.',
-    //     ]);
-
-    //     // 2. Jika validasi gagal, kembalikan respons error
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'message' => 'Validasi gagal.',
-    //             'errors'  => $validator->errors()
-    //         ], 422);
-    //     }
-
-    //     // 3. Ambil data pengobatan terkait
-    //     $treatment = PatientTreatment::findOrFail($request->patient_treatment_id);
-
-    //     // 4. Bandingkan waktu saat ini dengan waktu ideal minum obat (format HH:ii)
-    //     $expectedTime = Carbon::now()->format('H:i');
-    //     $isLate = $expectedTime > $treatment->medication_time;
-
-    //     // 5. Simpan foto bukti minum obat
-    //     $fileName = null;
-    //     if ($request->hasFile('photo')) {
-    //         $fileName = Str::random(20) . '.' . $request->file('photo')->getClientOriginalExtension();
-    //         $request->file('photo')->storeAs('images', $fileName, 'public');
-    //     }
-
-    //     // 6. Simpan data ke dalam tabel medication_records
-    //     $record = MedicationRecord::create([
-    //         'patient_treatment_id' => $request->patient_treatment_id,
-    //         'photo'                => $fileName,
-    //         'is_verified'          => false,
-    //         'late'                 => $isLate,
-    //         'notes'                => $request->notes,
-    //     ]);
-
-    //     // 7. Kembalikan respons sukses
-    //     return response()->json([
-    //         'message' => 'Bukti minum obat berhasil disimpan.',
-    //         'data'    => $record
-    //     ], 201);
-    // }
-
     public function medicationHistory($patientId)
     {
-        // 1. Validasi keberadaan pengobatan pasien
+        $patient = Patient::find($patientId);
+        if (!$patient) {
+            return response()->json([
+                'message' => 'Data pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        $user = Auth::user();
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses riwayat pengobatan pasien ini.'
+            ], 403);
+        }
+
         $treatments = PatientTreatment::where('patient_id', $patientId)->pluck('id');
 
         if ($treatments->isEmpty()) {
@@ -311,19 +299,15 @@ class TreatmentController extends Controller
             ], 404);
         }
 
-        // 2. Ambil seluruh catatan minum obat berdasarkan treatment pasien
         $records = MedicationRecord::whereIn('patient_treatment_id', $treatments)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. Mapping data (photo_url SUDAH DIPERBAIKI)
         $history = $records->map(function ($record) {
             return [
                 'id'                   => $record->id,
                 'patient_treatment_id' => $record->patient_treatment_id,
-                'photo'                => $record->photo
-                    ? $record->photo
-                    : null,
+                'photo'                => $record->photo ?: null,
                 'is_verified'          => $record->is_verified,
                 'late'                 => $record->late,
                 'notes'                => $record->notes,
@@ -332,58 +316,25 @@ class TreatmentController extends Controller
             ];
         });
 
-        // 4. Response sukses
         return response()->json([
             'message' => 'Riwayat minum obat pasien berhasil diambil.',
             'data'    => $history
         ]);
     }
 
-
-    // public function medicationHistory($treatmentId)
-    // {
-    //     // 1. Validasi keberadaan data pengobatan
-    //     $treatment = PatientTreatment::find($treatmentId);
-
-    //     if (!$treatment) {
-    //         return response()->json([
-    //             'message' => 'Data pengobatan tidak ditemukan.'
-    //         ], 404);
-    //     }
-
-    //     // 2. Ambil semua catatan minum obat berdasarkan treatment_id
-    //     $records = MedicationRecord::where('patient_treatment_id', $treatmentId)
-    //         ->orderBy('created_at', 'desc')
-    //         ->get();
-
-    //     // 3. Mapping data untuk respons agar lebih rapi dan jelas
-    //     $history = $records->map(function ($record) {
-    //         return [
-    //             'id'                   => $record->id,
-    //             'photo_url'           => $record->photo
-    //                 ? asset('storage/images/' . $record->photo)
-    //                 : null,
-    //             'is_verified'         => $record->is_verified,
-    //             'late'                => $record->late,
-    //             'notes'               => $record->notes,
-    //             'submitted_at'        => $record->created_at->format('Y-m-d H:i:s'),
-    //             'submitted_relative'  => $record->created_at->diffForHumans(),
-    //         ];
-    //     });
-
-    //     // 4. Kirim response JSON
-    //     return response()->json([
-    //         'message' => 'Riwayat minum obat berhasil diambil.',
-    //         'data'    => $history
-    //     ]);
-    // }
-
     public function getVisitsByTreatment($treatmentId)
     {
-        $treatment = PatientTreatment::find($treatmentId);
+        $treatment = PatientTreatment::with('patient')->find($treatmentId);
 
         if (!$treatment) {
             return response()->json(['message' => 'Data pengobatan tidak ditemukan.'], 404);
+        }
+
+        $user = Auth::user();
+        if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses data kunjungan pengobatan ini.'
+            ], 403);
         }
 
         $visits = TreatmentVisit::where('patient_treatment_id', $treatmentId)
@@ -398,7 +349,6 @@ class TreatmentController extends Controller
 
     public function verifyMedicationProof(Request $request)
     {
-        // 1. Validasi input dari request
         $validator = Validator::make($request->all(), [
             'id'                   => 'required|exists:medication_records,id',
             'patient_treatment_id' => 'nullable|exists:patient_treatments,id',
@@ -411,7 +361,6 @@ class TreatmentController extends Controller
             'notes.max'                    => 'Catatan maksimal 500 karakter.',
         ]);
 
-        // 2. Jika validasi gagal, kembalikan respons error
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validasi gagal.',
@@ -419,32 +368,34 @@ class TreatmentController extends Controller
             ], 422);
         }
 
-        // 3. Ambil data medication record berdasarkan ID dan patient_treatment_id (jika disertakan)
-        $record = MedicationRecord::where('id', $request->id)
+        $record = MedicationRecord::with('patientTreatment.patient')
+            ->where('id', $request->id)
             ->when($request->filled('patient_treatment_id'), function ($query) use ($request) {
                 $query->where('patient_treatment_id', $request->patient_treatment_id);
             })
             ->first();
 
-        // Jika data tidak ditemukan, kembalikan respons error
         if (!$record) {
             return response()->json([
                 'message' => 'Data bukti minum obat tidak ditemukan.'
             ], 404);
         }
 
-        // 4. Perbarui status verifikasi (set ke true jika sebelumnya false)
+        $user = Auth::user();
+        $patient = $record->patientTreatment?->patient;
+        if ($patient && !$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang memverifikasi bukti minum obat pasien ini.'
+            ], 403);
+        }
+
         if (!$record->is_verified) {
             $record->is_verified = true;
         }
 
-        // Perbarui catatan jika disertakan
         $record->notes = $request->notes ?? $record->notes;
-
-        // Simpan perubahan
         $record->save();
 
-        // 5. Kembalikan respons sukses
         return response()->json([
             'message' => 'Bukti minum obat berhasil diverifikasi.',
             'data'    => [

@@ -183,9 +183,9 @@
                         @if (session('role') == 1)
 
                             <li
-                                class="nav-item {{ in_array(Request::segment(1), ['trtypes', 'pkm']) ? 'menu-open' : '' }}">
+                                class="nav-item {{ in_array(Request::segment(1), ['trtypes', 'pkm', 'villages', 'village']) ? 'menu-open' : '' }}">
                                 <a href="javascript:void(0)"
-                                    class="nav-link {{ in_array(Request::segment(1), ['trtypes', 'pkm']) ? 'active' : '' }}">
+                                    class="nav-link {{ in_array(Request::segment(1), ['trtypes', 'pkm', 'villages', 'village']) ? 'active' : '' }}">
                                     <i class="nav-icon fas fa-folder-open"></i>
                                     <p>Data Induk<i class="right fas fa-angle-left"></i></p>
                                 </a>
@@ -195,6 +195,13 @@
                                             class="nav-link {{ Request::segment(1) == 'pkm' ? 'active' : '' }}">
                                             <i class="far fa-circle nav-icon"></i>
                                             <p>Daftar Puskesmas</p>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a href="{{ route('village') }}"
+                                            class="nav-link {{ in_array(Request::segment(1), ['villages', 'village']) ? 'active' : '' }}">
+                                            <i class="far fa-circle nav-icon"></i>
+                                            <p>Desa / Kelurahan</p>
                                         </a>
                                     </li>
                                     <li class="nav-item">

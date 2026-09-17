@@ -90,12 +90,22 @@ class ConsultationController extends Controller
             'attachment.max'       => 'Ukuran lampiran maksimal 2MB.',
         ]);
 
+        $user = Auth::user();
+        if ($user->user_type_id == 3 && $request->filled('recipient_id')) {
+            $targetPatient = Patient::where('user_id', $request->recipient_id)->first();
+            if ($targetPatient && !$targetPatient->isAccessibleBy($user)) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang berkonsultasi dengan pasien di luar wilayah binaan Anda.'
+                ], 403);
+            }
+        }
+
         // Ambil atau buat objek konsultasi
         $consultation = $request->filled('id')
             ? Consultation::findOrFail($request->id)
             : new Consultation();
 
-        $consultation->user_id      = Auth::id();
+        $consultation->user_id      = $user->id;
         $consultation->recipient_id = $request->recipient_id;
         $consultation->title        = $request->title;
         $consultation->message      = $request->message;
@@ -249,7 +259,7 @@ class ConsultationController extends Controller
             ]);
         }
 
-        // Petugas hanya bisa memilih pasien di wilayah kerjanya (Puskesmas atau Kecamatan)
+        // Petugas hanya bisa memilih pasien di wilayah kerjanya
         elseif ($user->user_type_id == 3) {
             $officer = Officer::where('user_id', $user->id)->first();
 
@@ -257,19 +267,8 @@ class ConsultationController extends Controller
                 return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
             }
 
-            $patientsQuery = Patient::with('user');
-
-            if (in_array($officer->officer_type_id, [3, 4])) {
-                // Petugas Puskesmas: ambil pasien dari Puskesmas yang sama
-                $patientsQuery->where('puskesmas_id', $officer->puskesmas_id);
-            } else {
-                // Petugas Kab/Kota: ambil pasien dari kecamatan dalam kabupaten yang sama
-                $patientsQuery->whereHas('subdistrict', function ($q) use ($officer) {
-                    $q->where('district_id', $officer->district_id);
-                });
-            }
-
-            $patients = $patientsQuery->get()->map(function ($patient) {
+            // Centralized scoping menggunakan Patient::accessibleBy
+            $patients = Patient::accessibleBy($user)->with('user')->get()->map(function ($patient) {
                 return [
                     'id'    => $patient->user->id,
                     'name'  => $patient->user->name,

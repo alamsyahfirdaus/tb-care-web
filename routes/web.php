@@ -13,6 +13,8 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PatientTreatmentController;
 use App\Http\Controllers\ScreeningController;
 use App\Http\Controllers\TreatmentTypeController;
+use App\Http\Controllers\VillageController;
+use App\Http\Controllers\KaderAreaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -124,6 +126,21 @@ Route::middleware(['auth'])->group(function () {
             Route::get('{id}/show', [EducationalMaterialController::class, 'show'])->name('material.show');
             Route::match(['post', 'put'], 'save/{id?}', [EducationalMaterialController::class, 'save'])->name('material.save');
             Route::delete('{id}', [EducationalMaterialController::class, 'destroy'])->name('material.delete');
+        });
+
+        // VillageController
+        Route::get('villages', [VillageController::class, 'index'])->name('village');
+        Route::prefix('village')->group(function () {
+            Route::get('{id}/edit', [VillageController::class, 'edit'])->name('village.edit');
+            Route::match(['post', 'put'], 'save/{id?}', [VillageController::class, 'save'])->name('village.save');
+            Route::delete('{id}', [VillageController::class, 'destroy'])->name('village.delete');
+        });
+
+        // KaderAreaController
+        Route::prefix('kader-area')->group(function () {
+            Route::post('save', [KaderAreaController::class, 'store'])->name('kader-area.store');
+            Route::delete('{id}', [KaderAreaController::class, 'destroy'])->name('kader-area.delete');
+            Route::get('villages/{subdistrictId}', [KaderAreaController::class, 'getVillages'])->name('kader-area.villages');
         });
     });
 
