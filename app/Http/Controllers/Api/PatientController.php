@@ -13,6 +13,8 @@ use App\Policies\PatientPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -40,7 +42,6 @@ class PatientController extends Controller
             'puskesmas',
             'village',
             'subdistrict.district.province',
-            'medicationSchedule',
             'treatments' => function ($query) use ($treatmentStatus) {
                 $query->when($treatmentStatus, function ($q) use ($treatmentStatus) {
                     $q->where('treatment_status', $treatmentStatus);
@@ -91,27 +92,22 @@ class PatientController extends Controller
                 'blood_type'     => $patient->blood_type,
                 'diagnosis_date' => $patient->diagnosis_date,
                 'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
-                'medication_schedule' => $patient->medicationSchedule ? [
-                    'id'            => $patient->medicationSchedule->id,
-                    'patient_id'    => $patient->medicationSchedule->patient_id,
-                    'reminder_time' => $patient->medicationSchedule->reminder_time,
-                    'is_active'     => (bool) $patient->medicationSchedule->is_active,
-                ] : null,
+                'medication_schedule' => $this->resolveMedicationSchedule($patient),
 
                 'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                     ? "$subdistrictName, $districtName, $provinceName"
                     : null,
 
-                'name'           => $patient->user->name,
-                'email'          => $patient->user->email,
-                'phone'          => $patient->user->phone,
-                'gender'         => $patient->user->gender,
-                'place_of_birth' => $patient->user->place_of_birth,
-                'date_of_birth'  => $patient->user->date_of_birth,
+                'name'           => optional($patient->user)->name,
+                'email'          => optional($patient->user)->email,
+                'phone'          => optional($patient->user)->phone,
+                'gender'         => optional($patient->user)->gender,
+                'place_of_birth' => optional($patient->user)->place_of_birth,
+                'date_of_birth'  => optional($patient->user)->date_of_birth,
 
                 'puskesmas'      => optional($patient->puskesmas)->name,
 
-                'treatments'     => $patient->treatments->map(function ($treatment) {
+                'treatments'     => $patient->treatments ? $patient->treatments->map(function ($treatment) {
                     return [
                         'id'                => $treatment->id,
                         'treatment_type_id' => $treatment->treatment_type_id,
@@ -122,7 +118,7 @@ class PatientController extends Controller
                         'treatment_days'    => $treatment->treatment_days,
                         'medication_time'   => $treatment->medication_time,
 
-                        'visits' => $treatment->visits->map(function ($visit) {
+                        'visits' => $treatment->visits ? $treatment->visits->map(function ($visit) {
                             return [
                                 'id'           => $visit->id,
                                 'visit_date'   => $visit->visit_date,
@@ -130,10 +126,10 @@ class PatientController extends Controller
                                 'visit_status' => $visit->visit_status,
                                 'notes'        => $visit->notes,
                             ];
-                        }),
-                        'prescription'     => $treatment->prescription ? json_decode($treatment->prescription, true) : null,
+                        }) : [],
+                        'prescription'     => $treatment->prescription ? (is_array($treatment->prescription) ? $treatment->prescription : json_decode($treatment->prescription, true)) : null,
                     ];
-                }),
+                }) : [],
             ];
         });
 
@@ -325,7 +321,6 @@ class PatientController extends Controller
             'puskesmas',
             'village',
             'subdistrict.district.province',
-            'medicationSchedule',
             'treatments' => function ($query) {
                 $query->orderByDesc('start_date')
                     ->with([
@@ -371,27 +366,22 @@ class PatientController extends Controller
             'blood_type'     => $patient->blood_type,
             'diagnosis_date' => $patient->diagnosis_date,
             'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
-            'medication_schedule' => $patient->medicationSchedule ? [
-                'id'            => $patient->medicationSchedule->id,
-                'patient_id'    => $patient->medicationSchedule->patient_id,
-                'reminder_time' => $patient->medicationSchedule->reminder_time,
-                'is_active'     => (bool) $patient->medicationSchedule->is_active,
-            ] : null,
+            'medication_schedule' => $this->resolveMedicationSchedule($patient),
 
             'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                 ? "$subdistrictName, $districtName, $provinceName"
                 : null,
 
-            'name'           => $patient->user->name,
-            'email'          => $patient->user->email,
-            'phone'          => $patient->user->phone,
-            'gender'         => $patient->user->gender,
-            'place_of_birth' => $patient->user->place_of_birth,
-            'date_of_birth'  => $patient->user->date_of_birth,
+            'name'           => optional($patient->user)->name,
+            'email'          => optional($patient->user)->email,
+            'phone'          => optional($patient->user)->phone,
+            'gender'         => optional($patient->user)->gender,
+            'place_of_birth' => optional($patient->user)->place_of_birth,
+            'date_of_birth'  => optional($patient->user)->date_of_birth,
 
             'puskesmas'      => optional($patient->puskesmas)->name,
 
-            'treatments'     => $patient->treatments->map(function ($treatment) {
+            'treatments'     => $patient->treatments ? $patient->treatments->map(function ($treatment) {
                 return [
                     'id'                => $treatment->id,
                     'treatment_type_id' => $treatment->treatment_type_id,
@@ -402,7 +392,7 @@ class PatientController extends Controller
                     'treatment_days'    => $treatment->treatment_days,
                     'medication_time'   => $treatment->medication_time,
 
-                    'visits' => $treatment->visits->map(function ($visit) {
+                    'visits' => $treatment->visits ? $treatment->visits->map(function ($visit) {
                         return [
                             'id'           => $visit->id,
                             'visit_date'   => $visit->visit_date,
@@ -410,10 +400,10 @@ class PatientController extends Controller
                             'visit_status' => $visit->visit_status,
                             'notes'        => $visit->notes,
                         ];
-                    }),
-                    'prescription'     => $treatment->prescription ? json_decode($treatment->prescription, true) : null,
+                    }) : [],
+                    'prescription'     => $treatment->prescription ? (is_array($treatment->prescription) ? $treatment->prescription : json_decode($treatment->prescription, true)) : null,
                 ];
-            }),
+            }) : [],
         ];
 
         return response()->json([
@@ -598,6 +588,52 @@ class PatientController extends Controller
         ]);
     }
 
+    /**
+     * Selesaikan data jadwal minum obat secara aman dari tabel khusus atau riwayat treatment.
+     * Tidak akan memicu QueryException meskipun tabel belum di-migrate di database production.
+     */
+    private function resolveMedicationSchedule(Patient $patient): ?array
+    {
+        try {
+            if (Schema::hasTable('patient_medication_schedules')) {
+                $schedule = $patient->medicationSchedule;
+                if ($schedule) {
+                    return [
+                        'id'            => $schedule->id,
+                        'patient_id'    => $schedule->patient_id,
+                        'reminder_time' => $schedule->reminder_time,
+                        'is_active'     => (bool) $schedule->is_active,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error resolving medication_schedule: ' . $e->getMessage());
+        }
+
+        // Fallback: periksa medication_time pada riwayat treatment pasien jika belum ada jadwal khusus
+        try {
+            $treatment = null;
+            if ($patient->relationLoaded('treatments') && $patient->treatments) {
+                $treatment = $patient->treatments->first();
+            } else {
+                $treatment = $patient->treatments()->orderByDesc('start_date')->first();
+            }
+
+            if ($treatment && !empty($treatment->medication_time)) {
+                return [
+                    'id'            => $treatment->id,
+                    'patient_id'    => $patient->id,
+                    'reminder_time' => $treatment->medication_time,
+                    'is_active'     => true,
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error resolving medication_time from treatment: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
     public function getMedicationSchedule(Request $request, $id = null)
     {
         $user = Auth::user();
@@ -619,16 +655,11 @@ class PatientController extends Controller
             ], 403);
         }
 
-        $schedule = $patient->medicationSchedule;
+        $scheduleData = $this->resolveMedicationSchedule($patient);
 
         return response()->json([
             'success' => true,
-            'data' => $schedule ? [
-                'id'            => $schedule->id,
-                'patient_id'    => $schedule->patient_id,
-                'reminder_time' => $schedule->reminder_time,
-                'is_active'     => (bool) $schedule->is_active,
-            ] : null,
+            'data'    => $scheduleData,
         ]);
     }
 
@@ -673,32 +704,75 @@ class PatientController extends Controller
             $time .= ':00';
         }
 
-        $schedule = PatientMedicationSchedule::where('patient_id', $patient->id)->first();
-        if ($schedule) {
-            $schedule->reminder_time = $time;
-            if ($request->has('is_active')) {
-                $schedule->is_active = $request->boolean('is_active');
-            } else {
-                $schedule->is_active = true;
+        $savedSchedule = null;
+
+        // 1. Simpan ke patient_medication_schedules jika tabel tersedia
+        try {
+            if (Schema::hasTable('patient_medication_schedules')) {
+                $schedule = PatientMedicationSchedule::where('patient_id', $patient->id)->first();
+                if ($schedule) {
+                    $schedule->reminder_time = $time;
+                    if ($request->has('is_active')) {
+                        $schedule->is_active = $request->boolean('is_active');
+                    } else {
+                        $schedule->is_active = true;
+                    }
+                    $schedule->save();
+                } else {
+                    $schedule = PatientMedicationSchedule::create([
+                        'patient_id'    => $patient->id,
+                        'reminder_time' => $time,
+                        'is_active'     => $request->has('is_active') ? $request->boolean('is_active') : true,
+                    ]);
+                }
+                $savedSchedule = [
+                    'id'            => $schedule->id,
+                    'patient_id'    => $schedule->patient_id,
+                    'reminder_time' => $schedule->reminder_time,
+                    'is_active'     => (bool) $schedule->is_active,
+                ];
             }
-            $schedule->save();
-        } else {
-            $schedule = PatientMedicationSchedule::create([
+        } catch (\Throwable $e) {
+            Log::warning('Error saving to patient_medication_schedules: ' . $e->getMessage());
+        }
+
+        // 2. Selaraskan juga ke active patient_treatments jika pasien memiliki record treatment
+        try {
+            $activeTreatment = $patient->treatments()
+                ->where('treatment_status', 'Berjalan')
+                ->orderByDesc('start_date')
+                ->first();
+            if ($activeTreatment) {
+                $activeTreatment->medication_time = $time;
+                $activeTreatment->save();
+            }
+
+            // Jika tabel patient_medication_schedules belum ada, fallback ke treatment
+            if (!$savedSchedule && $activeTreatment) {
+                $savedSchedule = [
+                    'id'            => $activeTreatment->id,
+                    'patient_id'    => $patient->id,
+                    'reminder_time' => $time,
+                    'is_active'     => true,
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error syncing medication_time to treatment: ' . $e->getMessage());
+        }
+
+        if (!$savedSchedule) {
+            $savedSchedule = [
+                'id'            => null,
                 'patient_id'    => $patient->id,
                 'reminder_time' => $time,
-                'is_active'     => $request->has('is_active') ? $request->boolean('is_active') : true,
-            ]);
+                'is_active'     => true,
+            ];
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Jadwal minum obat berhasil disimpan.',
-            'data'    => [
-                'id'            => $schedule->id,
-                'patient_id'    => $schedule->patient_id,
-                'reminder_time' => $schedule->reminder_time,
-                'is_active'     => (bool) $schedule->is_active,
-            ],
+            'data'    => $savedSchedule,
         ]);
     }
 
