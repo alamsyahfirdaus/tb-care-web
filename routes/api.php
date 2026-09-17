@@ -129,6 +129,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}/delete', [PatientController::class, 'destroy']);              // Hapus data pasien
         Route::get('/{id}/treatments', [PatientController::class, 'treatmentHistory']);    // Riwayat pengobatan pasien
         Route::get('/adherence', [PatientController::class, 'treatmentAdherence']);        // Tingkat kepatuhan minum obat
+        Route::get('/{id}/medication-schedule', [PatientController::class, 'getMedicationSchedule']); // Jadwal minum obat
+        Route::match(['post', 'put'], '/{id}/medication-schedule', [PatientController::class, 'saveMedicationSchedule']); // Simpan/update jadwal minum obat
     });
 
     Route::get('/image/{filename}', function ($filename) {

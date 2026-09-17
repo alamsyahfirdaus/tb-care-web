@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Officer;
 use App\Models\Patient;
+use App\Models\PatientMedicationSchedule;
 use App\Models\PatientTreatment;
 use App\Models\User;
 use App\Models\Village;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
@@ -38,6 +40,7 @@ class PatientController extends Controller
             'puskesmas',
             'village',
             'subdistrict.district.province',
+            'medicationSchedule',
             'treatments' => function ($query) use ($treatmentStatus) {
                 $query->when($treatmentStatus, function ($q) use ($treatmentStatus) {
                     $q->where('treatment_status', $treatmentStatus);
@@ -88,6 +91,12 @@ class PatientController extends Controller
                 'blood_type'     => $patient->blood_type,
                 'diagnosis_date' => $patient->diagnosis_date,
                 'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
+                'medication_schedule' => $patient->medicationSchedule ? [
+                    'id'            => $patient->medicationSchedule->id,
+                    'patient_id'    => $patient->medicationSchedule->patient_id,
+                    'reminder_time' => $patient->medicationSchedule->reminder_time,
+                    'is_active'     => (bool) $patient->medicationSchedule->is_active,
+                ] : null,
 
                 'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                     ? "$subdistrictName, $districtName, $provinceName"
@@ -316,6 +325,7 @@ class PatientController extends Controller
             'puskesmas',
             'village',
             'subdistrict.district.province',
+            'medicationSchedule',
             'treatments' => function ($query) {
                 $query->orderByDesc('start_date')
                     ->with([
@@ -361,6 +371,12 @@ class PatientController extends Controller
             'blood_type'     => $patient->blood_type,
             'diagnosis_date' => $patient->diagnosis_date,
             'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
+            'medication_schedule' => $patient->medicationSchedule ? [
+                'id'            => $patient->medicationSchedule->id,
+                'patient_id'    => $patient->medicationSchedule->patient_id,
+                'reminder_time' => $patient->medicationSchedule->reminder_time,
+                'is_active'     => (bool) $patient->medicationSchedule->is_active,
+            ] : null,
 
             'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                 ? "$subdistrictName, $districtName, $provinceName"
@@ -579,6 +595,102 @@ class PatientController extends Controller
                 'total_verified_days' => $totalVerified,
                 'adherence_average'   => $percentage . '%',
             ]
+        ]);
+    }
+
+    public function getMedicationSchedule($id)
+    {
+        $user = Auth::user();
+        $patient = Patient::find($id);
+
+        if (!$patient) {
+            return response()->json([
+                'message' => 'Data pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses data pasien ini.'
+            ], 403);
+        }
+
+        $schedule = $patient->medicationSchedule;
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedule ? [
+                'id'            => $schedule->id,
+                'patient_id'    => $schedule->patient_id,
+                'reminder_time' => $schedule->reminder_time,
+                'is_active'     => (bool) $schedule->is_active,
+            ] : null,
+        ]);
+    }
+
+    public function saveMedicationSchedule(Request $request, $id)
+    {
+        $user = Auth::user();
+        $patient = Patient::find($id);
+
+        if (!$patient) {
+            return response()->json([
+                'message' => 'Data pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses data pasien ini.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'reminder_time' => ['required', 'regex:/^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/'],
+            'is_active'     => 'nullable|boolean',
+        ], [
+            'reminder_time.required' => 'Waktu pengingat minum obat wajib diisi.',
+            'reminder_time.regex'    => 'Format waktu pengingat minum obat tidak valid. Gunakan format JJ:MM.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $time = $request->reminder_time;
+        if (strlen($time) === 5) {
+            $time .= ':00';
+        }
+
+        $schedule = PatientMedicationSchedule::where('patient_id', $patient->id)->first();
+        if ($schedule) {
+            $schedule->reminder_time = $time;
+            if ($request->has('is_active')) {
+                $schedule->is_active = $request->boolean('is_active');
+            } else {
+                $schedule->is_active = true;
+            }
+            $schedule->save();
+        } else {
+            $schedule = PatientMedicationSchedule::create([
+                'patient_id'    => $patient->id,
+                'reminder_time' => $time,
+                'is_active'     => $request->has('is_active') ? $request->boolean('is_active') : true,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jadwal minum obat berhasil disimpan.',
+            'data'    => [
+                'id'            => $schedule->id,
+                'patient_id'    => $schedule->patient_id,
+                'reminder_time' => $schedule->reminder_time,
+                'is_active'     => (bool) $schedule->is_active,
+            ],
         ]);
     }
 }

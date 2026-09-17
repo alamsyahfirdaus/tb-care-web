@@ -15,6 +15,10 @@ class Patient extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'treatment_start_date' => 'date',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -38,6 +42,16 @@ class Patient extends Model
     public function treatments()
     {
         return $this->hasMany(PatientTreatment::class, 'patient_id');
+    }
+
+    public function medicationSchedule()
+    {
+        return $this->hasOne(PatientMedicationSchedule::class, 'patient_id')->where('is_active', true);
+    }
+
+    public function medicationSchedules()
+    {
+        return $this->hasMany(PatientMedicationSchedule::class, 'patient_id');
     }
 
     /**
