@@ -232,4 +232,99 @@ class PatientRegistrationTreatmentTest extends TestCase
             User::find($userId)?->delete();
         }
     }
+
+    /**
+     * Test 20: End-to-end Test
+     * Register -> Create User -> Create Patient -> Create Treatment -> Response Credential -> Login
+     */
+    public function test_end_to_end_registration_treatment_and_login_flow()
+    {
+        $uniqueNik = '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT);
+        $uniquePhone = '0812' . str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
+        $treatmentDate = Carbon::today()->subDays(3)->format('Y-m-d');
+
+        $payload = [
+            'name'                 => 'Budi Santoso',
+            'nik'                  => $uniqueNik,
+            'phone'                => $uniquePhone,
+            'puskesmas_id'         => 1,
+            'treatment_start_date' => $treatmentDate,
+            'province_id'          => 1,
+            'district_id'          => 27,
+            'subdistrict_id'       => 41,
+            'village_id'           => 9,
+        ];
+
+        // 1. POST /api/register
+        $response = $this->postJson('/api/register', $payload);
+        $response->assertStatus(201);
+
+        $username = $response->json('data.username');
+        $password = $response->json('data.password');
+        $userId = $response->json('user.id');
+        $patientId = $response->json('data.pasien_id');
+
+        $this->assertNotEmpty($username);
+        $this->assertEquals('123456', $password);
+
+        // 2. Cek Database USER
+        $user = User::with('patient')->find($userId);
+        $this->assertNotNull($user);
+        $this->assertEquals($username, $user->username);
+        $this->assertEquals(2, $user->user_type_id); // Pasien
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('123456', $user->password));
+
+        // 3. Cek Database PATIENT
+        $patient = Patient::with('treatments')->find($patientId);
+        $this->assertNotNull($patient);
+        $this->assertEquals($user->id, $patient->user_id);
+        $this->assertEquals($uniqueNik, $patient->nik);
+        $this->assertEquals($treatmentDate, Carbon::parse($patient->treatment_start_date)->format('Y-m-d'));
+
+        // 4. Cek Database PATIENT TREATMENT
+        $treatment = PatientTreatment::where('patient_id', $patient->id)->first();
+        $this->assertNotNull($treatment);
+        $this->assertEquals($patient->id, $treatment->patient_id);
+        $this->assertEquals(1, $treatment->treatment_type_id); // Kategori 1 (Pasien Baru)
+        $this->assertNull($treatment->diagnosis_date);
+        $this->assertEquals($treatmentDate, $treatment->start_date);
+        $this->assertStringStartsWith('07:00', $treatment->medication_time);
+        $this->assertNull($treatment->prescription);
+        $this->assertEquals('Berjalan', $treatment->treatment_status);
+
+        // 5. Cek Relasi Antar Model: User -> Patient -> Treatment
+        $this->assertEquals($patient->id, $user->patient->id);
+        $this->assertEquals($treatment->id, $patient->treatments->first()->id);
+        $this->assertEquals($user->id, $treatment->patient->user->id);
+
+        // 6. Test Login dengan kredensial pasien baru (username otomatis & password 123456)
+        $loginResponse = $this->postJson('/api/login', [
+            'username' => $username,
+            'password' => $password,
+        ]);
+
+        $loginResponse->assertStatus(200)
+            ->assertJsonStructure([
+                'message',
+                'token',
+                'user' => [
+                    'id',
+                    'user_type_id',
+                    'patient' => [
+                        'id',
+                        'nik',
+                    ]
+                ]
+            ]);
+
+        $this->assertEquals(2, $loginResponse->json('user.user_type_id'));
+        $this->assertEquals($patient->id, $loginResponse->json('user.patient.id'));
+        $this->assertNotEmpty($loginResponse->json('token'));
+
+        // Cleanup
+        $treatment->delete();
+        $patient->delete();
+        $user->tokens()->delete();
+        $user->delete();
+    }
 }

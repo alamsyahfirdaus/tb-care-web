@@ -73,7 +73,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="treatmentsTable" class="table table-bordered table-hover data-table">
+                <table id="treatmentsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead>
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>
@@ -97,7 +97,7 @@
                                 <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                 <td>
                                     @if($tr->patient)
-                                        <a href="{{ route('admin.patients.show', $tr->patient->id) }}" class="font-weight-bold text-dark d-block">
+                                        <a href="{{ route('admin.patients.show', $tr->patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                             {{ optional($tr->patient->user)->name ?? 'Pasien #' . $tr->patient->id }}
                                         </a>
                                         <span class="text-xs text-muted">NIK: {{ $tr->patient->nik ?? '-' }}</span>
@@ -143,6 +143,10 @@
                                         @endif
                                         <button type="button" class="btn btn-warning btn-xs font-weight-bold" data-toggle="modal" data-target="#modal-status-{{ $tr->encrypted_id }}" title="Ubah Status">
                                             <i class="fas fa-edit"></i> Status
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-xs" title="Hapus Riwayat Pengobatan" 
+                                                onclick="confirmDelete('{{ route('admin.treatments.destroy', $tr->encrypted_id) }}', 'Pengobatan {{ optional(optional($tr->patient)->user)->name }}')">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
 

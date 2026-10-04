@@ -11,6 +11,8 @@ use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+use Illuminate\Support\Facades\DB;
+
 class NotificationController extends Controller
 {
     public function index(Request $request)
@@ -61,22 +63,45 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function create()
+    public function form(?string $encryptedId = null)
     {
+        $isEdit = false;
+        $notification = new SystemNotification();
+
+        if ($encryptedId) {
+            $id = decrypt_id($encryptedId);
+            $notification = SystemNotification::findOrFail($id);
+            $isEdit = true;
+        }
+
         $puskesmasList = Puskesmas::orderBy('name')->get();
 
         return view('admin.notifications.form', [
-            'notification'  => new SystemNotification(),
+            'notification'  => $notification,
             'puskesmasList' => $puskesmasList,
-            'isEdit'        => false,
-            'title'         => 'Buat Notifikasi Baru',
-            'pageTitle'     => 'Kirim Broadcast Notifikasi Baru',
-            'pageSubtitle'  => 'Kirimkan pesan langsung ke aplikasi mobile pasien atau portal nakes.'
+            'isEdit'        => $isEdit,
+            'title'         => $isEdit ? ('Edit Notifikasi: ' . $notification->title) : 'Buat Notifikasi Baru',
+            'pageTitle'     => $isEdit ? 'Edit Notifikasi Broadcast' : 'Kirim Broadcast Notifikasi Baru',
+            'pageSubtitle'  => $isEdit ? 'Perbarui isi notifikasi atau status pengiriman pesan broadcast.' : 'Kirimkan pesan langsung ke aplikasi mobile pasien atau portal nakes.',
         ]);
     }
 
-    public function store(Request $request)
+    public function create()
     {
+        return $this->form();
+    }
+
+    public function edit($id)
+    {
+        return $this->form($id);
+    }
+
+    public function save(Request $request, ?string $encryptedId = null)
+    {
+        $resolvedEncryptedId = $request->input('encrypted_id') ?? $encryptedId;
+        $isEdit = !empty($resolvedEncryptedId);
+        $notif = $isEdit ? SystemNotification::findOrFail(decrypt_id($resolvedEncryptedId)) : new SystemNotification();
+
         $request->validate([
             'title'                => 'required|string|max:255',
             'message'              => 'required|string',
@@ -89,38 +114,65 @@ class NotificationController extends Controller
             'message.required' => 'Pesan notifikasi tidak boleh kosong.',
         ]);
 
-        // Calculate recipient count
-        $sentCount = 0;
-        if ($request->status == 'Terkirim') {
-            if ($request->target_role == 'Semua') {
-                $sentCount = User::count();
-            } elseif ($request->target_role == 'Pasien') {
-                $sentCount = Patient::count();
-            } elseif ($request->target_role == 'Petugas') {
-                $sentCount = User::whereIn('user_type_id', [2, 3])->count();
+        return DB::transaction(function () use ($request, $notif, $isEdit) {
+            $sentCount = $notif->sent_count ?? 0;
+            if ($request->status == 'Terkirim') {
+                if ($request->target_role == 'Semua') {
+                    $sentCount = User::count();
+                } elseif ($request->target_role == 'Pasien') {
+                    $sentCount = Patient::count();
+                } elseif ($request->target_role == 'Petugas') {
+                    $sentCount = User::whereIn('user_type_id', [2, 3])->count();
+                } else {
+                    $sentCount = User::count();
+                }
+
+                if ($request->target_puskesmas_id) {
+                    $sentCount = Patient::where('puskesmas_id', $request->target_puskesmas_id)->count();
+                }
+            }
+
+            if (!$isEdit) {
+                $notif->fill([
+                    'title'               => $request->title,
+                    'message'             => $request->message,
+                    'type'                => $request->type,
+                    'target_role'         => $request->target_role,
+                    'target_puskesmas_id' => $request->target_puskesmas_id,
+                    'sent_by'             => Auth::id() ?? 1,
+                    'sent_count'          => $sentCount,
+                    'status'              => $request->status,
+                ])->save();
+
+                ActivityLog::log('Kirim Notifikasi', 'Notifikasi', "Mengirim notifikasi: '{$notif->title}' ({$notif->status}) ke {$notif->target_role}.");
+                $message = 'Notifikasi berhasil diproses dan dicatat.';
             } else {
-                $sentCount = User::count();
+                $notif->update([
+                    'title'               => $request->title,
+                    'message'             => $request->message,
+                    'type'                => $request->type,
+                    'target_role'         => $request->target_role,
+                    'target_puskesmas_id' => $request->target_puskesmas_id,
+                    'sent_count'          => $sentCount,
+                    'status'              => $request->status,
+                ]);
+
+                ActivityLog::log('Perbarui Notifikasi', 'Notifikasi', "Memperbarui notifikasi: '{$notif->title}' ({$notif->status}).");
+                $message = 'Notifikasi berhasil diperbarui.';
             }
 
-            if ($request->target_puskesmas_id) {
-                $sentCount = Patient::where('puskesmas_id', $request->target_puskesmas_id)->count();
-            }
-        }
+            return redirect()->route('admin.notifications.index')->with('success', $message);
+        });
+    }
 
-        $notif = SystemNotification::create([
-            'title'               => $request->title,
-            'message'             => $request->message,
-            'type'                => $request->type,
-            'target_role'         => $request->target_role,
-            'target_puskesmas_id' => $request->target_puskesmas_id,
-            'sent_by'             => Auth::id() ?? 1,
-            'sent_count'          => $sentCount,
-            'status'              => $request->status,
-        ]);
+    public function store(Request $request)
+    {
+        return $this->save($request);
+    }
 
-        ActivityLog::log('Kirim Notifikasi', 'Notifikasi', "Mengirim notifikasi: '{$notif->title}' ({$notif->status}) ke {$notif->target_role}.");
-
-        return redirect()->route('admin.notifications.index')->with('success', 'Notifikasi berhasil diproses dan dicatat.');
+    public function update(Request $request, $id)
+    {
+        return $this->save($request, $id);
     }
 
     public function show($id)
@@ -140,7 +192,10 @@ class NotificationController extends Controller
         $id = decrypt_id($id);
         $notification = SystemNotification::findOrFail($id);
         $title = $notification->title;
-        $notification->delete();
+
+        DB::transaction(function () use ($notification) {
+            $notification->delete();
+        });
 
         ActivityLog::log('Hapus Notifikasi', 'Notifikasi', "Menghapus riwayat notifikasi {$title}.");
 

@@ -71,14 +71,16 @@
     <!-- Patients Table Card -->
     <div class="card shadow-sm">
         <div class="card-header border-bottom-0 d-flex justify-content-between align-items-center">
-            <h3 class="card-title font-weight-bold">
-                <i class="fas fa-table mr-1 text-danger"></i> Daftar Rekam Pasien
+            <h3 class="card-title font-weight-bold mb-0">
+                <i class="fas fa-table mr-1 text-danger"></i> Daftar Rekam Pasien <span class="badge badge-light border ml-2">Total: {{ $patients->count() }} pasien</span>
             </h3>
-            <span class="badge badge-light border">Total: {{ $patients->count() }} pasien</span>
+            <a href="{{ route('admin.patients.create') }}" class="btn btn-sm btn-danger font-weight-bold shadow-sm">
+                <i class="fas fa-plus mr-1"></i> Tambah Pasien
+            </a>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="patientsTable" class="table table-bordered table-hover data-table">
+                <table id="patientsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>

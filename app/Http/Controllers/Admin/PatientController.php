@@ -14,6 +14,7 @@ use App\Models\PatientMedicationSchedule;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
@@ -135,28 +136,58 @@ class PatientController extends Controller
             ]);
     }
 
-    public function create()
+    public function form(?string $encryptedId = null)
     {
+        $patient = null;
+        $isEdit = false;
+
+        if ($encryptedId) {
+            $id = decrypt_id($encryptedId);
+            $patient = Patient::with(['user', 'treatments.treatmentType'])->findOrFail($id);
+            $isEdit = true;
+            $villages = Village::where('subdistrict_id', $patient->subdistrict_id)->orderBy('name')->get();
+        } else {
+            $patient = new Patient();
+            $villages = Village::orderBy('name')->get();
+        }
+
         $puskesmas = Puskesmas::orderBy('name')->get();
         $subdistricts = Subdistrict::orderBy('name')->get();
-        $villages = Village::orderBy('name')->get();
         $treatmentTypes = TreatmentType::all();
 
-        return view('admin.patients.form', compact('puskesmas', 'subdistricts', 'villages', 'treatmentTypes'))->with([
-            'title'        => 'Tambah Pasien TB',
-            'pageTitle'    => 'Pendaftaran Pasien TB Baru',
-            'pageSubtitle' => 'Formulir registrasi rekam medis pasien tuberkulosis dan penugasan Puskesmas.',
-            'patient'      => new Patient(),
-            'isEdit'       => false,
+        return view('admin.patients.form', compact('patient', 'puskesmas', 'subdistricts', 'villages', 'treatmentTypes', 'isEdit'))->with([
+            'title'        => $isEdit ? ('Edit Pasien: ' . optional($patient->user)->name) : 'Tambah Pasien TB',
+            'pageTitle'    => $isEdit ? ('Edit Rekam Medis: ' . optional($patient->user)->name) : 'Pendaftaran Pasien TB Baru',
+            'pageSubtitle' => $isEdit ? 'Perbarui data identitas, alamat, fisik, dan Puskesmas pembina.' : 'Formulir registrasi rekam medis pasien tuberkulosis dan penugasan Puskesmas.',
         ]);
     }
 
-    public function store(Request $request)
+    public function create()
     {
+        return $this->form();
+    }
+
+    public function edit($id)
+    {
+        return $this->form($id);
+    }
+
+    public function save(Request $request, ?string $encryptedId = null)
+    {
+        $rawId = $request->input('encrypted_id') ?? $encryptedId;
+        $patient = null;
+        $isUpdate = false;
+
+        if ($rawId) {
+            $id = decrypt_id($rawId);
+            $patient = Patient::with('user')->findOrFail($id);
+            $isUpdate = true;
+        }
+
         $request->validate([
             'name'                 => 'required|string|max:255',
-            'nik'                  => 'required|string|size:16|unique:patients,nik',
-            'username'             => 'required|string|max:50|unique:users,username',
+            'nik'                  => ['required', 'string', 'size:16', $isUpdate ? Rule::unique('patients')->ignore($patient->id) : 'unique:patients,nik'],
+            'username'             => [$isUpdate ? 'nullable' : 'required', 'string', 'max:50', $isUpdate ? Rule::unique('users')->ignore($patient->user_id) : 'unique:users,username'],
             'phone'                => 'nullable|string|max:20',
             'gender'               => 'required|in:L,P',
             'date_of_birth'        => 'nullable|date',
@@ -186,153 +217,136 @@ class PatientController extends Controller
             'puskesmas_id.required'   => 'Puskesmas wajib dipilih.',
         ]);
 
-        // 1. Create or Find User
-        $user = User::create([
-            'name'           => $request->name,
-            'username'       => $request->username,
-            'email'          => $request->email,
-            'phone'          => $request->phone,
-            'gender'         => $request->gender,
-            'place_of_birth' => $request->place_of_birth,
-            'date_of_birth'  => $request->date_of_birth,
-            'password'       => Hash::make('password123'), // Default patient password
-            'user_type_id'   => 2, // Pasien
-            'is_active'      => 1,
-        ]);
+        return DB::transaction(function () use ($request, $patient, $isUpdate) {
+            if ($isUpdate) {
+                // Update User
+                if ($patient->user) {
+                    $patient->user->update([
+                        'name'           => $request->name,
+                        'phone'          => $request->phone,
+                        'gender'         => $request->gender,
+                        'place_of_birth' => $request->place_of_birth,
+                        'date_of_birth'  => $request->date_of_birth,
+                    ]);
+                }
 
-        // 2. Create Patient Record
-        $patient = Patient::create([
-            'nik'                  => $request->nik,
-            'user_id'              => $user->id,
-            'address'              => $request->address,
-            'subdistrict_id'       => $request->subdistrict_id,
-            'village_id'           => $request->village_id,
-            'rw'                   => $request->rw,
-            'rt'                   => $request->rt,
-            'occupation'           => $request->occupation,
-            'height'               => $request->height,
-            'weight'               => $request->weight,
-            'blood_type'           => $request->blood_type,
-            'diagnosis_date'       => $request->diagnosis_date,
-            'treatment_start_date' => $request->treatment_start_date ?? Carbon::now()->format('Y-m-d'),
-            'puskesmas_id'         => $request->puskesmas_id,
-        ]);
+                // Update Patient
+                $patient->update([
+                    'nik'                  => $request->nik,
+                    'address'              => $request->address,
+                    'subdistrict_id'       => $request->subdistrict_id,
+                    'village_id'           => $request->village_id,
+                    'rw'                   => $request->rw,
+                    'rt'                   => $request->rt,
+                    'occupation'           => $request->occupation,
+                    'height'               => $request->height,
+                    'weight'               => $request->weight,
+                    'blood_type'           => $request->blood_type,
+                    'diagnosis_date'       => $request->diagnosis_date,
+                    'treatment_start_date' => $request->treatment_start_date,
+                    'puskesmas_id'         => $request->puskesmas_id,
+                ]);
 
-        // 3. Create initial Patient Treatment if regimen selected
-        if ($request->treatment_type_id) {
-            $tType = TreatmentType::find($request->treatment_type_id);
-            $startDate = Carbon::parse($request->treatment_start_date ?? now());
-            $months = ($tType && $tType->duration_unit === 'month') ? $tType->treatment_duration : 6;
-            $endDate = (clone $startDate)->addMonths($months);
+                ActivityLog::log('Perbarui Data Pasien', 'Pasien', "Memperbarui data rekam medis pasien {$request->name} (NIK: {$request->nik}).");
 
-            PatientTreatment::create([
-                'patient_id'        => $patient->id,
-                'treatment_type_id' => $request->treatment_type_id,
-                'diagnosis_date'    => $request->diagnosis_date ?? $startDate->format('Y-m-d'),
-                'start_date'        => $startDate->format('Y-m-d'),
-                'end_date'          => $endDate->format('Y-m-d'),
-                'treatment_days'    => $startDate->diffInDays($endDate),
-                'medication_time'   => '08:00:00',
-                'prescription'      => 'Regimen Standar ' . ($tType->treatment_type ?? 'TB'),
-                'treatment_status'  => 'Berjalan',
-            ]);
-        }
+                return redirect()->route('admin.patients.show', $patient)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
+            } else {
+                // 1. Create User
+                $user = User::create([
+                    'name'           => $request->name,
+                    'username'       => $request->username,
+                    'email'          => $request->email,
+                    'phone'          => $request->phone,
+                    'gender'         => $request->gender,
+                    'place_of_birth' => $request->place_of_birth,
+                    'date_of_birth'  => $request->date_of_birth,
+                    'password'       => Hash::make('password123'), // Default patient password
+                    'user_type_id'   => 2, // Pasien
+                    'is_active'      => 1,
+                ]);
 
-        ActivityLog::log('Tambah Pasien TB', 'Pasien', "Mendaftarkan pasien baru {$user->name} NIK {$patient->nik} di Puskesmas ID {$patient->puskesmas_id}.");
+                // 2. Create Patient Record
+                $patient = Patient::create([
+                    'nik'                  => $request->nik,
+                    'user_id'              => $user->id,
+                    'address'              => $request->address,
+                    'subdistrict_id'       => $request->subdistrict_id,
+                    'village_id'           => $request->village_id,
+                    'rw'                   => $request->rw,
+                    'rt'                   => $request->rt,
+                    'occupation'           => $request->occupation,
+                    'height'               => $request->height,
+                    'weight'               => $request->weight,
+                    'blood_type'           => $request->blood_type,
+                    'diagnosis_date'       => $request->diagnosis_date,
+                    'treatment_start_date' => $request->treatment_start_date ?? Carbon::now()->format('Y-m-d'),
+                    'puskesmas_id'         => $request->puskesmas_id,
+                ]);
 
-        return redirect()->route('admin.patients.show', $patient)->with('success', 'Data pasien TB berhasil didaftarkan.');
+                // 3. Create initial Patient Treatment if regimen selected
+                if ($request->treatment_type_id) {
+                    $tType = TreatmentType::find($request->treatment_type_id);
+                    $startDate = Carbon::parse($request->treatment_start_date ?? now());
+                    $months = ($tType && $tType->duration_unit === 'month') ? $tType->treatment_duration : 6;
+                    $endDate = (clone $startDate)->addMonths($months);
+
+                    PatientTreatment::create([
+                        'patient_id'        => $patient->id,
+                        'treatment_type_id' => $request->treatment_type_id,
+                        'diagnosis_date'    => $request->diagnosis_date ?? $startDate->format('Y-m-d'),
+                        'start_date'        => $startDate->format('Y-m-d'),
+                        'end_date'          => $endDate->format('Y-m-d'),
+                        'treatment_days'    => $startDate->diffInDays($endDate),
+                        'medication_time'   => '08:00:00',
+                        'prescription'      => 'Regimen Standar ' . ($tType->treatment_type ?? 'TB'),
+                        'treatment_status'  => 'Berjalan',
+                    ]);
+                }
+
+                ActivityLog::log('Tambah Pasien TB', 'Pasien', "Mendaftarkan pasien baru {$user->name} NIK {$patient->nik} di Puskesmas ID {$patient->puskesmas_id}.");
+
+                return redirect()->route('admin.patients.show', $patient)->with('success', 'Data pasien TB berhasil didaftarkan.');
+            }
+        });
     }
 
-    public function edit($id)
+    public function store(Request $request)
     {
-        $id = decrypt_id($id);
-        $patient = Patient::with('user')->findOrFail($id);
-        $puskesmas = Puskesmas::orderBy('name')->get();
-        $subdistricts = Subdistrict::orderBy('name')->get();
-        $villages = Village::where('subdistrict_id', $patient->subdistrict_id)->orderBy('name')->get();
-
-        return view('admin.patients.form', compact('patient', 'puskesmas', 'subdistricts', 'villages'))->with([
-            'title'        => 'Edit Pasien: ' . optional($patient->user)->name,
-            'pageTitle'    => 'Edit Rekam Medis Pasien',
-            'pageSubtitle' => 'Perbarui data identitas, alamat, fisik, dan Puskesmas pembina.',
-            'isEdit'       => true,
-        ]);
+        return $this->save($request);
     }
 
     public function update(Request $request, $id)
     {
-        $id = decrypt_id($id);
-        $patient = Patient::with('user')->findOrFail($id);
-
-        $request->validate([
-            'name'                 => 'required|string|max:255',
-            'nik'                  => ['required', 'string', 'size:16', Rule::unique('patients')->ignore($patient->id)],
-            'phone'                => 'nullable|string|max:20',
-            'gender'               => 'required|in:L,P',
-            'date_of_birth'        => 'nullable|date',
-            'place_of_birth'       => 'nullable|string|max:100',
-            'address'              => 'required|string',
-            'subdistrict_id'       => 'required|exists:subdistricts,id',
-            'village_id'           => 'nullable|exists:villages,id',
-            'rw'                   => 'nullable|string|max:5',
-            'rt'                   => 'nullable|string|max:5',
-            'puskesmas_id'         => 'required|exists:puskesmas,id',
-            'occupation'           => 'nullable|string|max:100',
-            'height'               => 'nullable|numeric|min:30|max:250',
-            'weight'               => 'nullable|numeric|min:2|max:300',
-            'blood_type'           => 'nullable|in:A,B,AB,O',
-            'diagnosis_date'       => 'nullable|date',
-            'treatment_start_date' => 'nullable|date',
-        ], [
-            'name.required'           => 'Nama lengkap pasien wajib diisi.',
-            'nik.required'            => 'NIK wajib diisi.',
-            'nik.size'                => 'NIK harus terdiri dari 16 digit.',
-            'nik.unique'              => 'NIK ini sudah terdaftar pada pasien lain.',
-            'address.required'        => 'Alamat lengkap wajib diisi.',
-            'subdistrict_id.required' => 'Kecamatan wajib dipilih.',
-            'puskesmas_id.required'   => 'Puskesmas wajib dipilih.',
-        ]);
-
-        // Update User
-        if ($patient->user) {
-            $patient->user->update([
-                'name'           => $request->name,
-                'phone'          => $request->phone,
-                'gender'         => $request->gender,
-                'place_of_birth' => $request->place_of_birth,
-                'date_of_birth'  => $request->date_of_birth,
-            ]);
-        }
-
-        // Update Patient
-        $patient->update([
-            'nik'                  => $request->nik,
-            'address'              => $request->address,
-            'subdistrict_id'       => $request->subdistrict_id,
-            'village_id'           => $request->village_id,
-            'rw'                   => $request->rw,
-            'rt'                   => $request->rt,
-            'occupation'           => $request->occupation,
-            'height'               => $request->height,
-            'weight'               => $request->weight,
-            'blood_type'           => $request->blood_type,
-            'diagnosis_date'       => $request->diagnosis_date,
-            'treatment_start_date' => $request->treatment_start_date,
-            'puskesmas_id'         => $request->puskesmas_id,
-        ]);
-
-        ActivityLog::log('Perbarui Data Pasien', 'Pasien', "Memperbarui data rekam medis pasien {$request->name} (NIK: {$request->nik}).");
-
-        return redirect()->route('admin.patients.show', $patient)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
+        return $this->save($request, $id);
     }
 
     public function destroy($id)
     {
         $id = decrypt_id($id);
         $patient = Patient::with('user')->findOrFail($id);
-        $name = optional($patient->user)->name ?? 'Pasien #' . $id;
+        $user = $patient->user;
+        $name = optional($user)->name ?? 'Pasien #' . $id;
 
-        $patient->delete();
+        DB::transaction(function () use ($patient, $user) {
+            if (method_exists($patient, 'treatments')) {
+                $patient->treatments()->each(function ($treatment) {
+                    $treatment->medicationRecords()->delete();
+                    $treatment->visits()->delete();
+                    $treatment->delete();
+                });
+            }
+            if (method_exists($patient, 'clinicalExaminations')) {
+                $patient->clinicalExaminations()->delete();
+            }
+            if (method_exists($patient, 'closeContacts')) {
+                $patient->closeContacts()->delete();
+            }
+            $patient->delete();
+
+            if ($user && $user->user_type_id == 2) {
+                $user->delete();
+            }
+        });
 
         ActivityLog::log('Hapus Pasien', 'Pasien', "Menghapus data pasien {$name}.");
 

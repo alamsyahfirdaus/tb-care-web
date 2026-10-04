@@ -106,7 +106,7 @@
     <div class="card-body">
         @if($type == 'screening')
             <div class="table-responsive">
-                <table id="reportScreeningsTable" class="table table-bordered table-hover data-table align-middle mb-0">
+                <table id="reportScreeningsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>
@@ -150,7 +150,7 @@
 
         @elseif($type == 'patient')
             <div class="table-responsive">
-                <table id="reportPatientsTable" class="table table-bordered table-hover data-table align-middle mb-0">
+                <table id="reportPatientsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>
@@ -186,7 +186,7 @@
 
         @elseif($type == 'regional')
             <div class="table-responsive">
-                <table id="reportRegionsTable" class="table table-bordered table-hover data-table align-middle mb-0">
+                <table id="reportRegionsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>
@@ -221,7 +221,7 @@
         @else
             <!-- User Report -->
             <div class="table-responsive">
-                <table id="reportUsersTable" class="table table-bordered table-hover data-table align-middle mb-0">
+                <table id="reportUsersTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>

@@ -6,8 +6,8 @@
 @endsection
 
 @section('content')
-    <div class="row justify-content-center">
-        <div class="col-md-9">
+    <div class="row">
+        <div class="col-12">
             <div class="card card-outline card-primary shadow-sm">
                 <div class="card-header">
                     <h3 class="card-title font-weight-bold">
@@ -19,6 +19,7 @@
                     @csrf
                     @if($isEdit)
                         @method('PUT')
+                        <input type="hidden" name="encrypted_id" value="{{ $user->encrypted_id }}">
                     @endif
                     <div class="card-body">
                         <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-id-card mr-1"></i> Data Identitas Pengguna</h6>

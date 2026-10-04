@@ -80,7 +80,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="monitoringTable" class="table table-bordered table-hover data-table">
+                <table id="monitoringTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead>
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>

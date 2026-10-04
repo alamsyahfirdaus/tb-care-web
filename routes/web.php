@@ -215,6 +215,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->g
     Route::get('screenings/{id}', [AdminScreeningController::class, 'show'])->name('screenings.show');
     Route::patch('screenings/{id}/status', [AdminScreeningController::class, 'updateStatus'])->name('screenings.update_status');
     Route::patch('screenings/{id}/status-hyphen', [AdminScreeningController::class, 'updateStatus'])->name('screenings.update-status');
+    Route::delete('screenings/{id}', [AdminScreeningController::class, 'destroy'])->name('screenings.destroy');
 
     // 5. Pemeriksaan Klinis
     Route::resource('examinations', AdminExaminationController::class);
@@ -224,6 +225,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->g
     Route::get('treatments/monitoring', [AdminTreatmentController::class, 'monitoring'])->name('treatments.monitoring');
     Route::patch('treatments/{id}/status', [AdminTreatmentController::class, 'updateStatus'])->name('treatments.update_status');
     Route::post('treatments/verify-medicine/{id}', [AdminTreatmentController::class, 'verifyMedication'])->name('treatments.verify-medicine');
+    Route::delete('treatments/{id}', [AdminTreatmentController::class, 'destroy'])->name('treatments.destroy');
 
     // 7. Kontak Erat
     Route::resource('contacts', AdminCloseContactController::class);
@@ -234,7 +236,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->g
     // 9. Wilayah
     Route::get('regions', [AdminRegionController::class, 'index'])->name('regions.index');
     Route::post('regions/subdistricts', [AdminRegionController::class, 'storeSubdistrict'])->name('regions.subdistricts.store');
+    Route::put('regions/subdistricts/{id}', [AdminRegionController::class, 'updateSubdistrict'])->name('regions.subdistricts.update');
     Route::post('regions/villages', [AdminRegionController::class, 'storeVillage'])->name('regions.villages.store');
+    Route::put('regions/villages/{id}', [AdminRegionController::class, 'updateVillage'])->name('regions.villages.update');
     Route::delete('regions/subdistricts/{id}', [AdminRegionController::class, 'destroySubdistrict'])->name('regions.subdistricts.destroy');
     Route::delete('regions/villages/{id}', [AdminRegionController::class, 'destroyVillage'])->name('regions.villages.destroy');
     Route::get('regions/ajax/districts', [AdminRegionController::class, 'getDistricts'])->name('regions.ajax.districts');
@@ -246,7 +250,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->g
     Route::patch('education/{id}/toggle-publish', [AdminEducationController::class, 'togglePublish'])->name('education.toggle-publish');
 
     // 11. Notifikasi
-    Route::resource('notifications', AdminNotificationController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+    Route::resource('notifications', AdminNotificationController::class);
     Route::get('notifications-consultations', function() {
         return redirect()->route('admin.notifications.index', ['type' => 'Konsultasi']);
     })->name('notifications.consultations');

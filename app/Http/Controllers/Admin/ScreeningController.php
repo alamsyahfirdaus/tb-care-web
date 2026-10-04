@@ -139,4 +139,18 @@ class ScreeningController extends Controller
 
         return redirect()->back()->with('success', 'Status tindak lanjut skrining berhasil diperbarui.');
     }
+
+    public function destroy($id)
+    {
+        $id = decrypt_id($id);
+        $screening = Screening::findOrFail($id);
+        $code = $screening->code;
+
+        $screening->answers()->delete();
+        $screening->delete();
+
+        ActivityLog::log('Hapus Skrining TB', 'Skrining TB', "Menghapus data skrining {$code}.");
+
+        return redirect()->route('admin.screenings.index')->with('success', "Data skrining {$code} berhasil dihapus.");
+    }
 }

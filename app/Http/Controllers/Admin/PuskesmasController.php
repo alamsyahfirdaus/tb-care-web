@@ -9,6 +9,8 @@ use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
+use Illuminate\Support\Facades\DB;
+
 class PuskesmasController extends Controller
 {
     public function index(Request $request)
@@ -65,24 +67,45 @@ class PuskesmasController extends Controller
         ]);
     }
 
-    public function create()
+    public function form(?string $encryptedId = null)
     {
+        $isEdit = false;
+        $puskesmas = new Puskesmas();
+
+        if ($encryptedId) {
+            $id = decrypt_id($encryptedId);
+            $puskesmas = Puskesmas::findOrFail($id);
+            $isEdit = true;
+        }
+
         $subdistricts = Subdistrict::orderBy('name')->get();
 
-        return view('admin.puskesmas.form', compact('subdistricts'))->with([
-            'title'        => 'Tambah Fasilitas Kesehatan',
-            'pageTitle'    => 'Tambah Fasilitas Kesehatan Baru',
-            'pageSubtitle' => 'Registrasi unit Puskesmas atau faskes layanan TB baru.',
-            'puskesmas'    => new Puskesmas(),
-            'isEdit'       => false,
+        return view('admin.puskesmas.form', compact('puskesmas', 'subdistricts', 'isEdit'))->with([
+            'title'        => $isEdit ? ('Edit Puskesmas: ' . $puskesmas->name) : 'Tambah Fasilitas Kesehatan',
+            'pageTitle'    => $isEdit ? 'Edit Data Fasilitas Kesehatan' : 'Tambah Fasilitas Kesehatan Baru',
+            'pageSubtitle' => $isEdit ? 'Perbarui data nama, kode, dan alamat Puskesmas.' : 'Registrasi unit Puskesmas atau faskes layanan TB baru.',
         ]);
     }
 
-    public function store(Request $request)
+    public function create()
     {
+        return $this->form();
+    }
+
+    public function edit($id)
+    {
+        return $this->form($id);
+    }
+
+    public function save(Request $request, ?string $encryptedId = null)
+    {
+        $resolvedEncryptedId = $request->input('encrypted_id') ?? $encryptedId;
+        $isEdit = !empty($resolvedEncryptedId);
+        $puskesmas = $isEdit ? Puskesmas::findOrFail(decrypt_id($resolvedEncryptedId)) : new Puskesmas();
+
         $request->validate([
             'name'           => 'required|string|max:255',
-            'code'           => 'nullable|string|max:50|unique:puskesmas,code',
+            'code'           => ['nullable', 'string', 'max:50', $isEdit ? Rule::unique('puskesmas')->ignore($puskesmas->id) : 'unique:puskesmas,code'],
             'subdistrict_id' => 'required|exists:subdistricts,id',
             'address'        => 'nullable|string',
         ], [
@@ -91,56 +114,42 @@ class PuskesmasController extends Controller
             'subdistrict_id.required' => 'Kecamatan wajib dipilih.',
         ]);
 
-        $code = $request->code ?: ('PKM-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $request->name), 0, 3)) . '-' . rand(100, 999));
+        return DB::transaction(function () use ($request, $puskesmas, $isEdit) {
+            if (!$isEdit) {
+                $code = $request->code ?: ('PKM-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $request->name), 0, 3)) . '-' . rand(100, 999));
+                $puskesmas->fill([
+                    'code'           => $code,
+                    'name'           => $request->name,
+                    'subdistrict_id' => $request->subdistrict_id,
+                    'address'        => $request->address,
+                ])->save();
 
-        $pkm = Puskesmas::create([
-            'code'           => $code,
-            'name'           => $request->name,
-            'subdistrict_id' => $request->subdistrict_id,
-            'address'        => $request->address,
-        ]);
+                ActivityLog::log('Tambah Puskesmas', 'Faskes', "Menambahkan Puskesmas {$puskesmas->name} (Kode {$code}).");
+                $message = 'Fasilitas kesehatan berhasil ditambahkan.';
+            } else {
+                $puskesmas->update([
+                    'name'           => $request->name,
+                    'code'           => $request->code ?? $puskesmas->code,
+                    'subdistrict_id' => $request->subdistrict_id,
+                    'address'        => $request->address,
+                ]);
 
-        ActivityLog::log('Tambah Puskesmas', 'Faskes', "Menambahkan Puskesmas {$pkm->name} (Kode {$code}).");
+                ActivityLog::log('Perbarui Puskesmas', 'Faskes', "Memperbarui data Puskesmas {$puskesmas->name}.");
+                $message = 'Data Puskesmas berhasil diperbarui.';
+            }
 
-        return redirect()->route('admin.puskesmas.show', $pkm)->with('success', 'Fasilitas kesehatan berhasil ditambahkan.');
+            return redirect()->route('admin.puskesmas.show', $puskesmas)->with('success', $message);
+        });
     }
 
-    public function edit($id)
+    public function store(Request $request)
     {
-        $id = decrypt_id($id);
-        $puskesmas = Puskesmas::findOrFail($id);
-        $subdistricts = Subdistrict::orderBy('name')->get();
-
-        return view('admin.puskesmas.form', compact('puskesmas', 'subdistricts'))->with([
-            'title'        => 'Edit Puskesmas: ' . $puskesmas->name,
-            'pageTitle'    => 'Edit Data Fasilitas Kesehatan',
-            'pageSubtitle' => 'Perbarui data nama, kode, dan alamat Puskesmas.',
-            'isEdit'       => true,
-        ]);
+        return $this->save($request);
     }
 
     public function update(Request $request, $id)
     {
-        $id = decrypt_id($id);
-        $puskesmas = Puskesmas::findOrFail($id);
-
-        $request->validate([
-            'name'           => 'required|string|max:255',
-            'code'           => ['nullable', 'string', 'max:50', Rule::unique('puskesmas')->ignore($puskesmas->id)],
-            'subdistrict_id' => 'required|exists:subdistricts,id',
-            'address'        => 'nullable|string',
-        ]);
-
-        $puskesmas->update([
-            'name'           => $request->name,
-            'code'           => $request->code ?? $puskesmas->code,
-            'subdistrict_id' => $request->subdistrict_id,
-            'address'        => $request->address,
-        ]);
-
-        ActivityLog::log('Perbarui Puskesmas', 'Faskes', "Memperbarui data Puskesmas {$puskesmas->name}.");
-
-        return redirect()->route('admin.puskesmas.show', $puskesmas)->with('success', 'Data Puskesmas berhasil diperbarui.');
+        return $this->save($request, $id);
     }
 
     public function destroy($id)
@@ -148,7 +157,10 @@ class PuskesmasController extends Controller
         $id = decrypt_id($id);
         $puskesmas = Puskesmas::findOrFail($id);
         $name = $puskesmas->name;
-        $puskesmas->delete();
+
+        DB::transaction(function () use ($puskesmas) {
+            $puskesmas->delete();
+        });
 
         ActivityLog::log('Hapus Puskesmas', 'Faskes', "Menghapus Puskesmas {$name}.");
 

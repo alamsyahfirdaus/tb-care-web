@@ -8,6 +8,8 @@ use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class EducationController extends Controller
 {
@@ -64,24 +66,53 @@ class EducationController extends Controller
         ]);
     }
 
-    public function create()
+    public function form(?string $encryptedId = null)
     {
+        $isEdit = false;
+        $material = new EducationalMaterial();
+
+        if ($encryptedId) {
+            $id = decrypt_id($encryptedId);
+            $material = EducationalMaterial::findOrFail($id);
+            $isEdit = true;
+        }
+
         return view('admin.education.form', [
-            'material'     => new EducationalMaterial(),
-            'isEdit'       => false,
-            'title'        => 'Tambah Materi Edukasi',
-            'pageTitle'    => 'Buat Konten Edukasi Baru',
-            'pageSubtitle' => 'Publikasikan video YouTube, poster kesehatan, atau infografis TB.'
+            'material'     => $material,
+            'isEdit'       => $isEdit,
+            'title'        => $isEdit ? ('Edit Materi: ' . $material->title_material) : 'Tambah Materi Edukasi',
+            'pageTitle'    => $isEdit ? 'Edit Konten Edukasi' : 'Buat Konten Edukasi Baru',
+            'pageSubtitle' => $isEdit ? 'Perbarui data teks materi, tautan video, atau ganti poster.' : 'Publikasikan video YouTube, poster kesehatan, atau infografis TB.',
         ]);
     }
 
-    public function store(Request $request)
+    public function create()
     {
+        return $this->form();
+    }
+
+    public function edit($id)
+    {
+        return $this->form($id);
+    }
+
+    public function save(Request $request, ?string $encryptedId = null)
+    {
+        $resolvedEncryptedId = $request->input('encrypted_id') ?? $encryptedId;
+        $isEdit = !empty($resolvedEncryptedId);
+        $material = $isEdit ? EducationalMaterial::findOrFail(decrypt_id($resolvedEncryptedId)) : new EducationalMaterial();
+
         $request->validate([
             'title_material' => 'required|string|max:255',
             'material_type'  => 'required|in:image,video',
             'video_url'      => 'nullable|required_if:material_type,video|url',
-            'image'          => 'nullable|required_if:material_type,image|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'image'          => [
+                'nullable',
+                Rule::requiredIf(!$isEdit && $request->material_type === 'image'),
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'max:5120'
+            ],
             'description'    => 'nullable|string',
             'is_publish'     => 'required|boolean',
         ], [
@@ -90,75 +121,55 @@ class EducationController extends Controller
             'image.required_if'       => 'File gambar wajib diunggah untuk tipe materi Poster/Gambar.',
         ]);
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('education', 'public');
-        }
+        return DB::transaction(function () use ($request, $material, $isEdit) {
+            $imagePath = $material->image_path;
 
-        $material = EducationalMaterial::create([
-            'title_material' => $request->title_material,
-            'material_type'  => $request->material_type,
-            'video_url'      => $request->material_type == 'video' ? $request->video_url : null,
-            'image_path'     => $imagePath,
-            'description'    => $request->description,
-            'is_publish'     => $request->is_publish,
-            'created_by'     => Auth::id() ?? 1,
-        ]);
+            if ($request->hasFile('image')) {
+                if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
+                $imagePath = $request->file('image')->store('education', 'public');
+            }
 
-        ActivityLog::log('Tambah Edukasi', 'Edukasi', "Menambahkan materi edukasi: {$material->title_material}.");
+            if (!$isEdit) {
+                $material->fill([
+                    'title_material' => $request->title_material,
+                    'material_type'  => $request->material_type,
+                    'video_url'      => $request->material_type == 'video' ? $request->video_url : null,
+                    'image_path'     => $imagePath,
+                    'description'    => $request->description,
+                    'is_publish'     => $request->is_publish,
+                    'created_by'     => Auth::id() ?? 1,
+                ])->save();
 
-        return redirect()->route('admin.education.show', $material)->with('success', 'Materi edukasi berhasil diterbitkan.');
+                ActivityLog::log('Tambah Edukasi', 'Edukasi', "Menambahkan materi edukasi: {$material->title_material}.");
+                $message = 'Materi edukasi berhasil diterbitkan.';
+            } else {
+                $material->update([
+                    'title_material' => $request->title_material,
+                    'material_type'  => $request->material_type,
+                    'video_url'      => $request->material_type == 'video' ? $request->video_url : null,
+                    'image_path'     => $imagePath,
+                    'description'    => $request->description,
+                    'is_publish'     => $request->is_publish,
+                ]);
+
+                ActivityLog::log('Perbarui Edukasi', 'Edukasi', "Memperbarui materi edukasi {$material->title_material}.");
+                $message = 'Materi edukasi berhasil diperbarui.';
+            }
+
+            return redirect()->route('admin.education.show', $material)->with('success', $message);
+        });
     }
 
-    public function edit($id)
+    public function store(Request $request)
     {
-        $id = decrypt_id($id);
-        $material = EducationalMaterial::findOrFail($id);
-
-        return view('admin.education.form', [
-            'material'     => $material,
-            'isEdit'       => true,
-            'title'        => 'Edit Materi: ' . $material->title_material,
-            'pageTitle'    => 'Edit Konten Edukasi',
-            'pageSubtitle' => 'Perbarui data teks materi, tautan video, atau ganti poster.'
-        ]);
+        return $this->save($request);
     }
 
     public function update(Request $request, $id)
     {
-        $id = decrypt_id($id);
-        $material = EducationalMaterial::findOrFail($id);
-
-        $request->validate([
-            'title_material' => 'required|string|max:255',
-            'material_type'  => 'required|in:image,video',
-            'video_url'      => 'nullable|required_if:material_type,video|url',
-            'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'description'    => 'nullable|string',
-            'is_publish'     => 'required|boolean',
-        ]);
-
-        $imagePath = $material->image_path;
-        if ($request->hasFile('image')) {
-            // Delete old file if exists in storage
-            if ($imagePath && Storage::disk('public')->exists($imagePath)) {
-                Storage::disk('public')->delete($imagePath);
-            }
-            $imagePath = $request->file('image')->store('education', 'public');
-        }
-
-        $material->update([
-            'title_material' => $request->title_material,
-            'material_type'  => $request->material_type,
-            'video_url'      => $request->material_type == 'video' ? $request->video_url : null,
-            'image_path'     => $imagePath,
-            'description'    => $request->description,
-            'is_publish'     => $request->is_publish,
-        ]);
-
-        ActivityLog::log('Perbarui Edukasi', 'Edukasi', "Memperbarui materi edukasi {$material->title_material}.");
-
-        return redirect()->route('admin.education.show', $material)->with('success', 'Materi edukasi berhasil diperbarui.');
+        return $this->save($request, $id);
     }
 
     public function destroy($id)
@@ -167,11 +178,12 @@ class EducationController extends Controller
         $material = EducationalMaterial::findOrFail($id);
         $title = $material->title_material;
 
-        if ($material->image_path && Storage::disk('public')->exists($material->image_path)) {
-            Storage::disk('public')->delete($material->image_path);
-        }
-
-        $material->delete();
+        DB::transaction(function () use ($material) {
+            if ($material->image_path && Storage::disk('public')->exists($material->image_path)) {
+                Storage::disk('public')->delete($material->image_path);
+            }
+            $material->delete();
+        });
 
         ActivityLog::log('Hapus Edukasi', 'Edukasi', "Menghapus materi edukasi {$title}.");
 

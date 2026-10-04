@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\Puskesmas;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ExaminationController extends Controller
@@ -66,22 +67,58 @@ class ExaminationController extends Controller
         ]);
     }
 
-    public function create()
+    public function form(?string $encryptedId = null)
     {
+        $examination = null;
+        $isEdit = false;
+
+        if ($encryptedId) {
+            $id = decrypt_id($encryptedId);
+            $examination = ClinicalExamination::with('patient.user')->findOrFail($id);
+            $isEdit = true;
+        } else {
+            $examination = new ClinicalExamination();
+        }
+
         $patients = Patient::with('user')->get();
         $puskesmas = Puskesmas::orderBy('name')->get();
 
-        return view('admin.examinations.form', compact('patients', 'puskesmas'))->with([
-            'title'        => 'Tambah Pemeriksaan TB',
-            'pageTitle'    => 'Catat Pemeriksaan Laboratorium Baru',
-            'pageSubtitle' => 'Input hasil pemeriksaan TCM, BTA, atau foto Thorax pasien TB.',
-            'examination'  => new ClinicalExamination(),
-            'isEdit'       => false,
+        return view('admin.examinations.form', compact('examination', 'patients', 'puskesmas', 'isEdit'))->with([
+            'title'        => $isEdit ? ('Edit Pemeriksaan: ' . $examination->examination_code) : 'Tambah Pemeriksaan TB',
+            'pageTitle'    => $isEdit ? 'Edit Pemeriksaan Laboratorium' : 'Catat Pemeriksaan Laboratorium Baru',
+            'pageSubtitle' => $isEdit ? 'Perbarui rincian jenis pemeriksaan, hasil uji, dan diagnosis.' : 'Input hasil pemeriksaan TCM, BTA, atau foto Thorax pasien TB.',
         ]);
     }
 
-    public function store(Request $request)
+    public function create()
     {
+        return $this->form();
+    }
+
+    public function show($id)
+    {
+        $id = decrypt_id($id);
+        $examination = ClinicalExamination::with(['patient.user', 'puskesmas'])->findOrFail($id);
+        return redirect()->route('admin.examinations.edit', $examination);
+    }
+
+    public function edit($id)
+    {
+        return $this->form($id);
+    }
+
+    public function save(Request $request, ?string $encryptedId = null)
+    {
+        $rawId = $request->input('encrypted_id') ?? $encryptedId;
+        $examination = null;
+        $isUpdate = false;
+
+        if ($rawId) {
+            $id = decrypt_id($rawId);
+            $examination = ClinicalExamination::findOrFail($id);
+            $isUpdate = true;
+        }
+
         $request->validate([
             'patient_id'       => 'required|exists:patients,id',
             'examination_date' => 'required|date',
@@ -99,77 +136,52 @@ class ExaminationController extends Controller
             'diagnosis.required'        => 'Diagnosis klinis wajib diisi.',
         ]);
 
-        $code = 'EXAM-' . Carbon::parse($request->examination_date)->format('Ym') . '-' . str_pad(ClinicalExamination::count() + 1, 4, '0', STR_PAD_LEFT);
+        return DB::transaction(function () use ($request, $examination, $isUpdate) {
+            if ($isUpdate) {
+                $examination->update([
+                    'patient_id'       => $request->patient_id,
+                    'puskesmas_id'     => $request->puskesmas_id,
+                    'examination_date' => $request->examination_date,
+                    'examination_type' => $request->examination_type,
+                    'result'           => $request->result,
+                    'diagnosis'        => $request->diagnosis,
+                    'status'           => $request->status,
+                    'laboratory_notes' => $request->laboratory_notes,
+                ]);
 
-        $exam = ClinicalExamination::create([
-            'examination_code'  => $code,
-            'patient_id'        => $request->patient_id,
-            'puskesmas_id'      => $request->puskesmas_id,
-            'examination_date'  => $request->examination_date,
-            'examination_type'  => $request->examination_type,
-            'result'            => $request->result,
-            'diagnosis'         => $request->diagnosis,
-            'status'            => $request->status,
-            'laboratory_notes'  => $request->laboratory_notes,
-        ]);
+                ActivityLog::log('Perbarui Pemeriksaan TB', 'Pemeriksaan', "Memperbarui data pemeriksaan {$examination->examination_code}.");
 
-        ActivityLog::log('Tambah Pemeriksaan TB', 'Pemeriksaan', "Mencatat hasil pemeriksaan {$exam->examination_type} kode {$code}.");
+                return redirect()->route('admin.examinations.index')->with('success', 'Data pemeriksaan berhasil diperbarui.');
+            } else {
+                $code = 'EXAM-' . Carbon::parse($request->examination_date)->format('Ym') . '-' . str_pad(ClinicalExamination::count() + 1, 4, '0', STR_PAD_LEFT);
 
-        return redirect()->route('admin.examinations.index')->with('success', 'Hasil pemeriksaan laboratorium berhasil disimpan.');
+                $exam = ClinicalExamination::create([
+                    'examination_code'  => $code,
+                    'patient_id'        => $request->patient_id,
+                    'puskesmas_id'      => $request->puskesmas_id,
+                    'examination_date'  => $request->examination_date,
+                    'examination_type'  => $request->examination_type,
+                    'result'            => $request->result,
+                    'diagnosis'         => $request->diagnosis,
+                    'status'            => $request->status,
+                    'laboratory_notes'  => $request->laboratory_notes,
+                ]);
+
+                ActivityLog::log('Tambah Pemeriksaan TB', 'Pemeriksaan', "Mencatat hasil pemeriksaan {$exam->examination_type} kode {$code}.");
+
+                return redirect()->route('admin.examinations.index')->with('success', 'Hasil pemeriksaan laboratorium berhasil disimpan.');
+            }
+        });
     }
 
-    public function show($id)
+    public function store(Request $request)
     {
-        $id = decrypt_id($id);
-        $examination = ClinicalExamination::with(['patient.user', 'puskesmas'])->findOrFail($id);
-        return redirect()->route('admin.examinations.edit', $examination);
-    }
-
-    public function edit($id)
-    {
-        $id = decrypt_id($id);
-        $examination = ClinicalExamination::with('patient.user')->findOrFail($id);
-        $patients = Patient::with('user')->get();
-        $puskesmas = Puskesmas::orderBy('name')->get();
-
-        return view('admin.examinations.form', compact('examination', 'patients', 'puskesmas'))->with([
-            'title'        => 'Edit Pemeriksaan: ' . $examination->examination_code,
-            'pageTitle'    => 'Edit Pemeriksaan Laboratorium',
-            'pageSubtitle' => 'Perbarui rincian jenis pemeriksaan, hasil uji, dan diagnosis.',
-            'isEdit'       => true,
-        ]);
+        return $this->save($request);
     }
 
     public function update(Request $request, $id)
     {
-        $id = decrypt_id($id);
-        $examination = ClinicalExamination::findOrFail($id);
-
-        $request->validate([
-            'patient_id'       => 'required|exists:patients,id',
-            'examination_date' => 'required|date',
-            'examination_type' => 'required|string',
-            'result'           => 'required|string',
-            'diagnosis'        => 'required|string',
-            'puskesmas_id'     => 'nullable|exists:puskesmas,id',
-            'status'           => 'required|in:Menunggu Hasil,Selesai,Perlu Pemeriksaan Ulang',
-            'laboratory_notes' => 'nullable|string',
-        ]);
-
-        $examination->update([
-            'patient_id'       => $request->patient_id,
-            'puskesmas_id'     => $request->puskesmas_id,
-            'examination_date' => $request->examination_date,
-            'examination_type' => $request->examination_type,
-            'result'           => $request->result,
-            'diagnosis'        => $request->diagnosis,
-            'status'           => $request->status,
-            'laboratory_notes' => $request->laboratory_notes,
-        ]);
-
-        ActivityLog::log('Perbarui Pemeriksaan TB', 'Pemeriksaan', "Memperbarui data pemeriksaan {$examination->examination_code}.");
-
-        return redirect()->route('admin.examinations.index')->with('success', 'Data pemeriksaan berhasil diperbarui.');
+        return $this->save($request, $id);
     }
 
     public function destroy($id)

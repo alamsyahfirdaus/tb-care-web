@@ -98,15 +98,17 @@
 
 <!-- Table Card -->
 <div class="card card-outline card-navy">
-    <div class="card-header">
-        <h3 class="card-title font-weight-bold"><i class="fas fa-list mr-1 text-navy"></i> Riwayat Pengiriman Notifikasi</h3>
-        <div class="card-tools">
-            <span class="badge badge-secondary p-2">Total: {{ $notifications->count() }} Pesan</span>
-        </div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title font-weight-bold mb-0">
+            <i class="fas fa-list mr-1 text-navy"></i> Riwayat Pengiriman Notifikasi <span class="badge badge-light border ml-2">Total: {{ $notifications->count() }} Pesan</span>
+        </h3>
+        <a href="{{ route('admin.notifications.create') }}" class="btn btn-sm btn-primary font-weight-bold shadow-sm">
+            <i class="fas fa-plus mr-1"></i> Buat Notifikasi
+        </a>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="notificationsTable" class="table table-bordered table-hover data-table align-middle mb-0">
+            <table id="notificationsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                 <thead class="bg-light">
                     <tr>
                         <th style="width: 50px;" class="text-center">No</th>
@@ -163,6 +165,9 @@
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ route('admin.notifications.show', $notif->encrypted_id) }}" class="btn btn-info" title="Lihat Rincian">
                                     <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ route('admin.notifications.edit', $notif->encrypted_id) }}" class="btn btn-warning" title="Edit Notifikasi">
+                                    <i class="fas fa-edit"></i>
                                 </a>
                                 <button type="button" class="btn btn-danger" title="Hapus Notifikasi" onclick="confirmDelete('{{ route('admin.notifications.destroy', $notif->encrypted_id) }}', '{{ addslashes($notif->title) }}')">
                                     <i class="fas fa-trash"></i>

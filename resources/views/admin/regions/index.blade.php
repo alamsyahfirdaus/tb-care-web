@@ -148,7 +148,10 @@
                         <td class="text-center" data-order="{{ $sub->puskesmas_count }}"><span class="badge badge-teal px-2 py-1 text-white" style="background-color: #20c997;">{{ $sub->puskesmas_count }} Puskesmas</span></td>
                         <td class="text-center" data-order="{{ $sub->patients_count }}"><span class="badge badge-warning px-2 py-1">{{ $sub->patients_count }} Pasien</span></td>
                         <td class="text-center" data-order="{{ $sub->screenings_count }}"><span class="badge badge-info px-2 py-1">{{ $sub->screenings_count }} Skrining</span></td>
-                        <td class="text-center">
+                        <td class="text-center text-nowrap">
+                            <button type="button" class="btn btn-sm btn-warning mr-1" onclick="openEditSubdistrict('{{ $sub->encrypted_id }}', '{{ addslashes($sub->name) }}', '{{ $sub->district_id }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.subdistricts.destroy', $sub->encrypted_id) }}', 'Kecamatan {{ $sub->name }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -185,7 +188,10 @@
                         <td>{{ $vil->subdistrict->district->name ?? '-' }}</td>
                         <td>{{ $vil->subdistrict->district->province->name ?? '-' }}</td>
                         <td class="text-center" data-order="{{ $vil->patients_count }}"><span class="badge badge-warning px-2 py-1">{{ $vil->patients_count }} Pasien</span></td>
-                        <td class="text-center">
+                        <td class="text-center text-nowrap">
+                            <button type="button" class="btn btn-sm btn-warning mr-1" onclick="openEditVillage('{{ $vil->encrypted_id }}', '{{ addslashes($vil->name) }}', '{{ $vil->subdistrict_id }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.villages.destroy', $vil->encrypted_id) }}', 'Desa {{ $vil->name }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -313,6 +319,74 @@
     </div>
 </div>
 
+<!-- Modal Edit Kecamatan -->
+<div class="modal fade" id="modalEditSubdistrict" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="formEditSubdistrict" method="POST">
+            @csrf
+            @method('PUT')
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-1"></i> Edit Kecamatan</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Kabupaten / Kota <span class="text-danger">*</span></label>
+                        <select name="district_id" id="edit_subdistrict_district_id" class="form-control select2" required style="width: 100%;">
+                            @foreach($allDistricts as $dist)
+                                <option value="{{ $dist->id }}">{{ $dist->name }} (Prov. {{ $dist->province->name ?? '-' }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Kecamatan <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="edit_subdistrict_name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning font-weight-bold"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Desa -->
+<div class="modal fade" id="modalEditVillage" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="formEditVillage" method="POST">
+            @csrf
+            @method('PUT')
+            <div class="modal-content">
+                <div class="modal-header bg-purple text-white" style="background-color: #6f42c1;">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-1"></i> Edit Desa / Kelurahan</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Kecamatan Induk <span class="text-danger">*</span></label>
+                        <select name="subdistrict_id" id="edit_village_subdistrict_id" class="form-control select2" required style="width: 100%;">
+                            @foreach($allSubdistricts as $sub)
+                                <option value="{{ $sub->id }}">{{ $sub->name }} ({{ $sub->district->name ?? '-' }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Desa / Kelurahan <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="edit_village_name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-purple font-weight-bold text-white" style="background-color: #6f42c1;"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <form id="delete-form" method="POST" style="display: none;">
     @csrf
     @method('DELETE')
@@ -321,6 +395,22 @@
 
 @push('scripts')
 <script>
+function openEditSubdistrict(encryptedId, name, districtId) {
+    let url = '{{ url("admin/regions/subdistricts") }}/' + encryptedId;
+    $('#formEditSubdistrict').attr('action', url);
+    $('#edit_subdistrict_name').val(name);
+    $('#edit_subdistrict_district_id').val(districtId).trigger('change');
+    $('#modalEditSubdistrict').modal('show');
+}
+
+function openEditVillage(encryptedId, name, subdistrictId) {
+    let url = '{{ url("admin/regions/villages") }}/' + encryptedId;
+    $('#formEditVillage').attr('action', url);
+    $('#edit_village_name').val(name);
+    $('#edit_village_subdistrict_id').val(subdistrictId).trigger('change');
+    $('#modalEditVillage').modal('show');
+}
+
 function confirmDelete(url, name) {
     Swal.fire({
         title: 'Hapus Wilayah?',

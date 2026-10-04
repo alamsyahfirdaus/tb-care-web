@@ -1049,7 +1049,7 @@
         });
 
         // Confirmation Modal for Deletion
-        function confirmDelete(formId, itemName) {
+        function confirmDelete(target, itemName) {
             Swal.fire({
                 title: 'Konfirmasi Hapus Data',
                 text: itemName ? 'Apakah Anda yakin ingin menghapus data "' + itemName + '"?' :
@@ -1062,7 +1062,34 @@
                 cancelButtonText: 'Batal'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    document.getElementById(formId).submit();
+                    var el = document.getElementById(target);
+                    if (el && typeof el.submit === 'function') {
+                        el.submit();
+                    } else {
+                        var form = document.getElementById('global-delete-form');
+                        if (!form) {
+                            form = document.createElement('form');
+                            form.id = 'global-delete-form';
+                            form.method = 'POST';
+                            form.style.display = 'none';
+
+                            var csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = '_token';
+                            csrfInput.value = $('meta[name="csrf-token"]').attr('content');
+                            form.appendChild(csrfInput);
+
+                            var methodInput = document.createElement('input');
+                            methodInput.type = 'hidden';
+                            methodInput.name = '_method';
+                            methodInput.value = 'DELETE';
+                            form.appendChild(methodInput);
+
+                            document.body.appendChild(form);
+                        }
+                        form.action = target;
+                        form.submit();
+                    }
                 }
             });
         }

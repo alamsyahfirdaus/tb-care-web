@@ -94,7 +94,7 @@
 </div>
 
 <div class="card card-outline card-primary card-tabs">
-    <div class="card-header p-0 pt-1 border-bottom-0">
+    <div class="card-header p-0 pt-1 border-bottom-0 d-flex justify-content-between align-items-center pr-3">
         <ul class="nav nav-tabs" id="educationViewTabs" role="tablist">
             <li class="nav-item">
                 <a class="nav-link active font-weight-bold" id="tab-table-view" data-toggle="pill" href="#tableView" role="tab">
@@ -107,6 +107,9 @@
                 </a>
             </li>
         </ul>
+        <a href="{{ route('admin.education.create') }}" class="btn btn-sm btn-primary font-weight-bold shadow-sm mb-1">
+            <i class="fas fa-plus mr-1"></i> Tambah Materi
+        </a>
     </div>
     <div class="card-body">
         <div class="tab-content" id="educationViewTabsContent">
@@ -114,7 +117,7 @@
             <!-- TAB 1: DATATABLES -->
             <div class="tab-pane fade show active" id="tableView" role="tabpanel">
                 <div class="table-responsive">
-                    <table id="educationTable" class="table table-bordered table-hover data-table">
+                    <table id="educationTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                         <thead class="bg-light">
                             <tr>
                                 <th style="width: 50px;" class="text-center">No</th>

@@ -107,16 +107,63 @@ class RegionController extends Controller
         return redirect()->route('admin.regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$vil->name} berhasil ditambahkan.");
     }
 
+    public function updateSubdistrict(Request $request, $id)
+    {
+        $id = decrypt_id($id);
+        $sub = Subdistrict::findOrFail($id);
+
+        $request->validate([
+            'name'        => 'required|string|max:100',
+            'district_id' => 'required|exists:districts,id',
+        ]);
+
+        \DB::transaction(function () use ($sub, $request) {
+            $sub->update([
+                'name'        => $request->name,
+                'district_id' => $request->district_id,
+            ]);
+        });
+
+        ActivityLog::log('Perbarui Wilayah', 'Wilayah', "Memperbarui Kecamatan {$sub->name}.");
+
+        return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$sub->name} berhasil diperbarui.");
+    }
+
     public function destroySubdistrict($id)
     {
         $id = decrypt_id($id);
         $sub = Subdistrict::findOrFail($id);
         $name = $sub->name;
-        $sub->delete();
+
+        \DB::transaction(function () use ($sub) {
+            $sub->delete();
+        });
 
         ActivityLog::log('Hapus Wilayah', 'Wilayah', "Menghapus Kecamatan {$name}.");
 
         return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$name} berhasil dihapus.");
+    }
+
+    public function updateVillage(Request $request, $id)
+    {
+        $id = decrypt_id($id);
+        $vil = Village::findOrFail($id);
+
+        $request->validate([
+            'name'           => 'required|string|max:100',
+            'subdistrict_id' => 'required|exists:subdistricts,id',
+        ]);
+
+        \DB::transaction(function () use ($vil, $request) {
+            $vil->update([
+                'name'           => $request->name,
+                'subdistrict_id' => $request->subdistrict_id,
+            ]);
+        });
+
+        ActivityLog::log('Perbarui Wilayah', 'Wilayah', "Memperbarui Desa/Kelurahan {$vil->name}.");
+
+        return redirect()->route('admin.regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$vil->name} berhasil diperbarui.");
     }
 
     public function destroyVillage($id)
@@ -124,7 +171,10 @@ class RegionController extends Controller
         $id = decrypt_id($id);
         $vil = Village::findOrFail($id);
         $name = $vil->name;
-        $vil->delete();
+
+        \DB::transaction(function () use ($vil) {
+            $vil->delete();
+        });
 
         ActivityLog::log('Hapus Wilayah', 'Wilayah', "Menghapus Desa/Kelurahan {$name}.");
 

@@ -70,14 +70,16 @@
     <!-- Contacts Table -->
     <div class="card shadow-sm">
         <div class="card-header border-bottom-0 d-flex justify-content-between align-items-center">
-            <h3 class="card-title font-weight-bold">
-                <i class="fas fa-people-arrows mr-1 text-teal"></i> {{ $pageTitle }}
+            <h3 class="card-title font-weight-bold mb-0">
+                <i class="fas fa-people-arrows mr-1 text-teal"></i> {{ $pageTitle }} <span class="badge badge-light border ml-2">Total: {{ $contacts->count() }} data</span>
             </h3>
-            <span class="badge badge-light border">Total: {{ $contacts->count() }} data</span>
+            <a href="{{ route('admin.contacts.create') }}" class="btn btn-sm btn-teal font-weight-bold shadow-sm text-white" style="background-color: #20c997;">
+                <i class="fas fa-plus mr-1"></i> Catat Kontak Erat
+            </a>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="contactsTable" class="table table-bordered table-hover data-table">
+                <table id="contactsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead>
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>
@@ -104,7 +106,7 @@
                                 <td data-order="{{ $c->age }}">{{ $c->age }} Th &bull; {{ $c->gender == 'L' ? 'L' : 'P' }}</td>
                                 <td>
                                     @if($c->patient)
-                                        <a href="{{ route('admin.patients.show', $c->patient->id) }}" class="font-weight-bold text-dark d-block">
+                                        <a href="{{ route('admin.patients.show', $c->patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                             {{ optional($c->patient->user)->name ?? 'Pasien #' . $c->patient->id }}
                                         </a>
                                         <span class="text-xs text-primary">{{ optional($c->patient->puskesmas)->name ?? '-' }}</span>

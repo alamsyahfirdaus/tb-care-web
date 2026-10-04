@@ -92,7 +92,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="screeningsTable" class="table table-bordered table-hover data-table">
+                <table id="screeningsTable" class="table table-bordered table-hover data-table align-middle w-100 mb-0">
                     <thead>
                         <tr>
                             <th style="width: 40px;" class="text-center">No</th>
@@ -156,10 +156,14 @@
                                         <span class="badge badge-success font-weight-bold"><i class="fas fa-check mr-1"></i> Selesai</span>
                                     @endif
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center text-nowrap">
                                     <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-info btn-xs font-weight-bold" title="Buka Detail & Seluruh Jawaban">
                                         <i class="fas fa-eye"></i> Detail
                                     </a>
+                                    <button type="button" class="btn btn-danger btn-xs" title="Hapus Skrining" 
+                                            onclick="confirmDelete('{{ route('admin.screenings.destroy', $scr->encrypted_id) }}', 'Skrining {{ $scr->code }} - {{ addslashes($scr->person_name) }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                         @endforeach

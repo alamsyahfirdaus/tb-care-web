@@ -1,8 +1,8 @@
 @extends('admin.layouts.app')
 
 @section('content')
-<div class="row justify-content-center">
-    <div class="col-md-9">
+<div class="row">
+    <div class="col-12">
         <div class="card card-outline card-primary shadow-sm">
             <div class="card-header">
                 <h3 class="card-title font-weight-bold">
@@ -15,6 +15,7 @@
                 @csrf
                 @if($isEdit)
                     @method('PUT')
+                    <input type="hidden" name="encrypted_id" value="{{ $material->encrypted_id }}">
                 @endif
 
                 <div class="card-body">

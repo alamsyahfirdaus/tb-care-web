@@ -173,4 +173,21 @@ class TreatmentController extends Controller
 
         return redirect()->back()->with('success', 'Jadwal kunjungan kontrol berhasil ditambahkan.');
     }
+
+    public function destroy($id)
+    {
+        $id = decrypt_id($id);
+        $treatment = PatientTreatment::with('patient.user')->findOrFail($id);
+        $patientName = optional($treatment->patient->user)->name ?? 'Pasien';
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($treatment) {
+            $treatment->medicationRecords()->delete();
+            $treatment->visits()->delete();
+            $treatment->delete();
+        });
+
+        ActivityLog::log('Hapus Pengobatan', 'Pengobatan', "Menghapus data riwayat pengobatan untuk {$patientName}.");
+
+        return redirect()->route('admin.treatments.index')->with('success', "Data pengobatan {$patientName} berhasil dihapus.");
+    }
 }
