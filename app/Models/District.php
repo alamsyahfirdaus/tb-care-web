@@ -18,6 +18,11 @@ class District extends Model
         return $this->belongsTo(Province::class, 'province_id');
     }
 
+    public function subdistricts()
+    {
+        return $this->hasMany(Subdistrict::class, 'district_id');
+    }
+
     public static function getAllDistricts($province_id = null)
     {
         $query = self::with('province')->orderBy('name', 'asc');

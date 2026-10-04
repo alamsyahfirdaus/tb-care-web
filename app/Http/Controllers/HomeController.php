@@ -12,6 +12,10 @@ class HomeController extends Controller
 {
     public function index()
     {
+        if (Auth::check() && in_array(Auth::user()->user_type_id, [1, 2, 3])) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $patientTreatment = $this->countTreatment();
 
         $data = array(

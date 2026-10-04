@@ -36,7 +36,7 @@ class PatientTreatment extends Model
 
     public static function getPatientTreatments($filters = [])
     {
-        $query = self::with(['patient.user', 'treatmentType']);
+        $query = self::with(['patient.user', 'patient.puskesmas', 'treatmentType']);
 
         if (isset($filters['id']) && $filters['id']) {
             $query->where('id', $filters['id']);
@@ -46,25 +46,35 @@ class PatientTreatment extends Model
             $query->where('patient_id', $filters['patient_id']);
         }
 
+        if (isset($filters['treatment_status']) && $filters['treatment_status']) {
+            $query->where('treatment_status', $filters['treatment_status']);
+        }
+
         $query->orderBy('id', 'desc');
 
         return $query->get()->map(function ($treatment) {
+            $tTypeName = $treatment->treatmentType 
+                ? $treatment->treatmentType->treatment_type . ' (' . $treatment->treatmentType->treatment_duration . ' ' . ucfirst($treatment->treatmentType->duration_unit) . ')'
+                : 'Standar';
+
             return [
                 'id'                 => $treatment->id,
                 'patient_id'         => $treatment->patient_id,
                 'treatment_type_id'  => $treatment->treatment_type_id,
-                'full_name'          => $treatment->patient->user->name,
-                'user_id'            => $treatment->patient->user_id,
-                'username'           => $treatment->patient->user->username,
-                'gender'             => $treatment->patient->user->gender,
-                'phone'              => $treatment->patient->user->phone ?? '-',
-                'treatment_type'     => $treatment->treatmentType->treatment_type . ' (' . $treatment->treatmentType->treatment_duration . ' ' . ucfirst($treatment->treatmentType->duration_unit) . ')',
+                'full_name'          => optional($treatment->patient->user)->name ?? '-',
+                'user_id'            => optional($treatment->patient)->user_id,
+                'username'           => optional($treatment->patient->user)->username ?? '-',
+                'gender'             => optional($treatment->patient->user)->gender ?? '-',
+                'phone'              => optional($treatment->patient->user)->phone ?? '-',
+                'puskesmas_name'     => optional($treatment->patient->puskesmas)->name ?? '-',
+                'treatment_type'     => $tTypeName,
                 'diagnosis_date'     => $treatment->diagnosis_date,
                 'start_date'         => $treatment->start_date,
                 'end_date'           => $treatment->end_date,
+                'treatment_days'     => $treatment->treatment_days,
                 'medication_time'    => $treatment->medication_time,
                 'prescription'       => $treatment->prescription,
-                'treatment_status'   => $treatment->status,
+                'treatment_status'   => $treatment->treatment_status,
             ];
         });
     }
@@ -91,15 +101,13 @@ class PatientTreatment extends Model
         $startDate = \DateTime::createFromFormat('Y-m-d', $treatment->start_date);
         $endDate   = \DateTime::createFromFormat('Y-m-d', $treatment->end_date);
 
+        if (!$startDate || !$endDate) {
+            return [];
+        }
+
         $dateList = [];
         while ($startDate <= $endDate) {
-            // $formattedDate = $startDate->format('Y-m-d');
-
             $dateList[] = $startDate->format('Y-m-d');
-
-            // $dateList[] = [
-            //     $formattedDate => \App\Helpers\DateHelper::convertDate($formattedDate)
-            // ];
             $startDate->modify('+1 day');
         }
 

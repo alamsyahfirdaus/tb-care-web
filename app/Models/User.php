@@ -48,6 +48,11 @@ class User extends Authenticatable
         return $this->belongsTo(UserType::class, 'user_type_id');
     }
 
+    public function role()
+    {
+        return $this->belongsTo(UserType::class, 'user_type_id');
+    }
+
         public function patient()
     {
         return $this->hasOne(Patient::class);
@@ -58,4 +63,18 @@ class User extends Authenticatable
         return $this->hasOne(Officer::class);
     }
 
+    public function screenings()
+    {
+        return $this->hasMany(Screening::class, 'user_id');
+    }
+
+    public function educationalMaterials()
+    {
+        return $this->hasMany(EducationalMaterial::class, 'created_by');
+    }
+
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class, 'user_id');
+    }
 }

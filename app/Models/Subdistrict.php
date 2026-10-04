@@ -13,6 +13,7 @@ class Subdistrict extends Model
     protected $table = 'subdistricts';
     protected $primaryKey = 'id';
     public $timestamps = false;
+    protected $guarded = [];
 
     public function district()
     {
@@ -24,20 +25,36 @@ class Subdistrict extends Model
         return $this->hasMany(Village::class, 'subdistrict_id');
     }
 
+    public function puskesmas()
+    {
+        return $this->hasMany(Puskesmas::class, 'subdistrict_id');
+    }
+
+    public function patients()
+    {
+        return $this->hasMany(Patient::class, 'subdistrict_id');
+    }
+
+    public function screenings()
+    {
+        return $this->hasMany(Screening::class, 'subdistrict_id');
+    }
+
     public static function getAllSubdistricts()
     {
         $districtId = $provinceId = null;
 
-        if (session('role') == 2) {
-            $healthOffice = HealthOffice::with('district.province')
-                ->where('user_id', Auth::id())
-                ->first();
-
-            if ($healthOffice) {
-                if ($healthOffice->office_type === 'Kabupaten/Kota') {
-                    $districtId = $healthOffice->district_id;
-                } elseif ($healthOffice->office_type === 'Provinsi') {
-                    $provinceId = $healthOffice->district->province_id;
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user->user_type_id == 3 && $user->officer) {
+                $officer = $user->officer;
+                if ($officer->district_id) {
+                    if ($officer->officer_type_id == 2) {
+                        $districtId = $officer->district_id;
+                    } elseif ($officer->officer_type_id == 1) {
+                        $dist = District::find($officer->district_id);
+                        $provinceId = $dist ? $dist->province_id : null;
+                    }
                 }
             }
         }
@@ -55,14 +72,15 @@ class Subdistrict extends Model
         }
 
         return $query->get()->mapWithKeys(function ($subdistrict) {
-            $area = 'Kec. ' . $subdistrict->name . ' - ' . $subdistrict->district->name . ' - Prov. ' . $subdistrict->district->province->name;
+            $dName = $subdistrict->district ? $subdistrict->district->name : '-';
+            $pName = ($subdistrict->district && $subdistrict->district->province) ? $subdistrict->district->province->name : '-';
+            $area = 'Kec. ' . $subdistrict->name . ' - ' . $dName . ' - Prov. ' . $pName;
 
             return [
                 $subdistrict->id => $area,
             ];
         })->toArray();
     }
-
 
     public static function getSubdistrictById($id)
     {

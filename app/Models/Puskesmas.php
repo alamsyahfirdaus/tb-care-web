@@ -13,33 +13,45 @@ class Puskesmas extends Model
     protected $table = 'puskesmas';
     protected $primaryKey = 'id';
     public $timestamps = false;
+    protected $guarded = [];
 
     public function subdistrict()
     {
         return $this->belongsTo(Subdistrict::class, 'subdistrict_id');
     }
 
+    public function officers()
+    {
+        return $this->hasMany(Officer::class, 'puskesmas_id');
+    }
+
+    public function patients()
+    {
+        return $this->hasMany(Patient::class, 'puskesmas_id');
+    }
+
+    public function screenings()
+    {
+        return $this->hasMany(Screening::class, 'puskesmas_id');
+    }
+
     public static function getAllPuskesmas()
     {
         $puskesmasId = $districtId = $provinceId = null;
 
-        if (session('role') == 2) {
-            $healthOffice = HealthOffice::with('district.province')
-                ->where('user_id', Auth::id())
-                ->first();
-
-            if ($healthOffice) {
-                if ($healthOffice->office_type === 'Kabupaten/Kota') {
-                    $districtId = $healthOffice->district_id;
-                } elseif ($healthOffice->office_type === 'Provinsi') {
-                    $provinceId = $healthOffice->district->province_id;
+        if (Auth::check()) {
+            $user = Auth::user();
+            // Role 3 is Petugas (Officer)
+            if ($user->user_type_id == 3 && $user->officer) {
+                $officer = $user->officer;
+                if (in_array($officer->officer_type_id, [3, 4]) && $officer->puskesmas_id) {
+                    $puskesmasId = $officer->puskesmas_id;
+                } elseif ($officer->officer_type_id == 2 && $officer->district_id) {
+                    $districtId = $officer->district_id;
+                } elseif ($officer->officer_type_id == 1 && $officer->district_id) {
+                    $dist = District::find($officer->district_id);
+                    $provinceId = $dist ? $dist->province_id : null;
                 }
-            }
-        } elseif (session('role') == 3) {
-            $coord = Coordinator::getCoordByUserId();
-
-            if ($coord) {
-                $puskesmasId = $coord->puskesmas_id;
             }
         }
 
@@ -57,7 +69,7 @@ class Puskesmas extends Model
             });
         }
 
-        return $query->orderBy('id', 'desc')
+        return $query->orderBy('name', 'asc')
             ->get()
             ->map(function ($puskesmas) {
                 $subdistrict = $puskesmas->subdistrict;
@@ -84,7 +96,6 @@ class Puskesmas extends Model
             })
             ->toArray();
     }
-
 
     public static function getPuskesmasById($id)
     {

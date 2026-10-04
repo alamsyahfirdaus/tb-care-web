@@ -54,6 +54,21 @@ class Patient extends Model
         return $this->hasMany(PatientMedicationSchedule::class, 'patient_id');
     }
 
+    public function screenings()
+    {
+        return $this->hasMany(Screening::class, 'patient_id');
+    }
+
+    public function examinations()
+    {
+        return $this->hasMany(ClinicalExamination::class, 'patient_id');
+    }
+
+    public function closeContacts()
+    {
+        return $this->hasMany(CloseContact::class, 'patient_id');
+    }
+
     /**
      * Centralized patient access scope for all roles.
      *
