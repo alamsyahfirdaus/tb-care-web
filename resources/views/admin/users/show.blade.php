@@ -91,7 +91,7 @@
                             <h3 class="card-title font-weight-bold text-danger">
                                 <i class="fas fa-id-card mr-1"></i> Rekam Medis Pasien Terhubung
                             </h3>
-                            <a href="{{ route('admin.patients.show', $user->patient->id) }}" class="btn btn-xs btn-outline-danger font-weight-bold">
+                            <a href="{{ route('admin.patients.show', $user->patient->encrypted_id) }}" class="btn btn-xs btn-outline-danger font-weight-bold">
                                 <i class="fas fa-external-link-alt mr-1"></i> Buka Detail Lengkap Pasien
                             </a>
                         </div>

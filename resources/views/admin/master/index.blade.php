@@ -115,6 +115,7 @@
                             <th>Nama Regimen / Jenis Pengobatan</th>
                             <th class="text-center">Durasi Terapi</th>
                             <th>Keterangan / Panduan</th>
+                            <th style="width: 100px;" class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,7 +127,59 @@
                                 <span class="badge badge-info px-2 py-1">{{ $tt->treatment_duration }} {{ ucfirst($tt->duration_unit) }}</span>
                             </td>
                             <td><small class="text-muted">{{ $tt->description ?: 'Regimen terapi OAT lini pertama/kedua standar' }}</small></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-warning mr-1" data-toggle="modal" data-target="#editTreatmentModal{{ $tt->encrypted_id }}" title="Edit Regimen">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.master.treatments.destroy', $tt->encrypted_id) }}', 'Regimen {{ addslashes($tt->treatment_type) }}')" title="Hapus Regimen">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
                         </tr>
+
+                        <!-- Modal Edit Regimen -->
+                        <div class="modal fade" id="editTreatmentModal{{ $tt->encrypted_id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <form action="{{ route('admin.master.treatments.update', $tt->encrypted_id) }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-warning">
+                                            <h5 class="modal-title font-weight-bold"><i class="fas fa-pencil-alt mr-1"></i> Edit Regimen Pengobatan</h5>
+                                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="form-group">
+                                                <label>Nama Regimen <span class="text-danger">*</span></label>
+                                                <input type="text" name="treatment_type" class="form-control" value="{{ $tt->treatment_type }}" required>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="col-8 form-group">
+                                                    <label>Durasi Pengobatan <span class="text-danger">*</span></label>
+                                                    <input type="number" name="treatment_duration" class="form-control" value="{{ $tt->treatment_duration }}" min="1" required>
+                                                </div>
+                                                <div class="col-4 form-group">
+                                                    <label>Satuan <span class="text-danger">*</span></label>
+                                                    <select name="duration_unit" class="form-control">
+                                                        <option value="bulan" {{ strtolower($tt->duration_unit) == 'bulan' || strtolower($tt->duration_unit) == 'month' ? 'selected' : '' }}>Bulan</option>
+                                                        <option value="minggu" {{ strtolower($tt->duration_unit) == 'minggu' || strtolower($tt->duration_unit) == 'week' ? 'selected' : '' }}>Minggu</option>
+                                                        <option value="hari" {{ strtolower($tt->duration_unit) == 'hari' || strtolower($tt->duration_unit) == 'day' ? 'selected' : '' }}>Hari</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Deskripsi Tambahan</label>
+                                                <textarea name="description" rows="2" class="form-control">{{ $tt->description }}</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                                            <button type="submit" class="btn btn-warning font-weight-bold"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                         @endforeach
                     </tbody>
                 </table>
@@ -155,9 +208,9 @@
                                     <div class="col-4 form-group">
                                         <label>Satuan <span class="text-danger">*</span></label>
                                         <select name="duration_unit" class="form-control">
-                                            <option value="bulan">Bulan</option>
-                                            <option value="minggu">Minggu</option>
-                                            <option value="hari">Hari</option>
+                                            <option value="month">Bulan</option>
+                                            <option value="week">Minggu</option>
+                                            <option value="day">Hari</option>
                                         </select>
                                     </div>
                                 </div>

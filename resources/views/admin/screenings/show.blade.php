@@ -127,7 +127,7 @@
                 <div class="alert alert-success shadow-sm">
                     <h6 class="font-weight-bold mb-1"><i class="fas fa-link mr-1"></i> Terhubung ke Rekam Pasien</h6>
                     <span class="text-xs d-block mb-2">Responden ini sudah terdaftar sebagai Pasien Pengobatan TB Care.</span>
-                    <a href="{{ route('admin.patients.show', $screening->patient->id) }}" class="btn btn-xs btn-success font-weight-bold">
+                    <a href="{{ route('admin.patients.show', $screening->patient->encrypted_id) }}" class="btn btn-xs btn-success font-weight-bold">
                         Buka Rekam Pasien <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>

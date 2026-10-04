@@ -55,15 +55,81 @@ class MasterDataController extends Controller
             'description'        => 'nullable|string',
         ]);
 
+        $unitMap = [
+            'bulan'  => 'month',
+            'month'  => 'month',
+            'minggu' => 'week',
+            'week'   => 'week',
+            'hari'   => 'day',
+            'day'    => 'day',
+            'tahun'  => 'year',
+            'year'   => 'year',
+        ];
+        $durationUnit = $unitMap[strtolower($request->duration_unit)] ?? 'month';
+
         $tt = TreatmentType::create([
             'treatment_type'     => $request->treatment_type,
             'treatment_duration' => $request->treatment_duration,
-            'duration_unit'      => $request->duration_unit,
+            'duration_unit'      => $durationUnit,
             'description'        => $request->description,
         ]);
 
         ActivityLog::log('Tambah Regimen Pengobatan', 'Master Data', "Menambahkan tipe pengobatan: {$tt->treatment_type}.");
 
-        return back()->with('success', 'Tipe pengobatan berhasil ditambahkan.');
+        return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', 'Tipe pengobatan berhasil ditambahkan.');
+    }
+
+    public function updateTreatmentType(Request $request, $id)
+    {
+        $id = decrypt_id($id);
+        $tt = TreatmentType::findOrFail($id);
+
+        $request->validate([
+            'treatment_type'     => 'required|string|max:255',
+            'treatment_duration' => 'required|integer|min:1',
+            'duration_unit'      => 'required|string',
+            'description'        => 'nullable|string',
+        ]);
+
+        $unitMap = [
+            'bulan'  => 'month',
+            'month'  => 'month',
+            'minggu' => 'week',
+            'week'   => 'week',
+            'hari'   => 'day',
+            'day'    => 'day',
+            'tahun'  => 'year',
+            'year'   => 'year',
+        ];
+        $durationUnit = $unitMap[strtolower($request->duration_unit)] ?? 'month';
+
+        $tt->update([
+            'treatment_type'     => $request->treatment_type,
+            'treatment_duration' => $request->treatment_duration,
+            'duration_unit'      => $durationUnit,
+            'description'        => $request->description,
+        ]);
+
+        ActivityLog::log('Edit Regimen Pengobatan', 'Master Data', "Memperbarui tipe pengobatan: {$tt->treatment_type}.");
+
+        return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', 'Regimen pengobatan berhasil diperbarui.');
+    }
+
+    public function destroyTreatmentType($id)
+    {
+        $id = decrypt_id($id);
+        $tt = TreatmentType::findOrFail($id);
+        $name = $tt->treatment_type;
+
+        $inUse = \App\Models\PatientTreatment::where('treatment_type_id', $id)->count();
+        if ($inUse > 0) {
+            return redirect()->route('admin.master.index', ['tab' => 'treatments'])
+                ->with('error', "Regimen '{$name}' tidak dapat dihapus karena sedang digunakan oleh {$inUse} riwayat pengobatan pasien.");
+        }
+
+        $tt->delete();
+        ActivityLog::log('Hapus Regimen Pengobatan', 'Master Data', "Menghapus tipe pengobatan: {$name}.");
+
+        return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', "Regimen pengobatan '{$name}' berhasil dihapus.");
     }
 }

@@ -101,6 +101,31 @@
                                 @enderror
                             </div>
                             <div class="form-group col-md-4">
+                                <label for="province_id">Provinsi</label>
+                                <select name="province_id" id="province_id" class="form-control select2" onchange="loadDistricts(this.value)">
+                                    <option value="">-- Pilih Provinsi --</option>
+                                    @foreach($provinces as $prov)
+                                        <option value="{{ $prov->id }}" {{ (isset($selectedProvinceId) && $selectedProvinceId == $prov->id) ? 'selected' : '' }}>
+                                            {{ $prov->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="district_id">Kabupaten / Kota</label>
+                                <select name="district_id" id="district_id" class="form-control select2" onchange="loadSubdistricts(this.value)">
+                                    <option value="">-- Pilih Kabupaten/Kota --</option>
+                                    @foreach($districts as $dist)
+                                        <option value="{{ $dist->id }}" {{ (isset($selectedDistrictId) && $selectedDistrictId == $dist->id) ? 'selected' : '' }}>
+                                            {{ $dist->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
                                 <label for="subdistrict_id">Kecamatan <span class="text-danger">*</span></label>
                                 <select name="subdistrict_id" id="subdistrict_id" class="form-control select2 @error('subdistrict_id') is-invalid @enderror" required onchange="loadVillages(this.value)">
                                     <option value="">-- Pilih Kecamatan --</option>
@@ -114,7 +139,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-6">
                                 <label for="village_id">Kelurahan / Desa</label>
                                 <select name="village_id" id="village_id" class="form-control select2 @error('village_id') is-invalid @enderror">
                                     <option value="">-- Pilih Kelurahan/Desa --</option>
@@ -217,13 +242,49 @@
 
 @push('scripts')
 <script>
-    function loadVillages(subdistrictId) {
-        if (!subdistrictId) {
-            $('#village_id').html('<option value="">-- Pilih Kelurahan/Desa --</option>');
+    function loadDistricts(provinceId) {
+        if (!provinceId) {
+            $('#district_id').html('<option value="">-- Pilih Kabupaten/Kota --</option>').trigger('change');
+            $('#subdistrict_id').html('<option value="">-- Pilih Kecamatan --</option>').trigger('change');
+            $('#village_id').html('<option value="">-- Pilih Kelurahan/Desa --</option>').trigger('change');
             return;
         }
 
-        $.getJSON('{{ url("/api/kader-area/villages") }}/' + subdistrictId, function (data) {
+        $.getJSON('{{ route("admin.regions.ajax.districts") }}?province_id=' + provinceId, function (data) {
+            let options = '<option value="">-- Pilih Kabupaten/Kota --</option>';
+            $.each(data, function (key, item) {
+                options += '<option value="' + item.id + '">' + item.name + '</option>';
+            });
+            $('#district_id').html(options).trigger('change');
+            $('#subdistrict_id').html('<option value="">-- Pilih Kecamatan --</option>').trigger('change');
+            $('#village_id').html('<option value="">-- Pilih Kelurahan/Desa --</option>').trigger('change');
+        });
+    }
+
+    function loadSubdistricts(districtId) {
+        if (!districtId) {
+            $('#subdistrict_id').html('<option value="">-- Pilih Kecamatan --</option>').trigger('change');
+            $('#village_id').html('<option value="">-- Pilih Kelurahan/Desa --</option>').trigger('change');
+            return;
+        }
+
+        $.getJSON('{{ route("admin.regions.ajax.subdistricts") }}?district_id=' + districtId, function (data) {
+            let options = '<option value="">-- Pilih Kecamatan --</option>';
+            $.each(data, function (key, item) {
+                options += '<option value="' + item.id + '">' + item.name + '</option>';
+            });
+            $('#subdistrict_id').html(options).trigger('change');
+            $('#village_id').html('<option value="">-- Pilih Kelurahan/Desa --</option>').trigger('change');
+        });
+    }
+
+    function loadVillages(subdistrictId) {
+        if (!subdistrictId) {
+            $('#village_id').html('<option value="">-- Pilih Kelurahan/Desa --</option>').trigger('change');
+            return;
+        }
+
+        $.getJSON('{{ route("admin.regions.ajax.villages") }}?subdistrict_id=' + subdistrictId, function (data) {
             let options = '<option value="">-- Pilih Kelurahan/Desa --</option>';
             $.each(data, function (key, item) {
                 options += '<option value="' + item.id + '">' + item.name + '</option>';

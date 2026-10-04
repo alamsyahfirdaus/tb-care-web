@@ -224,7 +224,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->g
     Route::get('treatments', [AdminTreatmentController::class, 'index'])->name('treatments.index');
     Route::get('treatments/monitoring', [AdminTreatmentController::class, 'monitoring'])->name('treatments.monitoring');
     Route::patch('treatments/{id}/status', [AdminTreatmentController::class, 'updateStatus'])->name('treatments.update_status');
-    Route::post('treatments/verify-medicine/{id}', [AdminTreatmentController::class, 'verifyMedication'])->name('treatments.verify-medicine');
+    Route::match(['post', 'patch'], 'treatments/verify-medicine/{id}', [AdminTreatmentController::class, 'verifyMedication'])->name('treatments.verify-medicine');
+    Route::match(['post', 'patch'], 'treatments/verify-medication/{id}', [AdminTreatmentController::class, 'verifyMedication'])->name('treatments.verify_medication');
     Route::delete('treatments/{id}', [AdminTreatmentController::class, 'destroy'])->name('treatments.destroy');
 
     // 7. Kontak Erat
@@ -276,6 +277,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->g
     })->name('master.categories');
     Route::put('master/questions/{id}', [AdminMasterDataController::class, 'updateQuestion'])->name('master.questions.update');
     Route::post('master/treatments', [AdminMasterDataController::class, 'storeTreatmentType'])->name('master.treatments.store');
+    Route::put('master/treatments/{id}', [AdminMasterDataController::class, 'updateTreatmentType'])->name('master.treatments.update');
+    Route::delete('master/treatments/{id}', [AdminMasterDataController::class, 'destroyTreatmentType'])->name('master.treatments.destroy');
 
     // 15. Log Aktivitas
     Route::get('activity-logs', [AdminActivityLogController::class, 'index'])->name('activity_logs.index');

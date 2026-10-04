@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use App\Models\User;
 use App\Models\Puskesmas;
+use App\Models\Province;
+use App\Models\District;
 use App\Models\Subdistrict;
 use App\Models\Village;
 use App\Models\TreatmentType;
@@ -140,22 +142,45 @@ class PatientController extends Controller
     {
         $patient = null;
         $isEdit = false;
+        $selectedProvinceId = null;
+        $selectedDistrictId = null;
+
+        $provinces = Province::orderBy('name')->get();
 
         if ($encryptedId) {
             $id = decrypt_id($encryptedId);
-            $patient = Patient::with(['user', 'treatments.treatmentType'])->findOrFail($id);
+            $patient = Patient::with(['user', 'subdistrict.district.province', 'treatments.treatmentType'])->findOrFail($id);
             $isEdit = true;
-            $villages = Village::where('subdistrict_id', $patient->subdistrict_id)->orderBy('name')->get();
+
+            $selectedProvinceId = optional(optional(optional($patient->subdistrict)->district)->province)->id;
+            $selectedDistrictId = optional(optional($patient->subdistrict)->district)->id;
         } else {
             $patient = new Patient();
-            $villages = Village::orderBy('name')->get();
         }
 
+        $selectedProvinceId = old('province_id', $selectedProvinceId);
+        $selectedDistrictId = old('district_id', $selectedDistrictId);
+        $selectedSubdistrictId = old('subdistrict_id', $patient->subdistrict_id);
+
+        $districts = $selectedProvinceId 
+            ? District::where('province_id', $selectedProvinceId)->orderBy('name')->get() 
+            : District::orderBy('name')->get();
+
+        $subdistricts = $selectedDistrictId 
+            ? Subdistrict::where('district_id', $selectedDistrictId)->orderBy('name')->get() 
+            : Subdistrict::orderBy('name')->get();
+
+        $villages = $selectedSubdistrictId 
+            ? Village::where('subdistrict_id', $selectedSubdistrictId)->orderBy('name')->get() 
+            : Village::orderBy('name')->get();
+
         $puskesmas = Puskesmas::orderBy('name')->get();
-        $subdistricts = Subdistrict::orderBy('name')->get();
         $treatmentTypes = TreatmentType::all();
 
-        return view('admin.patients.form', compact('patient', 'puskesmas', 'subdistricts', 'villages', 'treatmentTypes', 'isEdit'))->with([
+        return view('admin.patients.form', compact(
+            'patient', 'puskesmas', 'provinces', 'districts', 'subdistricts', 'villages', 
+            'selectedProvinceId', 'selectedDistrictId', 'treatmentTypes', 'isEdit'
+        ))->with([
             'title'        => $isEdit ? ('Edit Pasien: ' . optional($patient->user)->name) : 'Tambah Pasien TB',
             'pageTitle'    => $isEdit ? ('Edit Rekam Medis: ' . optional($patient->user)->name) : 'Pendaftaran Pasien TB Baru',
             'pageSubtitle' => $isEdit ? 'Perbarui data identitas, alamat, fisik, dan Puskesmas pembina.' : 'Formulir registrasi rekam medis pasien tuberkulosis dan penugasan Puskesmas.',
@@ -249,7 +274,7 @@ class PatientController extends Controller
 
                 ActivityLog::log('Perbarui Data Pasien', 'Pasien', "Memperbarui data rekam medis pasien {$request->name} (NIK: {$request->nik}).");
 
-                return redirect()->route('admin.patients.show', $patient)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
+                return redirect()->route('admin.patients.show', $patient->encrypted_id)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
             } else {
                 // 1. Create User
                 $user = User::create([
@@ -305,7 +330,7 @@ class PatientController extends Controller
 
                 ActivityLog::log('Tambah Pasien TB', 'Pasien', "Mendaftarkan pasien baru {$user->name} NIK {$patient->nik} di Puskesmas ID {$patient->puskesmas_id}.");
 
-                return redirect()->route('admin.patients.show', $patient)->with('success', 'Data pasien TB berhasil didaftarkan.');
+                return redirect()->route('admin.patients.show', $patient->encrypted_id)->with('success', 'Data pasien TB berhasil didaftarkan.');
             }
         });
     }

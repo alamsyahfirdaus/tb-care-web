@@ -131,7 +131,7 @@
                                         </td>
                                         <td class="text-center">
                                             @if($officer->user_id)
-                                            <a href="{{ route('admin.users.show', $officer->user_id) }}" class="btn btn-sm btn-info" title="Lihat Profil Petugas">
+                                            <a href="{{ route('admin.users.show', optional($officer->user)->encrypted_id ?? encrypt_id($officer->user_id)) }}" class="btn btn-sm btn-info" title="Lihat Profil Petugas">
                                                 <i class="fas fa-user"></i>
                                             </a>
                                             @endif
