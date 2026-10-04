@@ -61,7 +61,7 @@
                     <a href="{{ route('admin.notifications.index') }}" class="btn btn-default">
                         <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar Notifikasi
                     </a>
-                    <button type="button" class="btn btn-danger" onclick="confirmDelete('{{ route('admin.notifications.destroy', $notification->id) }}', '{{ addslashes($notification->title) }}')">
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete('{{ route('admin.notifications.destroy', $notification->encrypted_id) }}', '{{ addslashes($notification->title) }}')">
                         <i class="fas fa-trash mr-1"></i> Hapus Notifikasi
                     </button>
                 </div>

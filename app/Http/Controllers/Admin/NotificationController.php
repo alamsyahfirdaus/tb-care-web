@@ -125,6 +125,7 @@ class NotificationController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $notification = SystemNotification::with(['sender', 'puskesmas'])->findOrFail($id);
 
         return view('admin.notifications.show', compact('notification'))->with([
@@ -136,6 +137,7 @@ class NotificationController extends Controller
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $notification = SystemNotification::findOrFail($id);
         $title = $notification->title;
         $notification->delete();

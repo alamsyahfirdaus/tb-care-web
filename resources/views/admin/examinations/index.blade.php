@@ -130,14 +130,14 @@
                                 <td>{{ optional($exam->puskesmas)->name ?? '-' }}</td>
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
-                                        <a href="{{ route('admin.examinations.edit', $exam->id) }}" class="btn btn-warning btn-xs" title="Edit Data">
+                                        <a href="{{ route('admin.examinations.edit', $exam->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.examinations.destroy', $exam->id) }}" method="POST" id="del-exam-{{ $exam->id }}" class="d-inline">
+                                        <form action="{{ route('admin.examinations.destroy', $exam->encrypted_id) }}" method="POST" id="del-exam-{{ $exam->encrypted_id }}" class="d-inline">
                                             @csrf
                                             @method('DELETE')
                                             <button type="button" class="btn btn-danger btn-xs" title="Hapus Data" 
-                                                    onclick="confirmDelete('del-exam-{{ $exam->id }}', '{{ $exam->examination_code }}')">
+                                                    onclick="confirmDelete('del-exam-{{ $exam->encrypted_id }}', '{{ $exam->examination_code }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>

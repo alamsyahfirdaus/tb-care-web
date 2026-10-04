@@ -302,7 +302,7 @@
                                     <tr>
                                         <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                         <td>
-                                            <a href="{{ route('admin.screenings.show', $scr->id) }}" class="font-weight-bold text-primary">
+                                            <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="font-weight-bold text-primary">
                                                 {{ $scr->code }}
                                             </a>
                                         </td>
@@ -336,7 +336,7 @@
                                             {{ $scr->screened_at ? $scr->screened_at->format('d/m/Y H:i') : $scr->created_at->format('d/m/Y') }}
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('admin.screenings.show', $scr->id) }}" class="btn btn-xs btn-primary font-weight-bold">
+                                            <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-xs btn-primary font-weight-bold">
                                                 <i class="fas fa-eye"></i> Detail
                                             </a>
                                         </td>

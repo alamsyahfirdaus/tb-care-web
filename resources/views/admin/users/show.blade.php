@@ -70,7 +70,7 @@
                     </ul>
 
                     <div class="d-flex justify-content-between">
-                        <a href="{{ route('admin.users.edit', $user->id) }}" class="btn btn-warning btn-sm font-weight-bold flex-grow-1 mr-2">
+                        <a href="{{ route('admin.users.edit', $user->encrypted_id) }}" class="btn btn-warning btn-sm font-weight-bold flex-grow-1 mr-2">
                             <i class="fas fa-edit mr-1"></i> Edit Data
                         </a>
                         <a href="{{ route('admin.users.index') }}" class="btn btn-default btn-sm font-weight-bold">

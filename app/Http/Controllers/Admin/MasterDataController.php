@@ -28,6 +28,7 @@ class MasterDataController extends Controller
 
     public function updateQuestion(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $question = ScreeningQuestion::findOrFail($id);
 
         $request->validate([

@@ -121,12 +121,14 @@ class CloseContactController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $contact = CloseContact::with('patient.user')->findOrFail($id);
-        return redirect()->route('admin.contacts.edit', $contact->id);
+        return redirect()->route('admin.contacts.edit', $contact);
     }
 
     public function edit($id)
     {
+        $id = decrypt_id($id);
         $contact = CloseContact::with('patient.user')->findOrFail($id);
         $patients = Patient::with('user')->get();
 
@@ -140,6 +142,7 @@ class CloseContactController extends Controller
 
     public function update(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $contact = CloseContact::findOrFail($id);
 
         $request->validate([
@@ -166,6 +169,7 @@ class CloseContactController extends Controller
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $contact = CloseContact::findOrFail($id);
         $name = $contact->name;
         $contact->delete();

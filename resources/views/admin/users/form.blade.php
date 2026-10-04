@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Data Akun Pengguna' : 'Formulir Pendaftaran Akun Pengguna Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.users.update', $user->id) : route('admin.users.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('admin.users.update', $user->encrypted_id) : route('admin.users.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')

@@ -54,6 +54,7 @@ class EducationController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $material = EducationalMaterial::with('author')->findOrFail($id);
 
         return view('admin.education.show', compact('material'))->with([
@@ -106,11 +107,12 @@ class EducationController extends Controller
 
         ActivityLog::log('Tambah Edukasi', 'Edukasi', "Menambahkan materi edukasi: {$material->title_material}.");
 
-        return redirect()->route('admin.education.show', $material->id)->with('success', 'Materi edukasi berhasil diterbitkan.');
+        return redirect()->route('admin.education.show', $material)->with('success', 'Materi edukasi berhasil diterbitkan.');
     }
 
     public function edit($id)
     {
+        $id = decrypt_id($id);
         $material = EducationalMaterial::findOrFail($id);
 
         return view('admin.education.form', [
@@ -124,6 +126,7 @@ class EducationController extends Controller
 
     public function update(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $material = EducationalMaterial::findOrFail($id);
 
         $request->validate([
@@ -155,11 +158,12 @@ class EducationController extends Controller
 
         ActivityLog::log('Perbarui Edukasi', 'Edukasi', "Memperbarui materi edukasi {$material->title_material}.");
 
-        return redirect()->route('admin.education.show', $material->id)->with('success', 'Materi edukasi berhasil diperbarui.');
+        return redirect()->route('admin.education.show', $material)->with('success', 'Materi edukasi berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $material = EducationalMaterial::findOrFail($id);
         $title = $material->title_material;
 
@@ -176,6 +180,7 @@ class EducationController extends Controller
 
     public function togglePublish($id)
     {
+        $id = decrypt_id($id);
         $material = EducationalMaterial::findOrFail($id);
         $material->is_publish = !$material->is_publish;
         $material->save();

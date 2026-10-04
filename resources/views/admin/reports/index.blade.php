@@ -167,7 +167,7 @@
                         @foreach($data as $idx => $pat)
                         <tr>
                             <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
-                            <td><code>{{ $pat->patient_number ?? ('TB-' . $pat->id) }}</code></td>
+                            <td><code>{{ $pat->patient_number ?? ('TB-' . str_pad($loop->iteration, 4, '0', STR_PAD_LEFT)) }}</code></td>
                             <td><strong>{{ $pat->user->name ?? $pat->name ?? 'Pasien' }}</strong></td>
                             <td>{{ $pat->nik ?? ($pat->user->nik ?? '-') }}</td>
                             <td data-order="{{ $pat->age ?? 0 }}">{{ ($pat->gender ?? ($pat->user->gender ?? '')) == 'male' || ($pat->gender ?? '') == 'L' ? 'L' : 'P' }} / {{ $pat->age ?? '-' }} Thn</td>

@@ -48,6 +48,7 @@ class PuskesmasController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $pkm = Puskesmas::with([
             'subdistrict.district.province',
             'officers.user',
@@ -101,11 +102,12 @@ class PuskesmasController extends Controller
 
         ActivityLog::log('Tambah Puskesmas', 'Faskes', "Menambahkan Puskesmas {$pkm->name} (Kode {$code}).");
 
-        return redirect()->route('admin.puskesmas.show', $pkm->id)->with('success', 'Fasilitas kesehatan berhasil ditambahkan.');
+        return redirect()->route('admin.puskesmas.show', $pkm)->with('success', 'Fasilitas kesehatan berhasil ditambahkan.');
     }
 
     public function edit($id)
     {
+        $id = decrypt_id($id);
         $puskesmas = Puskesmas::findOrFail($id);
         $subdistricts = Subdistrict::orderBy('name')->get();
 
@@ -119,6 +121,7 @@ class PuskesmasController extends Controller
 
     public function update(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $puskesmas = Puskesmas::findOrFail($id);
 
         $request->validate([
@@ -137,11 +140,12 @@ class PuskesmasController extends Controller
 
         ActivityLog::log('Perbarui Puskesmas', 'Faskes', "Memperbarui data Puskesmas {$puskesmas->name}.");
 
-        return redirect()->route('admin.puskesmas.show', $puskesmas->id)->with('success', 'Data Puskesmas berhasil diperbarui.');
+        return redirect()->route('admin.puskesmas.show', $puskesmas)->with('success', 'Data Puskesmas berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $puskesmas = Puskesmas::findOrFail($id);
         $name = $puskesmas->name;
         $puskesmas->delete();

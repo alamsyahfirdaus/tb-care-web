@@ -128,18 +128,20 @@ class TreatmentController extends Controller
 
     public function verifyMedication($id)
     {
+        $id = decrypt_id($id);
         $record = MedicationRecord::findOrFail($id);
         $record->update([
             'is_verified' => 1
         ]);
 
-        ActivityLog::log('Verifikasi Minum Obat', 'Pengobatan', "Memverifikasi bukti foto minum obat ID #{$id}.");
+        ActivityLog::log('Verifikasi Minum Obat', 'Pengobatan', "Memverifikasi bukti foto minum obat.");
 
         return redirect()->back()->with('success', 'Bukti minum obat berhasil diverifikasi.');
     }
 
     public function updateStatus(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $request->validate([
             'treatment_status' => 'required|in:Berjalan,Selesai,Gagal,Meninggal',
             'prescription'     => 'nullable|string',

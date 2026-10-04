@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Data Pemeriksaan TB' : 'Formulir Catat Pemeriksaan Laboratorium TB Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.examinations.update', $examination->id) : route('admin.examinations.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('admin.examinations.update', $examination->encrypted_id) : route('admin.examinations.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')

@@ -126,14 +126,14 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
-                                        <a href="{{ route('admin.contacts.edit', $c->id) }}" class="btn btn-warning btn-xs" title="Edit Kontak">
+                                        <a href="{{ route('admin.contacts.edit', $c->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Kontak">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.contacts.destroy', $c->id) }}" method="POST" id="del-contact-{{ $c->id }}" class="d-inline">
+                                        <form action="{{ route('admin.contacts.destroy', $c->encrypted_id) }}" method="POST" id="del-contact-{{ $c->encrypted_id }}" class="d-inline">
                                             @csrf
                                             @method('DELETE')
                                             <button type="button" class="btn btn-danger btn-xs" title="Hapus Kontak" 
-                                                    onclick="confirmDelete('del-contact-{{ $c->id }}', '{{ $c->name }}')">
+                                                    onclick="confirmDelete('del-contact-{{ $c->encrypted_id }}', '{{ $c->name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>

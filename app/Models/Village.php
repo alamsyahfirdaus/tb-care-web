@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasEncryptedId;
 
 class Village extends Model
 {
-    use HasFactory;
+    use HasFactory, HasEncryptedId;
 
     protected $table = 'villages';
 

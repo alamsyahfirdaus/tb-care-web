@@ -161,10 +161,10 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('admin.notifications.show', $notif->id) }}" class="btn btn-info" title="Lihat Rincian">
+                                <a href="{{ route('admin.notifications.show', $notif->encrypted_id) }}" class="btn btn-info" title="Lihat Rincian">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <button type="button" class="btn btn-danger" title="Hapus Notifikasi" onclick="confirmDelete('{{ route('admin.notifications.destroy', $notif->id) }}', '{{ addslashes($notif->title) }}')">
+                                <button type="button" class="btn btn-danger" title="Hapus Notifikasi" onclick="confirmDelete('{{ route('admin.notifications.destroy', $notif->encrypted_id) }}', '{{ addslashes($notif->title) }}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>

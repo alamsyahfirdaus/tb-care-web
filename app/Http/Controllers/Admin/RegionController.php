@@ -109,6 +109,7 @@ class RegionController extends Controller
 
     public function destroySubdistrict($id)
     {
+        $id = decrypt_id($id);
         $sub = Subdistrict::findOrFail($id);
         $name = $sub->name;
         $sub->delete();
@@ -120,6 +121,7 @@ class RegionController extends Controller
 
     public function destroyVillage($id)
     {
+        $id = decrypt_id($id);
         $vil = Village::findOrFail($id);
         $name = $vil->name;
         $vil->delete();

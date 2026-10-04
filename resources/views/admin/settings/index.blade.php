@@ -125,7 +125,7 @@
                             <thead class="bg-light">
                                 <tr>
                                     <th style="width: 40px;" class="text-center">No</th>
-                                    <th>ID</th>
+                                    <th>Kode Role</th>
                                     <th>Nama Role</th>
                                     <th>Deskripsi Hak Akses</th>
                                     <th class="text-center">Jumlah Pengguna</th>
@@ -136,7 +136,7 @@
                                 @foreach($userTypes as $ut)
                                 <tr>
                                     <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
-                                    <td><code>#{{ $ut->id }}</code></td>
+                                    <td><code>ROLE-{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</code></td>
                                     <td>
                                         <strong class="text-dark">{{ $ut->name }}</strong>
                                     </td>

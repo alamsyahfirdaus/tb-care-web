@@ -35,7 +35,7 @@
                             @else
                                 <span class="badge badge-warning px-3 py-2 text-md font-weight-bold">Belum Ada Pengobatan</span>
                             @endif
-                            <a href="{{ route('admin.patients.edit', $patient->id) }}" class="btn btn-sm btn-outline-secondary font-weight-bold ml-2">
+                            <a href="{{ route('admin.patients.edit', $patient->encrypted_id) }}" class="btn btn-sm btn-outline-secondary font-weight-bold ml-2">
                                 <i class="fas fa-edit mr-1"></i> Edit Data
                             </a>
                         </div>
@@ -284,7 +284,7 @@
                                             <h6 class="font-weight-bold text-sm text-dark mb-2"><i class="fas fa-calendar-check mr-1 text-primary"></i> Jadwal Kunjungan & Kontrol Puskesmas:</h6>
                                             @if($tr->visits->count() > 0)
                                                 <div class="table-responsive">
-                                                    <table id="patientVisitsTable-{{ $tr->id }}" class="table table-sm table-bordered table-hover data-table">
+                                                    <table id="patientVisitsTable-{{ $loop->iteration }}" class="table table-sm table-bordered table-hover data-table">
                                                         <thead class="bg-light">
                                                             <tr>
                                                                 <th>Tanggal Kunjungan</th>
@@ -473,7 +473,7 @@
                                                     </td>
                                                     <td class="text-xs" style="max-width: 300px;">{{ $scr->recommendation ?? '-' }}</td>
                                                     <td class="text-center">
-                                                        <a href="{{ route('admin.screenings.show', $scr->id) }}" class="btn btn-xs btn-primary font-weight-bold">
+                                                        <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-xs btn-primary font-weight-bold">
                                                             <i class="fas fa-eye"></i> Detail Skrining
                                                         </a>
                                                     </td>

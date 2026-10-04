@@ -223,7 +223,7 @@
     <div class="modal fade" id="modal-update-status" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <form action="{{ route('admin.screenings.update_status', $screening->id) }}" method="POST">
+                <form action="{{ route('admin.screenings.update_status', $screening->encrypted_id) }}" method="POST">
                     @csrf
                     @method('PATCH')
                     <div class="modal-header bg-primary text-white">

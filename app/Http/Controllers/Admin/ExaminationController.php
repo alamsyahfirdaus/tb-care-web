@@ -120,12 +120,14 @@ class ExaminationController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $examination = ClinicalExamination::with(['patient.user', 'puskesmas'])->findOrFail($id);
-        return redirect()->route('admin.examinations.edit', $examination->id);
+        return redirect()->route('admin.examinations.edit', $examination);
     }
 
     public function edit($id)
     {
+        $id = decrypt_id($id);
         $examination = ClinicalExamination::with('patient.user')->findOrFail($id);
         $patients = Patient::with('user')->get();
         $puskesmas = Puskesmas::orderBy('name')->get();
@@ -140,6 +142,7 @@ class ExaminationController extends Controller
 
     public function update(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $examination = ClinicalExamination::findOrFail($id);
 
         $request->validate([
@@ -171,6 +174,7 @@ class ExaminationController extends Controller
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $examination = ClinicalExamination::findOrFail($id);
         $code = $examination->examination_code;
         $examination->delete();

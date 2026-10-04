@@ -10,7 +10,7 @@
                     {{ $isEdit ? 'Edit Materi Edukasi' : 'Tambah Materi Edukasi Baru' }}
                 </h3>
             </div>
-            <form action="{{ $isEdit ? route('admin.education.update', $material->id) : route('admin.education.store') }}" 
+            <form action="{{ $isEdit ? route('admin.education.update', $material->encrypted_id) : route('admin.education.store') }}" 
                   method="POST" enctype="multipart/form-data">
                 @csrf
                 @if($isEdit)

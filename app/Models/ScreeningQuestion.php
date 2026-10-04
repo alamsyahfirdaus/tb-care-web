@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasEncryptedId;
 
 class ScreeningQuestion extends Model
 {
-    use HasFactory;
+    use HasFactory, HasEncryptedId;
 
     protected $table = 'screening_questions';
     protected $primaryKey = 'id';

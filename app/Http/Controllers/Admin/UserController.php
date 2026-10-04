@@ -69,6 +69,7 @@ class UserController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $user = User::with([
             'userType',
             'patient.puskesmas',
@@ -161,11 +162,12 @@ class UserController extends Controller
 
         ActivityLog::log('Tambah Pengguna Baru', 'Pengguna', "Membuat akun {$user->name} ({$user->username}) dengan peran ID {$user->user_type_id}.");
 
-        return redirect()->route('admin.users.show', $user->id)->with('success', 'Akun pengguna berhasil ditambahkan.');
+        return redirect()->route('admin.users.show', $user)->with('success', 'Akun pengguna berhasil ditambahkan.');
     }
 
     public function edit($id)
     {
+        $id = decrypt_id($id);
         $user = User::with(['officer', 'patient'])->findOrFail($id);
         $userTypes = UserType::all();
         $puskesmas = Puskesmas::orderBy('name')->get();
@@ -182,6 +184,7 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $user = User::findOrFail($id);
 
         $request->validate([
@@ -242,11 +245,12 @@ class UserController extends Controller
 
         ActivityLog::log('Perbarui Pengguna', 'Pengguna', "Memperbarui profil akun {$user->name} ({$user->username}).");
 
-        return redirect()->route('admin.users.show', $user->id)->with('success', 'Data akun pengguna berhasil diperbarui.');
+        return redirect()->route('admin.users.show', $user)->with('success', 'Data akun pengguna berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $user = User::findOrFail($id);
 
         if ($user->id == 1 || $user->id == auth()->id()) {
@@ -256,7 +260,7 @@ class UserController extends Controller
         $name = $user->name;
         $user->delete();
 
-        ActivityLog::log('Hapus Pengguna', 'Pengguna', "Menghapus akun pengguna {$name} (ID {$id}).");
+        ActivityLog::log('Hapus Pengguna', 'Pengguna', "Menghapus akun pengguna {$name}.");
 
         return redirect()->route('admin.users.index')->with('success', "Akun pengguna {$name} berhasil dihapus.");
     }

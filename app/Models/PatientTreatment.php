@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasEncryptedId;
 
 class PatientTreatment extends Model
 {
-    use HasFactory;
+    use HasFactory, HasEncryptedId;
 
     protected $table = 'patient_treatments';
     protected $primaryKey = 'id';

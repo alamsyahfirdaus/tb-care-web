@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Rekam Medis Pasien' : 'Formulir Registrasi Pasien TB Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.patients.update', $patient->id) : route('admin.patients.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('admin.patients.update', $patient->encrypted_id) : route('admin.patients.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')

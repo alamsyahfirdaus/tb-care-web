@@ -149,7 +149,7 @@
                         <td class="text-center" data-order="{{ $sub->patients_count }}"><span class="badge badge-warning px-2 py-1">{{ $sub->patients_count }} Pasien</span></td>
                         <td class="text-center" data-order="{{ $sub->screenings_count }}"><span class="badge badge-info px-2 py-1">{{ $sub->screenings_count }} Skrining</span></td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.subdistricts.destroy', $sub->id) }}', 'Kecamatan {{ $sub->name }}')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.subdistricts.destroy', $sub->encrypted_id) }}', 'Kecamatan {{ $sub->name }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -186,7 +186,7 @@
                         <td>{{ $vil->subdistrict->district->province->name ?? '-' }}</td>
                         <td class="text-center" data-order="{{ $vil->patients_count }}"><span class="badge badge-warning px-2 py-1">{{ $vil->patients_count }} Pasien</span></td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.villages.destroy', $vil->id) }}', 'Desa {{ $vil->name }}')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.villages.destroy', $vil->encrypted_id) }}', 'Desa {{ $vil->name }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>

@@ -104,7 +104,7 @@
                                         <img src="{{ $u->photo ? asset('upload_images/' . $u->photo) : asset('assets/img/profile.png') }}" 
                                              class="img-circle mr-2 elevation-1" style="width: 38px; height: 38px; object-fit: cover;" alt="">
                                         <div>
-                                            <a href="{{ route('admin.users.show', $u->id) }}" class="font-weight-bold text-dark d-block">
+                                            <a href="{{ route('admin.users.show', $u->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                                 {{ $u->name }}
                                             </a>
                                             <span class="text-xs text-muted">@ {{ $u->username }} &bull; {{ $u->gender == 'L' ? 'Laki-laki' : 'Perempuan' }}</span>
@@ -158,18 +158,18 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
-                                        <a href="{{ route('admin.users.show', $u->id) }}" class="btn btn-info btn-xs" title="Lihat Detail">
+                                        <a href="{{ route('admin.users.show', $u->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Detail">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('admin.users.edit', $u->id) }}" class="btn btn-warning btn-xs" title="Edit Data">
+                                        <a href="{{ route('admin.users.edit', $u->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         @if($u->id != 1 && $u->id != auth()->id())
-                                            <form action="{{ route('admin.users.destroy', $u->id) }}" method="POST" id="del-user-{{ $u->id }}" class="d-inline">
+                                            <form action="{{ route('admin.users.destroy', $u->encrypted_id) }}" method="POST" id="del-user-{{ $u->encrypted_id }}" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="button" class="btn btn-danger btn-xs" title="Hapus Akun" 
-                                                        onclick="confirmDelete('del-user-{{ $u->id }}', '{{ $u->name }}')">
+                                                        onclick="confirmDelete('del-user-{{ $u->encrypted_id }}', '{{ $u->name }}')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>

@@ -10,7 +10,7 @@
                     {{ $isEdit ? 'Edit Fasilitas Kesehatan' : 'Tambah Fasilitas Kesehatan Baru' }}
                 </h3>
             </div>
-            <form action="{{ $isEdit ? route('admin.puskesmas.update', $puskesmas->id) : route('admin.puskesmas.store') }}" method="POST">
+            <form action="{{ $isEdit ? route('admin.puskesmas.update', $puskesmas->encrypted_id) : route('admin.puskesmas.store') }}" method="POST">
                 @csrf
                 @if($isEdit)
                     @method('PUT')

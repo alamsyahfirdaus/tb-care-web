@@ -26,7 +26,7 @@
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 50px;" class="text-center">No</th>
-                            <th>ID</th>
+                            <th>No Urut</th>
                             <th>Teks Pertanyaan Gejala / Faktor Risiko</th>
                             <th>Kategori Instrumen</th>
                             <th class="text-center">Gejala Kritis (Kunci)</th>
@@ -37,7 +37,7 @@
                         @foreach($questions as $idx => $q)
                         <tr>
                             <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
-                            <td><code>#{{ $q->id }}</code></td>
+                            <td><code>#{{ $loop->iteration }}</code></td>
                             <td>
                                 <strong class="text-dark">{{ $q->question_text }}</strong>
                             </td>
@@ -54,21 +54,21 @@
                                 @endif
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal{{ $q->id }}" title="Edit Teks Pertanyaan">
+                                <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModal{{ $q->encrypted_id }}" title="Edit Teks Pertanyaan">
                                     <i class="fas fa-pencil-alt"></i>
                                 </button>
                             </td>
                         </tr>
 
                         <!-- Modal Edit Pertanyaan -->
-                        <div class="modal fade" id="editModal{{ $q->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal fade" id="editModal{{ $q->encrypted_id }}" tabindex="-1" role="dialog" aria-hidden="true">
                             <div class="modal-dialog">
-                                <form action="{{ route('admin.master.questions.update', $q->id) }}" method="POST">
+                                <form action="{{ route('admin.master.questions.update', $q->encrypted_id) }}" method="POST">
                                     @csrf
                                     @method('PUT')
                                     <div class="modal-content">
                                         <div class="modal-header bg-warning">
-                                            <h5 class="modal-title font-weight-bold"><i class="fas fa-pencil-alt mr-1"></i> Edit Pertanyaan #{{ $q->id }}</h5>
+                                            <h5 class="modal-title font-weight-bold"><i class="fas fa-pencil-alt mr-1"></i> Edit Pertanyaan #{{ $loop->iteration }}</h5>
                                             <button type="button" class="close" data-dismiss="modal">&times;</button>
                                         </div>
                                         <div class="modal-body">

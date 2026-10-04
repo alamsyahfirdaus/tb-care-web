@@ -77,6 +77,7 @@ class PatientController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $patient = Patient::with([
             'user',
             'puskesmas.subdistrict.district',
@@ -239,11 +240,12 @@ class PatientController extends Controller
 
         ActivityLog::log('Tambah Pasien TB', 'Pasien', "Mendaftarkan pasien baru {$user->name} NIK {$patient->nik} di Puskesmas ID {$patient->puskesmas_id}.");
 
-        return redirect()->route('admin.patients.show', $patient->id)->with('success', 'Data pasien TB berhasil didaftarkan.');
+        return redirect()->route('admin.patients.show', $patient)->with('success', 'Data pasien TB berhasil didaftarkan.');
     }
 
     public function edit($id)
     {
+        $id = decrypt_id($id);
         $patient = Patient::with('user')->findOrFail($id);
         $puskesmas = Puskesmas::orderBy('name')->get();
         $subdistricts = Subdistrict::orderBy('name')->get();
@@ -259,6 +261,7 @@ class PatientController extends Controller
 
     public function update(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $patient = Patient::with('user')->findOrFail($id);
 
         $request->validate([
@@ -320,17 +323,18 @@ class PatientController extends Controller
 
         ActivityLog::log('Perbarui Data Pasien', 'Pasien', "Memperbarui data rekam medis pasien {$request->name} (NIK: {$request->nik}).");
 
-        return redirect()->route('admin.patients.show', $patient->id)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
+        return redirect()->route('admin.patients.show', $patient)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
+        $id = decrypt_id($id);
         $patient = Patient::with('user')->findOrFail($id);
         $name = optional($patient->user)->name ?? 'Pasien #' . $id;
 
         $patient->delete();
 
-        ActivityLog::log('Hapus Pasien', 'Pasien', "Menghapus data pasien {$name} (ID {$id}).");
+        ActivityLog::log('Hapus Pasien', 'Pasien', "Menghapus data pasien {$name}.");
 
         return redirect()->route('admin.patients.index')->with('success', "Data pasien {$name} berhasil dihapus.");
     }

@@ -141,7 +141,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('admin.education.show', $item->id) }}" class="font-weight-bold text-dark">
+                                    <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="font-weight-bold text-dark">
                                         {{ $item->title_material }}
                                     </a>
                                     <div class="text-xs text-muted" style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">
@@ -168,13 +168,13 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.education.show', $item->id) }}" class="btn btn-info" title="Lihat Detail">
+                                        <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('admin.education.edit', $item->id) }}" class="btn btn-warning" title="Edit Konten">
+                                        <a href="{{ route('admin.education.edit', $item->encrypted_id) }}" class="btn btn-warning" title="Edit Konten">
                                             <i class="fas fa-pencil-alt"></i>
                                         </a>
-                                        <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('admin.education.destroy', $item->id) }}', '{{ addslashes($item->title_material) }}')">
+                                        <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('admin.education.destroy', $item->encrypted_id) }}', '{{ addslashes($item->title_material) }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -231,7 +231,7 @@
                             <!-- Card Body Content -->
                             <div class="card-body d-flex flex-column">
                                 <h5 class="card-title font-weight-bold text-dark mb-2" style="font-size: 1.05rem;">
-                                    <a href="{{ route('admin.education.show', $item->id) }}" class="text-dark text-decoration-none">
+                                    <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="text-dark text-decoration-none">
                                         {{ $item->title_material }}
                                     </a>
                                 </h5>
@@ -246,7 +246,7 @@
 
                             <!-- Card Actions Footer -->
                             <div class="card-footer bg-light p-2 d-flex justify-content-between align-items-center">
-                                <form action="{{ route('admin.education.toggle-publish', $item->id) }}" method="POST" class="d-inline">
+                                <form action="{{ route('admin.education.toggle-publish', $item->encrypted_id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" class="btn btn-xs {{ $item->is_publish ? 'btn-outline-secondary' : 'btn-outline-success' }}" title="Ubah status publikasi">
@@ -255,13 +255,13 @@
                                 </form>
 
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ route('admin.education.show', $item->id) }}" class="btn btn-info" title="Lihat Detail">
+                                    <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('admin.education.edit', $item->id) }}" class="btn btn-warning" title="Edit Konten">
+                                    <a href="{{ route('admin.education.edit', $item->encrypted_id) }}" class="btn btn-warning" title="Edit Konten">
                                         <i class="fas fa-pencil-alt"></i>
                                     </a>
-                                    <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('admin.education.destroy', $item->id) }}', '{{ addslashes($item->title_material) }}')">
+                                    <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('admin.education.destroy', $item->encrypted_id) }}', '{{ addslashes($item->title_material) }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>

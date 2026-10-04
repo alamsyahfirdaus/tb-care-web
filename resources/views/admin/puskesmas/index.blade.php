@@ -155,13 +155,13 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('admin.puskesmas.show', $pkm->id) }}" class="btn btn-info" title="Lihat Detail">
+                                <a href="{{ route('admin.puskesmas.show', $pkm->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('admin.puskesmas.edit', $pkm->id) }}" class="btn btn-warning" title="Edit Faskes">
+                                <a href="{{ route('admin.puskesmas.edit', $pkm->encrypted_id) }}" class="btn btn-warning" title="Edit Faskes">
                                     <i class="fas fa-pencil-alt"></i>
                                 </a>
-                                <button type="button" class="btn btn-danger" title="Hapus Faskes" onclick="confirmDelete('{{ route('admin.puskesmas.destroy', $pkm->id) }}', '{{ $pkm->name }}')">
+                                <button type="button" class="btn btn-danger" title="Hapus Faskes" onclick="confirmDelete('{{ route('admin.puskesmas.destroy', $pkm->encrypted_id) }}', '{{ $pkm->name }}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>

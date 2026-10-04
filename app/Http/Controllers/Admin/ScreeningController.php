@@ -100,6 +100,7 @@ class ScreeningController extends Controller
 
     public function show($id)
     {
+        $id = decrypt_id($id);
         $screening = Screening::with([
             'user',
             'patient.treatments',
@@ -122,6 +123,7 @@ class ScreeningController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
+        $id = decrypt_id($id);
         $request->validate([
             'status' => 'required|in:Perlu Tindak Lanjut,Dalam Pemantauan,Selesai',
             'notes'  => 'nullable|string',

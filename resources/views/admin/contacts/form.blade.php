@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Data Kontak Erat' : 'Formulir Pencatatan Kontak Erat Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.contacts.update', $contact->id) : route('admin.contacts.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('admin.contacts.update', $contact->encrypted_id) : route('admin.contacts.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')

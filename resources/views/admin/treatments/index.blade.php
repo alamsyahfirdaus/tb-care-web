@@ -137,20 +137,20 @@
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
                                         @if($tr->patient)
-                                            <a href="{{ route('admin.patients.show', $tr->patient->id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Lengkap">
+                                            <a href="{{ route('admin.patients.show', $tr->patient->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Lengkap">
                                                 <i class="fas fa-eye"></i> Rekam
                                             </a>
                                         @endif
-                                        <button type="button" class="btn btn-warning btn-xs font-weight-bold" data-toggle="modal" data-target="#modal-status-{{ $tr->id }}" title="Ubah Status">
+                                        <button type="button" class="btn btn-warning btn-xs font-weight-bold" data-toggle="modal" data-target="#modal-status-{{ $tr->encrypted_id }}" title="Ubah Status">
                                             <i class="fas fa-edit"></i> Status
                                         </button>
                                     </div>
 
                                     <!-- Status Modal -->
-                                    <div class="modal fade text-left" id="modal-status-{{ $tr->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                    <div class="modal fade text-left" id="modal-status-{{ $tr->encrypted_id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                         <div class="modal-dialog" role="document">
                                             <div class="modal-content">
-                                                <form action="{{ route('admin.treatments.update_status', $tr->id) }}" method="POST">
+                                                <form action="{{ route('admin.treatments.update_status', $tr->encrypted_id) }}" method="POST">
                                                     @csrf
                                                     @method('PATCH')
                                                     <div class="modal-header bg-success text-white">

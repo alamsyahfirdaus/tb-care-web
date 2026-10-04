@@ -103,8 +103,8 @@
                                 <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                 <td>
                                     @if($patient)
-                                        <a href="{{ route('admin.patients.show', $patient->id) }}" class="font-weight-bold text-dark d-block">
-                                            {{ optional($patient->user)->name ?? 'Pasien #' . $patient->id }}
+                                        <a href="{{ route('admin.patients.show', $patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
+                                            {{ optional($patient->user)->name ?? 'Pasien #' . ($patient->patient_number ?? $loop->iteration) }}
                                         </a>
                                         <span class="text-xs text-muted">NIK: {{ $patient->nik ?? '-' }}</span>
                                     @else
@@ -144,7 +144,7 @@
                                 <td class="text-xs text-muted">{{ $rec->notes ?? '-' }}</td>
                                 <td class="text-center">
                                     @if(!$rec->is_verified)
-                                        <form action="{{ route('admin.treatments.verify_medication', $rec->id) }}" method="POST" class="d-inline">
+                                        <form action="{{ route('admin.treatments.verify_medication', $rec->encrypted_id) }}" method="POST" class="d-inline">
                                             @csrf
                                             @method('PATCH')
                                             <button type="submit" class="btn btn-xs btn-success font-weight-bold">

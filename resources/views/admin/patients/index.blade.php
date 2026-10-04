@@ -102,8 +102,8 @@
                                         <img src="{{ optional($p->user)->photo ? asset('upload_images/' . $p->user->photo) : asset('assets/img/profile.png') }}" 
                                              class="img-circle mr-2 elevation-1" style="width: 38px; height: 38px; object-fit: cover;" alt="">
                                         <div>
-                                            <a href="{{ route('admin.patients.show', $p->id) }}" class="font-weight-bold text-dark d-block">
-                                                {{ optional($p->user)->name ?? 'Pasien #' . $p->id }}
+                                            <a href="{{ route('admin.patients.show', $p->encrypted_id) }}" class="font-weight-bold text-dark d-block">
+                                                {{ optional($p->user)->name ?? 'Pasien #' . ($p->patient_number ?? $loop->iteration) }}
                                             </a>
                                             <span class="text-xs text-muted">
                                                 NIK: {{ $p->nik ?? '-' }} &bull; {{ optional($p->user)->gender == 'L' ? 'L' : 'P' }} 
@@ -148,17 +148,17 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
-                                        <a href="{{ route('admin.patients.show', $p->id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Pasien Lengkap">
+                                        <a href="{{ route('admin.patients.show', $p->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Pasien Lengkap">
                                             <i class="fas fa-folder-open"></i> Rekam
                                         </a>
-                                        <a href="{{ route('admin.patients.edit', $p->id) }}" class="btn btn-warning btn-xs" title="Edit Data">
+                                        <a href="{{ route('admin.patients.edit', $p->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.patients.destroy', $p->id) }}" method="POST" id="del-patient-{{ $p->id }}" class="d-inline">
+                                        <form action="{{ route('admin.patients.destroy', $p->encrypted_id) }}" method="POST" id="del-patient-{{ $p->encrypted_id }}" class="d-inline">
                                             @csrf
                                             @method('DELETE')
                                             <button type="button" class="btn btn-danger btn-xs" title="Hapus Pasien" 
-                                                    onclick="confirmDelete('del-patient-{{ $p->id }}', '{{ optional($p->user)->name }}')">
+                                                    onclick="confirmDelete('del-patient-{{ $p->encrypted_id }}', '{{ optional($p->user)->name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
