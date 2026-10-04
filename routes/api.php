@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PuskesmasController;
 use App\Http\Controllers\Api\ScreeningController;
 use App\Http\Controllers\Api\OfficerController;
+use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\SubdistrictController;
 use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
@@ -50,8 +51,13 @@ Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
 
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
+Route::get('/provinces', [RegionController::class, 'provinces']);
+Route::get('/provinces/{id}/districts', [RegionController::class, 'districtsByProvince']);
+Route::get('/districts', [RegionController::class, 'districts']);
+Route::get('/districts/{id}/subdistricts', [RegionController::class, 'subdistrictsByDistrict']);
 Route::get('/subdistricts', [SubdistrictController::class, 'index']);
 Route::get('/subdistricts/{id}/villages', [SubdistrictController::class, 'getVillages']);
+Route::get('/villages', [RegionController::class, 'villages']);
 
 // Skrining
 Route::prefix('screening')->group(function () {

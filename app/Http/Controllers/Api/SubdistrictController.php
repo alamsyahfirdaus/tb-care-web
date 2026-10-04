@@ -9,8 +9,22 @@ use Illuminate\Http\Request;
 
 class SubdistrictController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $districtId = $request->query('district_id');
+
+        if ($districtId) {
+            $subdistricts = Subdistrict::where('district_id', $districtId)
+                ->orderBy('name', 'asc')
+                ->get(['id', 'code', 'name', 'district_id']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data kecamatan berhasil diambil.',
+                'data'    => $subdistricts
+            ]);
+        }
+
         // Ambil data subdistrict beserta relasi ke district dan province
         $query = Subdistrict::with(['district.province']);
 
@@ -21,12 +35,13 @@ class SubdistrictController extends Controller
         $formatted = $subdistricts->map(function ($item) {
             return [
                 'id'   => $item->id,
-                'name' => $item->name . ', ' . $item->district->name . ', ' . $item->district->province->name
+                'name' => $item->name . ', ' . ($item->district->name ?? '') . ', ' . ($item->district->province->name ?? '')
             ];
         });
 
         // Kirim response JSON ke frontend
         return response()->json([
+            'success' => true,
             'message' => 'Data kecamatan berhasil diambil.',
             'data'    => $formatted
         ]);

@@ -361,13 +361,16 @@ class TreatmentStartDateTest extends TestCase
     {
         $today = Carbon::today()->format('Y-m-d');
         $phone = '0829' . rand(10000000, 99999999);
+        $nik = '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT);
 
         $response = $this->postJson('/api/register', [
             'name'                 => 'Pasien Register Mandiri',
+            'nik'                  => $nik,
             'phone'                => $phone,
             'gender'               => 'L',
             'puskesmas_id'         => $this->puskesmas->id,
             'subdistrict_id'       => $this->subdistrict->id,
+            'village_id'           => $this->village->id,
             'treatment_start_date' => $today,
         ]);
 

@@ -4,11 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coordinator;
+use App\Models\District;
 use App\Models\Officer;
 use App\Models\Patient;
-use Illuminate\Http\Request;
+use App\Models\PatientTreatment;
+use App\Models\TreatmentType;
+use App\Models\Province;
+use App\Models\Subdistrict;
 use App\Models\User;
+use App\Models\Village;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class AuthController extends Controller
@@ -96,79 +105,155 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        if ($request->filled('officer_type_id')) {
-            return $this->registerOfficer($request);
-        }
-
+        // Berdasarkan hasil FGD, registrasi publik mobile HANYA untuk Pasien.
+        // Client tidak boleh menentukan role/privilege.
         return $this->registerPatient($request);
     }
 
-    private function registerPatient(Request $request)
+    public function registerPatient(Request $request)
     {
+        // Dukung alias nama field jika dikirim dalam bahasa Indonesia
+        if ($request->filled('tanggal_mulai_pengobatan') && !$request->filled('treatment_start_date')) {
+            $request->merge(['treatment_start_date' => $request->input('tanggal_mulai_pengobatan')]);
+        }
+        if ($request->filled('regency_id') && !$request->filled('district_id')) {
+            $request->merge(['district_id' => $request->input('regency_id')]);
+        }
+
         // Validasi data input dari form
         $validatedData = $request->validate([
-            'nik'            => 'nullable|digits:16|unique:patients,nik',
-            'name'           => 'required|string|max:255',
-            'email'          => 'nullable|string|email|unique:users,email',
-            'phone'          => 'required|string|min:10|max:15',
-            'gender'         => 'required|in:L,P',
-            'date_of_birth'  => 'nullable|date',
-            'puskesmas_id'   => 'required|exists:puskesmas,id',
-            'subdistrict_id' => 'nullable|exists:subdistricts,id', // Tambahan validasi alamat
-            'treatment_start_date' => 'nullable|date|before_or_equal:today',
+            'name'                 => 'required|string|min:3|max:255',
+            'nik'                  => 'required|digits:16|unique:patients,nik',
+            'phone'                => 'required|string|min:10|max:15|unique:users,phone',
+            'puskesmas_id'         => 'required|exists:puskesmas,id',
+            'treatment_start_date' => 'required|date|before_or_equal:today',
+            'province_id'          => 'nullable|exists:provinces,id',
+            'district_id'          => 'nullable|exists:districts,id',
+            'subdistrict_id'       => 'required|exists:subdistricts,id',
+            'village_id'           => 'required|exists:villages,id',
+            'address'              => 'nullable|string|max:500',
+            'gender'               => 'nullable|in:L,P',
+            'email'                => 'nullable|string|email|unique:users,email',
+            'date_of_birth'        => 'nullable|date',
         ], [
-            'nik.required'           => 'NIK wajib diisi.',
-            'nik.digits'             => 'NIK harus terdiri dari 16 digit.',
-            'nik.unique'             => 'NIK sudah terdaftar.',
-            'name.required'          => 'Nama wajib diisi.',
-            'email.required'         => 'Email wajib diisi.',
-            'email.email'            => 'Format email tidak valid.',
-            'email.unique'           => 'Email sudah digunakan.',
-            'phone.required'         => 'Nomor HP wajib diisi.',
-            'gender.required'        => 'Jenis kelamin wajib dipilih.',
-            'puskesmas_id.required'  => 'Puskesmas wajib dipilih.',
-            'date_of_birth.required' => 'Tanggal lahir wajib diisi.',
-            'date_of_birth.date'     => 'Format tanggal lahir tidak valid.',
-            'subdistrict_id.required' => 'Alamat (kecamatan) wajib dipilih.',
-            'subdistrict_id.exists'  => 'Kecamatan tidak ditemukan.',
-            'treatment_start_date.date' => 'Format tanggal mulai pengobatan tidak valid.',
+            'name.required'                 => 'Nama lengkap wajib diisi.',
+            'name.min'                      => 'Nama lengkap minimal 3 karakter.',
+            'nik.required'                  => 'NIK wajib diisi.',
+            'nik.digits'                    => 'NIK harus terdiri dari 16 digit.',
+            'nik.unique'                    => 'NIK sudah terdaftar. Silakan gunakan NIK lain atau login menggunakan akun yang sudah tersedia.',
+            'phone.required'                => 'Nomor HP wajib diisi.',
+            'phone.min'                     => 'Nomor HP minimal 10 digit.',
+            'phone.max'                     => 'Nomor HP maksimal 15 digit.',
+            'phone.unique'                  => 'Nomor HP sudah terdaftar.',
+            'puskesmas_id.required'         => 'Puskesmas wajib dipilih.',
+            'puskesmas_id.exists'           => 'Puskesmas tidak valid.',
+            'treatment_start_date.required' => 'Tanggal mulai pengobatan wajib diisi.',
+            'treatment_start_date.date'     => 'Format tanggal mulai pengobatan tidak valid.',
             'treatment_start_date.before_or_equal' => 'Tanggal mulai pengobatan tidak boleh di masa depan.',
+            'subdistrict_id.required'       => 'Kecamatan wajib dipilih.',
+            'subdistrict_id.exists'         => 'Kecamatan tidak valid.',
+            'village_id.required'           => 'Desa/Kelurahan wajib dipilih.',
+            'village_id.exists'             => 'Desa/Kelurahan tidak valid.',
         ]);
 
-        // Buat username otomatis dari email
-        $username = $this->generateUsername($validatedData['name']);
+        return DB::transaction(function () use ($validatedData) {
+            // 1. Buat username otomatis unik
+            $username = $this->generateUsername($validatedData['name']);
 
-        // Hash password awal menggunakan username
-        $hashedPassword = Hash::make($username);
+            // 2. Buat password default pasien (123456)
+            $plainPassword = '123456';
+            $hashedPassword = Hash::make($plainPassword);
 
-        // Simpan data user ke tabel `users`
-        $user = User::create([
-            'name'          => $validatedData['name'],
-            'email'         => $validatedData['email'] ?? null,
-            'username'      => $username,
-            'password'      => $hashedPassword,
-            'phone'         => $validatedData['phone'],
-            'gender'        => $validatedData['gender'],
-            'date_of_birth' => $validatedData['date_of_birth'] ?? null,
-            'user_type_id'  => 2, // 2 = Pasien
-            'is_active'     => true // Default aktif
-        ]);
+            // 3. Simpan data user ke tabel `users` (Role Pasien = 2)
+            $user = User::create([
+                'name'          => trim($validatedData['name']),
+                'email'         => $validatedData['email'] ?? null,
+                'username'      => $username,
+                'password'      => $hashedPassword,
+                'phone'         => trim($validatedData['phone']),
+                'gender'        => $validatedData['gender'] ?? null,
+                'date_of_birth' => $validatedData['date_of_birth'] ?? null,
+                'user_type_id'  => 2, // 2 = Pasien
+                'is_active'     => true, // Default aktif
+            ]);
 
-        Patient::create([
-            'user_id'              => $user->id,
-            'nik'                  => $validatedData['nik'] ?? null,
-            'puskesmas_id'         => $validatedData['puskesmas_id'],
-            'subdistrict_id'       => $validatedData['subdistrict_id'] ?? null,
-            'treatment_start_date' => $validatedData['treatment_start_date'] ?? null,
-        ]);
+            // 4. Susun alamat terstruktur jika belum diisi manual
+            $address = $validatedData['address'] ?? null;
+            if (empty($address)) {
+                $village = Village::find($validatedData['village_id']);
+                $subdistrict = Subdistrict::with('district.province')->find($validatedData['subdistrict_id']);
+                $villageName = $village ? $village->name : '';
+                $subName = $subdistrict ? $subdistrict->name : '';
+                $distName = $subdistrict && $subdistrict->district ? $subdistrict->district->name : '';
+                $provName = $subdistrict && $subdistrict->district && $subdistrict->district->province ? $subdistrict->district->province->name : '';
+                $addressParts = array_filter([$villageName ? "Desa/Kel. $villageName" : '', $subName ? "Kec. $subName" : '', $distName, $provName]);
+                $address = implode(', ', $addressParts);
+            }
 
-        // Respon JSON saat berhasil
-        return response()->json([
-            'message' => 'Registrasi pasien berhasil.',
-            'user'    => $user,
-            'info'    => 'Username dan password awal Anda adalah: ' . $username,
-            'note'    => 'Akun Anda masih menunggu verifikasi dari admin sebelum bisa login.'
-        ], 201);
+            // 5. Simpan data pasien
+            $patient = Patient::create([
+                'user_id'              => $user->id,
+                'nik'                  => trim($validatedData['nik']),
+                'puskesmas_id'         => $validatedData['puskesmas_id'],
+                'subdistrict_id'       => $validatedData['subdistrict_id'],
+                'village_id'           => $validatedData['village_id'],
+                'treatment_start_date' => $validatedData['treatment_start_date'],
+                'address'              => $address,
+            ]);
+
+            // 6. Buat inisialisasi riwayat pengobatan awal (PatientTreatment) secara otomatis
+            $startDate = $validatedData['treatment_start_date'];
+            $treatmentType = TreatmentType::find(1);
+            $endDate = null;
+            $treatmentDays = null;
+            if ($treatmentType && $treatmentType->treatment_duration && $treatmentType->duration_unit) {
+                $startDateCarbon = Carbon::parse($startDate);
+                $endDate = $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration)->toDateString();
+                $treatmentDays = $startDateCarbon->diffInDays(Carbon::parse($endDate));
+            }
+
+            $treatment = PatientTreatment::create([
+                'patient_id'        => $patient->id,
+                'treatment_type_id' => 1,
+                'diagnosis_date'    => null,
+                'start_date'        => $startDate,
+                'end_date'          => $endDate,
+                'treatment_days'    => $treatmentDays,
+                'medication_time'   => '07:00:00',
+                'prescription'      => null,
+                'treatment_status'  => 'Berjalan',
+            ]);
+
+            // 7. Respon JSON saat berhasil (mengembalikan credential untuk ditampilkan sekali ke user)
+            return response()->json([
+                'success'   => true,
+                'message'   => 'Registrasi pasien berhasil.',
+                'data'      => [
+                    'user_id'   => $user->id,
+                    'pasien_id' => $patient->id,
+                    'name'      => $user->name,
+                    'username'  => $username,
+                    'phone'     => $user->phone,
+                    'password'  => $plainPassword,
+                ],
+                'user'      => [
+                    'id'       => $user->id,
+                    'name'     => $user->name,
+                    'username' => $username,
+                    'phone'    => $user->phone,
+                ],
+                'treatment' => [
+                    'id'                => $treatment->id,
+                    'patient_id'        => $treatment->patient_id,
+                    'treatment_type_id' => $treatment->treatment_type_id,
+                    'diagnosis_date'    => $treatment->diagnosis_date,
+                    'start_date'        => $treatment->start_date,
+                    'medication_time'   => $treatment->medication_time,
+                    'prescription'      => $treatment->prescription,
+                    'treatment_status'  => $treatment->treatment_status,
+                ],
+            ], 201);
+        });
     }
 
     private function registerOfficer(Request $request)
@@ -190,7 +275,6 @@ class AuthController extends Controller
             'puskesmas_id.required'    => 'Puskesmas wajib dipilih.',
         ]);
 
-        // Username dibuat dari nomor HP
        $username = $this->generateUsername($validatedData['name']);
 
         $user = User::create([
