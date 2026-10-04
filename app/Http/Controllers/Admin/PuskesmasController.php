@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Puskesmas;
 use App\Models\Subdistrict;
+use App\Models\Patient;
+use App\Models\Officer;
+use App\Models\Screening;
+use App\Models\ClinicalExamination;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -157,6 +161,17 @@ class PuskesmasController extends Controller
         $id = decrypt_id($id);
         $puskesmas = Puskesmas::findOrFail($id);
         $name = $puskesmas->name;
+
+        // Check for active dependencies before deleting
+        $hasPatients = Patient::where('puskesmas_id', $id)->exists();
+        $hasOfficers = Officer::where('puskesmas_id', $id)->exists();
+        $hasScreenings = Screening::where('puskesmas_id', $id)->exists();
+        $hasExaminations = ClinicalExamination::where('puskesmas_id', $id)->exists();
+
+        if ($hasPatients || $hasOfficers || $hasScreenings || $hasExaminations) {
+            return redirect()->route('admin.puskesmas.index')
+                ->with('error', "Puskesmas {$name} tidak dapat dihapus karena masih memiliki relasi data pasien, petugas, atau riwayat pelayanan.");
+        }
 
         DB::transaction(function () use ($puskesmas) {
             $puskesmas->delete();

@@ -7,13 +7,24 @@ use App\Support\EncryptedId;
 trait HasEncryptedId
 {
     /**
+     * Cached encrypted ID for this model instance.
+     *
+     * @var string|null
+     */
+    protected ?string $memoizedEncryptedId = null;
+
+    /**
      * Get the encrypted ID for the model.
      *
      * @return string
      */
     public function getEncryptedIdAttribute(): string
     {
-        return EncryptedId::encrypt($this->getKey());
+        if ($this->memoizedEncryptedId === null) {
+            $this->memoizedEncryptedId = EncryptedId::encrypt($this->getKey());
+        }
+
+        return $this->memoizedEncryptedId;
     }
 
     /**

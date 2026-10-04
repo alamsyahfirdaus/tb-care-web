@@ -135,14 +135,10 @@
                                         <a href="{{ route('admin.examinations.edit', $exam->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.examinations.destroy', $exam->encrypted_id) }}" method="POST" id="del-exam-{{ $exam->encrypted_id }}" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="button" class="btn btn-danger btn-xs" title="Hapus Data" 
-                                                    onclick="confirmDelete('del-exam-{{ $exam->encrypted_id }}', '{{ $exam->examination_code }}')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-danger btn-xs" title="Hapus Data" 
+                                                onclick="confirmDelete('{{ route('admin.examinations.destroy', $exam->encrypted_id) }}', 'Pemeriksaan {{ addslashes($exam->examination_code) }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

@@ -1049,20 +1049,37 @@
         });
 
         // Confirmation Modal for Deletion
-        function confirmDelete(target, itemName) {
-            Swal.fire({
+        function confirmDelete(target, itemName, customHtml = null) {
+            var text = itemName ? 'Apakah Anda yakin ingin menghapus data "' + itemName + '"?' :
+                'Apakah Anda yakin ingin menghapus data ini?';
+
+            var swalConfig = {
                 title: 'Konfirmasi Hapus Data',
-                text: itemName ? 'Apakah Anda yakin ingin menghapus data "' + itemName + '"?' :
-                    'Apakah Anda yakin ingin menghapus data ini?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#dc3545',
                 cancelButtonColor: '#6c757d',
                 confirmButtonText: '<i class="fas fa-trash"></i> Ya, Hapus!',
                 cancelButtonText: 'Batal'
-            }).then((result) => {
+            };
+
+            if (customHtml) {
+                swalConfig.html = customHtml;
+            } else {
+                swalConfig.text = text;
+            }
+
+            Swal.fire(swalConfig).then((result) => {
                 if (result.isConfirmed) {
-                    var el = document.getElementById(target);
+                    var el = null;
+                    if (typeof target === 'string' && !target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('/')) {
+                        try {
+                            el = document.getElementById(target);
+                        } catch (e) {
+                            el = null;
+                        }
+                    }
+
                     if (el && typeof el.submit === 'function') {
                         el.submit();
                     } else {
@@ -1076,7 +1093,6 @@
                             var csrfInput = document.createElement('input');
                             csrfInput.type = 'hidden';
                             csrfInput.name = '_token';
-                            csrfInput.value = $('meta[name="csrf-token"]').attr('content');
                             form.appendChild(csrfInput);
 
                             var methodInput = document.createElement('input');
@@ -1087,6 +1103,12 @@
 
                             document.body.appendChild(form);
                         }
+
+                        var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        var tokenVal = tokenMeta ? tokenMeta.getAttribute('content') : (window.$ ? $('meta[name="csrf-token"]').attr('content') : '');
+                        var csrfEl = form.querySelector('input[name="_token"]');
+                        if (csrfEl) csrfEl.value = tokenVal;
+
                         form.action = target;
                         form.submit();
                     }

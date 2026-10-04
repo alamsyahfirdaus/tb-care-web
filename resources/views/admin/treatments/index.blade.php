@@ -145,7 +145,7 @@
                                             <i class="fas fa-edit"></i> Status
                                         </button>
                                         <button type="button" class="btn btn-danger btn-xs" title="Hapus Riwayat Pengobatan" 
-                                                onclick="confirmDelete('{{ route('admin.treatments.destroy', $tr->encrypted_id) }}', 'Pengobatan {{ optional(optional($tr->patient)->user)->name }}')">
+                                                onclick="confirmDelete('{{ route('admin.treatments.destroy', $tr->encrypted_id) }}', 'Pengobatan {{ addslashes(optional(optional($tr->patient)->user)->name ?? 'Pasien') }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>

@@ -16,6 +16,11 @@ class TreatmentType extends Model
     public $timestamps = false;
     protected $guarded = [];
 
+    public function patientTreatments()
+    {
+        return $this->hasMany(PatientTreatment::class, 'treatment_type_id');
+    }
+
     public static function getTreatmentTypes()
     {
         return self::all()

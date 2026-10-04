@@ -156,14 +156,10 @@
                                         <a href="{{ route('admin.patients.edit', $p->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.patients.destroy', $p->encrypted_id) }}" method="POST" id="del-patient-{{ $p->encrypted_id }}" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="button" class="btn btn-danger btn-xs" title="Hapus Pasien" 
-                                                    onclick="confirmDelete('del-patient-{{ $p->encrypted_id }}', '{{ optional($p->user)->name }}')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-danger btn-xs" title="Hapus Pasien" 
+                                                onclick="confirmDelete('{{ route('admin.patients.destroy', $p->encrypted_id) }}', '{{ addslashes(optional($p->user)->name ?? 'Pasien #' . $p->id) }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

@@ -12,6 +12,8 @@ use App\Models\District;
 use App\Models\Subdistrict;
 use App\Models\Village;
 use App\Models\KaderArea;
+use App\Models\Screening;
+use App\Models\PatientMedicationSchedule;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -244,14 +246,50 @@ class UserController extends Controller
     public function destroy($id)
     {
         $id = decrypt_id($id);
-        $user = User::findOrFail($id);
+        $user = User::with(['patient', 'officer'])->findOrFail($id);
 
         if ($user->id == 1 || $user->id == auth()->id()) {
             return redirect()->back()->with('error', 'Akun Administrator utama tidak dapat dihapus.');
         }
 
         $name = $user->name;
-        $user->delete();
+
+        DB::transaction(function () use ($user) {
+            // 1. If user is a patient, clean up patient cascade
+            if ($user->patient) {
+                $patient = $user->patient;
+                if (method_exists($patient, 'treatments')) {
+                    $patient->treatments()->each(function ($treatment) {
+                        $treatment->medicationRecords()->delete();
+                        $treatment->visits()->delete();
+                        $treatment->delete();
+                    });
+                }
+                if (method_exists($patient, 'examinations')) {
+                    $patient->examinations()->delete();
+                }
+                if (method_exists($patient, 'closeContacts')) {
+                    $patient->closeContacts()->delete();
+                }
+                PatientMedicationSchedule::where('patient_id', $patient->id)->delete();
+                Screening::where('patient_id', $patient->id)->update(['patient_id' => null]);
+                $patient->delete();
+            }
+
+            // 2. If user is an officer, clean up kader areas and officer record
+            if ($user->officer) {
+                if (method_exists($user->officer, 'kaderAreas')) {
+                    $user->officer->kaderAreas()->delete();
+                }
+                $user->officer->delete();
+            }
+
+            // 3. Unlink screenings recorded by this user
+            Screening::where('user_id', $user->id)->update(['user_id' => null]);
+
+            // 4. Delete user record
+            $user->delete();
+        });
 
         ActivityLog::log('Hapus Pengguna', 'Pengguna', "Menghapus akun pengguna {$name}.");
 

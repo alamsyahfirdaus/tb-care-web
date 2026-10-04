@@ -7,8 +7,12 @@ use App\Models\Province;
 use App\Models\District;
 use App\Models\Subdistrict;
 use App\Models\Village;
+use App\Models\Patient;
+use App\Models\Puskesmas;
+use App\Models\KaderArea;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RegionController extends Controller
 {
@@ -135,7 +139,16 @@ class RegionController extends Controller
         $sub = Subdistrict::findOrFail($id);
         $name = $sub->name;
 
-        \DB::transaction(function () use ($sub) {
+        $hasVillages = Village::where('subdistrict_id', $id)->exists();
+        $hasPatients = Patient::where('subdistrict_id', $id)->exists();
+        $hasPuskesmas = Puskesmas::where('subdistrict_id', $id)->exists();
+
+        if ($hasVillages || $hasPatients || $hasPuskesmas) {
+            return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])
+                ->with('error', "Kecamatan {$name} tidak dapat dihapus karena masih memiliki relasi data desa/kelurahan, faskes, atau pasien.");
+        }
+
+        DB::transaction(function () use ($sub) {
             $sub->delete();
         });
 
@@ -154,7 +167,7 @@ class RegionController extends Controller
             'subdistrict_id' => 'required|exists:subdistricts,id',
         ]);
 
-        \DB::transaction(function () use ($vil, $request) {
+        DB::transaction(function () use ($vil, $request) {
             $vil->update([
                 'name'           => $request->name,
                 'subdistrict_id' => $request->subdistrict_id,
@@ -172,7 +185,15 @@ class RegionController extends Controller
         $vil = Village::findOrFail($id);
         $name = $vil->name;
 
-        \DB::transaction(function () use ($vil) {
+        $hasPatients = Patient::where('village_id', $id)->exists();
+        $hasKaderAreas = KaderArea::where('village_id', $id)->exists();
+
+        if ($hasPatients || $hasKaderAreas) {
+            return redirect()->route('admin.regions.index', ['tab' => 'village'])
+                ->with('error', "Desa/Kelurahan {$name} tidak dapat dihapus karena masih digunakan pada data pasien atau wilayah tugas kader.");
+        }
+
+        DB::transaction(function () use ($vil) {
             $vil->delete();
         });
 

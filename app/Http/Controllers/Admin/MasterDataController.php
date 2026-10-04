@@ -8,6 +8,7 @@ use App\Models\ScreeningCategory;
 use App\Models\TreatmentType;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MasterDataController extends Controller
 {
@@ -127,7 +128,9 @@ class MasterDataController extends Controller
                 ->with('error', "Regimen '{$name}' tidak dapat dihapus karena sedang digunakan oleh {$inUse} riwayat pengobatan pasien.");
         }
 
-        $tt->delete();
+        DB::transaction(function () use ($tt) {
+            $tt->delete();
+        });
         ActivityLog::log('Hapus Regimen Pengobatan', 'Master Data', "Menghapus tipe pengobatan: {$name}.");
 
         return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', "Regimen pengobatan '{$name}' berhasil dihapus.");

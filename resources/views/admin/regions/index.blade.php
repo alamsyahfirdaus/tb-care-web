@@ -152,7 +152,7 @@
                             <button type="button" class="btn btn-sm btn-warning mr-1" onclick="openEditSubdistrict('{{ $sub->encrypted_id }}', '{{ addslashes($sub->name) }}', '{{ $sub->district_id }}')">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.subdistricts.destroy', $sub->encrypted_id) }}', 'Kecamatan {{ $sub->name }}')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.subdistricts.destroy', $sub->encrypted_id) }}', 'Kecamatan {{ addslashes($sub->name) }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -192,7 +192,7 @@
                             <button type="button" class="btn btn-sm btn-warning mr-1" onclick="openEditVillage('{{ $vil->encrypted_id }}', '{{ addslashes($vil->name) }}', '{{ $vil->subdistrict_id }}')">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.villages.destroy', $vil->encrypted_id) }}', 'Desa {{ $vil->name }}')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.villages.destroy', $vil->encrypted_id) }}', 'Desa {{ addslashes($vil->name) }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>

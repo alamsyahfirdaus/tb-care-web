@@ -189,7 +189,10 @@ class ExaminationController extends Controller
         $id = decrypt_id($id);
         $examination = ClinicalExamination::findOrFail($id);
         $code = $examination->examination_code;
-        $examination->delete();
+        
+        DB::transaction(function () use ($examination) {
+            $examination->delete();
+        });
 
         ActivityLog::log('Hapus Pemeriksaan TB', 'Pemeriksaan', "Menghapus data pemeriksaan {$code}.");
 

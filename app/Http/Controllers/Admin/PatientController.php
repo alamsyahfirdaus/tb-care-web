@@ -13,6 +13,9 @@ use App\Models\Village;
 use App\Models\TreatmentType;
 use App\Models\PatientTreatment;
 use App\Models\PatientMedicationSchedule;
+use App\Models\Screening;
+use App\Models\ClinicalExamination;
+use App\Models\CloseContact;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -353,6 +356,7 @@ class PatientController extends Controller
         $name = optional($user)->name ?? 'Pasien #' . $id;
 
         DB::transaction(function () use ($patient, $user) {
+            // 1. Delete treatments and related medication records / visits
             if (method_exists($patient, 'treatments')) {
                 $patient->treatments()->each(function ($treatment) {
                     $treatment->medicationRecords()->delete();
@@ -360,15 +364,32 @@ class PatientController extends Controller
                     $treatment->delete();
                 });
             }
+
+            // 2. Delete clinical examinations
+            if (method_exists($patient, 'examinations')) {
+                $patient->examinations()->delete();
+            }
             if (method_exists($patient, 'clinicalExaminations')) {
                 $patient->clinicalExaminations()->delete();
             }
+
+            // 3. Delete close contacts
             if (method_exists($patient, 'closeContacts')) {
                 $patient->closeContacts()->delete();
             }
+
+            // 4. Delete medication reminder schedules
+            PatientMedicationSchedule::where('patient_id', $patient->id)->delete();
+
+            // 5. Unlink any screenings tied to this patient
+            Screening::where('patient_id', $patient->id)->update(['patient_id' => null]);
+
+            // 6. Delete patient record
             $patient->delete();
 
+            // 7. If linked user account is exclusively a patient (user_type_id = 2), delete the user account
             if ($user && $user->user_type_id == 2) {
+                Screening::where('user_id', $user->id)->update(['user_id' => null]);
                 $user->delete();
             }
         });

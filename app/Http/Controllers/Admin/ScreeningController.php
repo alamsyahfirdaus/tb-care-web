@@ -10,6 +10,7 @@ use App\Models\Subdistrict;
 use App\Models\District;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ScreeningController extends Controller
@@ -146,8 +147,10 @@ class ScreeningController extends Controller
         $screening = Screening::findOrFail($id);
         $code = $screening->code;
 
-        $screening->answers()->delete();
-        $screening->delete();
+        DB::transaction(function () use ($screening) {
+            $screening->answers()->delete();
+            $screening->delete();
+        });
 
         ActivityLog::log('Hapus Skrining TB', 'Skrining TB', "Menghapus data skrining {$code}.");
 

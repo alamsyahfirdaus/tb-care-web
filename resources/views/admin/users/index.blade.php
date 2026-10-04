@@ -167,14 +167,10 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         @if($u->id != 1 && $u->id != auth()->id())
-                                            <form action="{{ route('admin.users.destroy', $u->encrypted_id) }}" method="POST" id="del-user-{{ $u->encrypted_id }}" class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="button" class="btn btn-danger btn-xs" title="Hapus Akun" 
-                                                        onclick="confirmDelete('del-user-{{ $u->encrypted_id }}', '{{ $u->name }}')">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-danger btn-xs" title="Hapus Akun" 
+                                                    onclick="confirmDelete('{{ route('admin.users.destroy', $u->encrypted_id) }}', '{{ addslashes($u->name) }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         @endif
                                     </div>
                                 </td>
