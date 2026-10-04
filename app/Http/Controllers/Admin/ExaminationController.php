@@ -118,6 +118,12 @@ class ExaminationController extends Controller
         return redirect()->route('admin.examinations.index')->with('success', 'Hasil pemeriksaan laboratorium berhasil disimpan.');
     }
 
+    public function show($id)
+    {
+        $examination = ClinicalExamination::with(['patient.user', 'puskesmas'])->findOrFail($id);
+        return redirect()->route('admin.examinations.edit', $examination->id);
+    }
+
     public function edit($id)
     {
         $examination = ClinicalExamination::with('patient.user')->findOrFail($id);

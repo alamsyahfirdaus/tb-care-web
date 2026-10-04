@@ -55,6 +55,9 @@ class EducationalMaterial extends Model
             if (file_exists(public_path('storage/' . $this->image_path))) {
                 return asset('storage/' . $this->image_path);
             }
+            if (file_exists(public_path($this->image_path))) {
+                return asset($this->image_path);
+            }
             if (file_exists(public_path('assets/images/' . $this->image_path))) {
                 return asset('assets/images/' . $this->image_path);
             }

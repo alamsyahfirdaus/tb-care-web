@@ -42,7 +42,7 @@ class SettingController extends Controller
 
         $user->name         = $request->name;
         $user->email        = $request->email;
-        $user->phone_number = $request->phone_number;
+        $user->phone        = $request->phone_number ?? $request->phone;
 
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);

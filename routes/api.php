@@ -52,7 +52,6 @@ Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
 Route::get('/subdistricts', [SubdistrictController::class, 'index']);
 Route::get('/subdistricts/{id}/villages', [SubdistrictController::class, 'getVillages']);
-Route::get('/password', [AuthController::class, 'updatePassword']); // Endpoint untuk update password (bisa dipindah ke grup auth jika ingin proteksi)
 
 // Skrining
 Route::prefix('screening')->group(function () {
@@ -72,6 +71,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Admin maintenance password update (terproteksi auth)
+    Route::post('/password/batch-reset', [AuthController::class, 'updatePassword']);
 
     // Profil Pengguna
     Route::prefix('profile')->group(function () {

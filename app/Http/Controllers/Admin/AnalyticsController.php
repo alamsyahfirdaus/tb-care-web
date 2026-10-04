@@ -16,10 +16,10 @@ class AnalyticsController extends Controller
 {
     public function index()
     {
-        // 1. Risk Distribution
-        $riskRendah = Screening::where('risk_level', 'rendah')->count();
-        $riskSedang = Screening::where('risk_level', 'sedang')->count();
-        $riskTinggi = Screening::where('risk_level', 'tinggi')->count();
+        // 1. Risk Distribution (Support both canonical and lowercase values)
+        $riskRendah = Screening::whereIn('risk_level', ['Risiko Rendah', 'rendah'])->count();
+        $riskSedang = Screening::whereIn('risk_level', ['Risiko Sedang', 'sedang'])->count();
+        $riskTinggi = Screening::whereIn('risk_level', ['Risiko Tinggi', 'tinggi'])->count();
         $totalScreening = Screening::count();
 
         // 2. Monthly Trend (last 6 months)
@@ -39,9 +39,9 @@ class AnalyticsController extends Controller
             $monthlyTrend[] = $count;
         }
 
-        // 3. Gender Breakdown
-        $screeningMale   = Screening::where('gender', 'male')->count();
-        $screeningFemale = Screening::where('gender', 'female')->count();
+        // 3. Gender Breakdown (Supports 'L'/'P' and 'male'/'female')
+        $screeningMale   = Screening::whereIn('gender', ['L', 'male'])->count();
+        $screeningFemale = Screening::whereIn('gender', ['P', 'female'])->count();
 
         // 4. Age Demographics
         $ageAnak       = Screening::where('age', '<', 15)->count();
@@ -64,9 +64,9 @@ class AnalyticsController extends Controller
         $examWaiting  = ClinicalExamination::where('result', 'like', '%Menunggu%')->orWhere('status', 'Menunggu Hasil')->count();
 
         // 7. Treatment Statuses
-        $treatmentActive    = PatientTreatment::where('treatment_status', 'Aktif')->count();
+        $treatmentActive    = PatientTreatment::whereIn('treatment_status', ['Berjalan', 'Aktif'])->count();
         $treatmentCompleted = PatientTreatment::where('treatment_status', 'Selesai')->count();
-        $treatmentDropped   = PatientTreatment::where('treatment_status', 'Putus Obat')->count();
+        $treatmentDropped   = PatientTreatment::whereIn('treatment_status', ['Gagal', 'Putus Obat', 'Meninggal'])->count();
 
         return view('admin.analytics.index', compact(
             'riskRendah', 'riskSedang', 'riskTinggi', 'totalScreening',

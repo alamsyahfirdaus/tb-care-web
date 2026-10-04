@@ -28,4 +28,14 @@ class ScreeningQuestion extends Model
     {
         return $this->hasMany(ScreeningQuestion::class, 'group_id');
     }
+
+    public function getQuestionTextAttribute()
+    {
+        return $this->attributes['question'] ?? null;
+    }
+
+    public function setQuestionTextAttribute($value)
+    {
+        $this->attributes['question'] = $value;
+    }
 }

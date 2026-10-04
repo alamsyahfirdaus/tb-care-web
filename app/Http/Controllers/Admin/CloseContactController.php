@@ -119,6 +119,12 @@ class CloseContactController extends Controller
         return redirect()->route('admin.contacts.index')->with('success', 'Data kontak erat berhasil dicatat.');
     }
 
+    public function show($id)
+    {
+        $contact = CloseContact::with('patient.user')->findOrFail($id);
+        return redirect()->route('admin.contacts.edit', $contact->id);
+    }
+
     public function edit($id)
     {
         $contact = CloseContact::with('patient.user')->findOrFail($id);

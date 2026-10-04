@@ -52,13 +52,13 @@ class ReportController extends Controller
                     'patients',
                     'screenings',
                     'screenings as high_risk_count' => function($q) {
-                        $q->where('risk_level', 'tinggi');
+                        $q->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']);
                     },
                     'screenings as medium_risk_count' => function($q) {
-                        $q->where('risk_level', 'sedang');
+                        $q->whereIn('risk_level', ['Risiko Sedang', 'sedang']);
                     },
                     'screenings as low_risk_count' => function($q) {
-                        $q->where('risk_level', 'rendah');
+                        $q->whereIn('risk_level', ['Risiko Rendah', 'rendah']);
                     }
                 ])
                 ->orderBy('name')
@@ -114,13 +114,13 @@ class ReportController extends Controller
                     'patients',
                     'screenings',
                     'screenings as high_risk_count' => function($q) {
-                        $q->where('risk_level', 'tinggi');
+                        $q->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']);
                     },
                     'screenings as medium_risk_count' => function($q) {
-                        $q->where('risk_level', 'sedang');
+                        $q->whereIn('risk_level', ['Risiko Sedang', 'sedang']);
                     },
                     'screenings as low_risk_count' => function($q) {
-                        $q->where('risk_level', 'rendah');
+                        $q->whereIn('risk_level', ['Risiko Rendah', 'rendah']);
                     }
                 ])
                 ->orderBy('name')
@@ -176,16 +176,16 @@ class ReportController extends Controller
                     fputcsv($file, [
                         $idx++,
                         $row->code,
-                        $row->name,
-                        $row->user->nik ?? '-',
-                        $row->gender == 'male' ? 'Laki-laki' : 'Perempuan',
+                        $row->person_name ?? optional($row->user)->name ?? 'Peserta',
+                        $row->nik ?? optional($row->user)->nik ?? '-',
+                        in_array($row->gender, ['L', 'male']) ? 'Laki-laki' : 'Perempuan',
                         $row->age . ' Thn',
                         $row->puskesmas->name ?? '-',
                         $row->subdistrict->name ?? '-',
                         $row->total_score,
                         strtoupper($row->risk_level),
                         strtoupper($row->status),
-                        $row->screening_date
+                        $row->screened_at ? $row->screened_at->format('Y-m-d') : ($row->created_at ? $row->created_at->format('Y-m-d') : '-')
                     ]);
                 }
             } elseif ($type == 'patient') {
@@ -196,16 +196,17 @@ class ReportController extends Controller
 
                 $idx = 1;
                 foreach ($query->orderBy('created_at', 'asc')->cursor() as $row) {
+                    $u = $row->user;
                     fputcsv($file, [
                         $idx++,
                         $row->patient_number ?? ('TB-' . $row->id),
-                        $row->user->name ?? $row->name ?? 'Pasien',
-                        $row->nik ?? ($row->user->nik ?? '-'),
-                        $row->gender == 'male' ? 'L' : 'P',
-                        $row->age ?? '-',
-                        $row->user->phone_number ?? '-',
+                        optional($u)->name ?? $row->name ?? 'Pasien',
+                        $row->nik ?? '-',
+                        optional($u)->gender == 'P' ? 'P' : 'L',
+                        optional($u)->date_of_birth ? Carbon::parse($u->date_of_birth)->age . ' Thn' : '-',
+                        optional($u)->phone ?? '-',
                         $row->puskesmas->name ?? '-',
-                        $row->village->name ?? '-',
+                        $row->village->name ?? ($row->subdistrict->name ?? '-'),
                         $row->activeTreatment->treatment_status ?? 'Tidak Dalam Pengobatan',
                         $row->created_at->format('Y-m-d')
                     ]);
@@ -215,9 +216,9 @@ class ReportController extends Controller
                 $pkmData = Puskesmas::with(['subdistrict.district'])
                     ->withCount([
                         'patients', 'screenings',
-                        'screenings as high_risk' => function($q) { $q->where('risk_level', 'tinggi'); },
-                        'screenings as med_risk' => function($q) { $q->where('risk_level', 'sedang'); },
-                        'screenings as low_risk' => function($q) { $q->where('risk_level', 'rendah'); },
+                        'screenings as high_risk' => function($q) { $q->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']); },
+                        'screenings as med_risk' => function($q) { $q->whereIn('risk_level', ['Risiko Sedang', 'sedang']); },
+                        'screenings as low_risk' => function($q) { $q->whereIn('risk_level', ['Risiko Rendah', 'rendah']); },
                     ])->orderBy('name')->get();
 
                 $idx = 1;

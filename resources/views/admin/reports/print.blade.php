@@ -103,13 +103,13 @@
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td class="text-center">{{ $item->code }}</td>
-                    <td>{{ $item->name }}</td>
-                    <td class="text-center">{{ $item->gender == 'male' ? 'L' : 'P' }} / {{ $item->age }} Th</td>
+                    <td>{{ $item->person_name ?? optional($item->user)->name ?? 'Peserta' }}</td>
+                    <td class="text-center">{{ in_array($item->gender, ['L', 'male']) ? 'L' : 'P' }} / {{ $item->age }} Th</td>
                     <td>{{ $item->puskesmas->name ?? '-' }} ({{ $item->subdistrict->name ?? '-' }})</td>
                     <td class="text-center">{{ $item->total_score }}</td>
                     <td class="text-center font-weight-bold">{{ strtoupper($item->risk_level) }}</td>
                     <td class="text-center">{{ strtoupper($item->status) }}</td>
-                    <td class="text-center">{{ \Carbon\Carbon::parse($item->screening_date)->format('d/m/Y') }}</td>
+                    <td class="text-center">{{ $item->screened_at ? \Carbon\Carbon::parse($item->screened_at)->format('d/m/Y') : ($item->created_at ? \Carbon\Carbon::parse($item->created_at)->format('d/m/Y') : '-') }}</td>
                 </tr>
                 @empty
                 <tr><td colspan="9" class="text-center py-3">Tidak ada data skrining tercatat pada periode ini.</td></tr>
@@ -136,9 +136,9 @@
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td class="text-center">{{ $pat->patient_number ?? ('TB-' . $pat->id) }}</td>
-                    <td>{{ $pat->user->name ?? $pat->name ?? 'Pasien' }}</td>
-                    <td class="text-center">{{ $pat->nik ?? ($pat->user->nik ?? '-') }}</td>
-                    <td class="text-center">{{ ($pat->gender ?? ($pat->user->gender ?? '')) == 'male' ? 'L' : 'P' }} / {{ $pat->age ?? '-' }} Th</td>
+                    <td>{{ optional($pat->user)->name ?? $pat->name ?? 'Pasien' }}</td>
+                    <td class="text-center">{{ $pat->nik ?? '-' }}</td>
+                    <td class="text-center">{{ optional($pat->user)->gender == 'P' ? 'P' : 'L' }} / {{ optional($pat->user)->date_of_birth ? \Carbon\Carbon::parse($pat->user->date_of_birth)->age . ' Th' : '-' }}</td>
                     <td>{{ $pat->puskesmas->name ?? '-' }}</td>
                     <td>{{ $pat->village->name ?? ($pat->subdistrict->name ?? '-') }}</td>
                     <td class="text-center">{{ $pat->activeTreatment->treatment_status ?? 'Dalam Pemantauan' }}</td>

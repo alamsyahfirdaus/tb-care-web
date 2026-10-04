@@ -196,13 +196,13 @@ Route::middleware(['auth'])->group(function () {
 | TB CARE ADMIN ROUTES (ADMINLTE 3.2.0 REBUILD)
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkrole:1-3'])->group(function () {
     // 1. Dashboard
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
-    // 2. Pengguna (Users)
-    Route::resource('users', AdminUserController::class);
+    // 2. Pengguna (Users - Admin only)
+    Route::resource('users', AdminUserController::class)->middleware('checkrole:1');
 
     // 3. Data Pasien (Patients)
     Route::resource('patients', AdminPatientController::class);

@@ -36,8 +36,8 @@ class MasterDataController extends Controller
         ]);
 
         $question->update([
-            'question_text' => $request->question_text,
-            'is_critical'   => $request->has('is_critical'),
+            'question'    => $request->question_text ?? $request->question,
+            'is_critical' => $request->has('is_critical'),
         ]);
 
         ActivityLog::log('Edit Pertanyaan Master', 'Master Data', "Memperbarui teks pertanyaan instrumen ID #{$id}.");

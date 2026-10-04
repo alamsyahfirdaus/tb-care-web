@@ -77,4 +77,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(ActivityLog::class, 'user_id');
     }
+
+    public function getPhoneNumberAttribute()
+    {
+        return $this->attributes['phone'] ?? null;
+    }
+
+    public function setPhoneNumberAttribute($value)
+    {
+        $this->attributes['phone'] = $value;
+    }
 }
