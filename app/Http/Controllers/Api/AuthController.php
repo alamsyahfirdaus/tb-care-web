@@ -156,6 +156,20 @@ class AuthController extends Controller
             'village_id.exists'             => 'Desa/Kelurahan tidak valid.',
         ]);
 
+        // Pastikan kolom diagnosis_date di database mengizinkan NULL (antisipasi jika migration belum dijalankan di server)
+        // Dilakukan SEBELUM DB::transaction karena perintah DDL (ALTER TABLE) di MySQL memicu implicit commit
+        static $ensuredDiagnosisDateNullable = false;
+        if (!$ensuredDiagnosisDateNullable) {
+            try {
+                if (DB::getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE patient_treatments MODIFY diagnosis_date DATE NULL');
+                }
+            } catch (\Throwable $e) {
+                // Abaikan jika sudah di-alter atau user database tidak memiliki hak akses DDL ALTER
+            }
+            $ensuredDiagnosisDateNullable = true;
+        }
+
         return DB::transaction(function () use ($validatedData) {
             // 1. Buat username otomatis unik
             $username = $this->generateUsername($validatedData['name']);
@@ -212,17 +226,37 @@ class AuthController extends Controller
                 $treatmentDays = $startDateCarbon->diffInDays(Carbon::parse($endDate));
             }
 
-            $treatment = PatientTreatment::create([
-                'patient_id'        => $patient->id,
-                'treatment_type_id' => 1,
-                'diagnosis_date'    => null,
-                'start_date'        => $startDate,
-                'end_date'          => $endDate,
-                'treatment_days'    => $treatmentDays,
-                'medication_time'   => '07:00:00',
-                'prescription'      => null,
-                'treatment_status'  => 'Berjalan',
-            ]);
+            try {
+                $treatment = PatientTreatment::create([
+                    'patient_id'        => $patient->id,
+                    'treatment_type_id' => 1,
+                    'diagnosis_date'    => null,
+                    'start_date'        => $startDate,
+                    'end_date'          => $endDate,
+                    'treatment_days'    => $treatmentDays,
+                    'medication_time'   => '07:00:00',
+                    'prescription'      => null,
+                    'treatment_status'  => 'Berjalan',
+                ]);
+            } catch (\Illuminate\Database\QueryException $qe) {
+                // Jika database server belum menjalankan migration dan kolom diagnosis_date masih NOT NULL,
+                // fallback gunakan start_date agar registrasi tidak gagal 500
+                if (str_contains($qe->getMessage(), 'diagnosis_date') && (str_contains($qe->getMessage(), 'cannot be null') || str_contains($qe->getMessage(), 'Column \'diagnosis_date\''))) {
+                    $treatment = PatientTreatment::create([
+                        'patient_id'        => $patient->id,
+                        'treatment_type_id' => 1,
+                        'diagnosis_date'    => $startDate,
+                        'start_date'        => $startDate,
+                        'end_date'          => $endDate,
+                        'treatment_days'    => $treatmentDays,
+                        'medication_time'   => '07:00:00',
+                        'prescription'      => null,
+                        'treatment_status'  => 'Berjalan',
+                    ]);
+                } else {
+                    throw $qe;
+                }
+            }
 
             // 7. Respon JSON saat berhasil (mengembalikan credential untuk ditampilkan sekali ke user)
             return response()->json([

@@ -279,7 +279,7 @@
                 <!-- User Account Menu -->
                 <li class="nav-item dropdown user-menu">
                     <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
-                        <img src="{{ Auth::user() && Auth::user()->photo ? asset('upload_images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
+                        <img src="{{ Auth::user() && Auth::user()->photo ? asset('images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
                             class="user-image img-circle elevation-1" alt="User Image">
                         <span
                             class="d-none d-md-inline font-weight-bold">{{ Auth::user() ? Auth::user()->name : 'Admin' }}</span>
@@ -287,7 +287,7 @@
                     <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
                         <!-- User image -->
                         <li class="user-header bg-primary">
-                            <img src="{{ Auth::user() && Auth::user()->photo ? asset('upload_images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
+                            <img src="{{ Auth::user() && Auth::user()->photo ? asset('images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
                                 class="img-circle elevation-2" alt="User Image">
                             <p>
                                 {{ Auth::user() ? Auth::user()->name : 'Administrator' }}
@@ -295,7 +295,7 @@
                             </p>
                         </li>
                         <!-- Menu Footer-->
-                        <li class="user-footer d-flex justify-content-between">
+                        <li class="user-footer d-flex ">
                             <a href="{{ route('admin.settings.profile') }}" class="btn btn-default btn-flat"><i
                                     class="fas fa-user mr-1"></i> Profil</a>
                             <a href="{{ route('logout') }}" class="btn btn-danger btn-flat"><i

@@ -325,7 +325,7 @@ class PatientController extends Controller
                 $query->orderByDesc('start_date')
                     ->with([
                         'visits' => function ($q) {
-                            $q->orderByDesc('visit_date');
+                            $q->orderBy('visit_date', 'asc')->orderBy('visit_time', 'asc');
                         }
                     ]);
             }
@@ -392,13 +392,14 @@ class PatientController extends Controller
                     'treatment_days'    => $treatment->treatment_days,
                     'medication_time'   => $treatment->medication_time,
 
-                    'visits' => $treatment->visits ? $treatment->visits->map(function ($visit) {
+                    'visits' => $treatment->visits ? $treatment->visits->map(function ($visit) use ($patient) {
                         return [
-                            'id'           => $visit->id,
-                            'visit_date'   => $visit->visit_date,
-                            'visit_time'   => $visit->visit_time,
-                            'visit_status' => $visit->visit_status,
-                            'notes'        => $visit->notes,
+                            'id'             => $visit->id,
+                            'visit_date'     => $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : null,
+                            'visit_time'     => $visit->visit_time,
+                            'visit_status'   => $visit->visit_status,
+                            'notes'          => $visit->notes,
+                            'puskesmas_name' => optional($patient->puskesmas)->name ?? 'Puskesmas',
                         ];
                     }) : [],
                     'prescription'     => $treatment->prescription ? (is_array($treatment->prescription) ? $treatment->prescription : json_decode($treatment->prescription, true)) : null,

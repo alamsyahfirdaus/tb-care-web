@@ -82,25 +82,83 @@ class RegionController extends Controller
     }
 
     /**
-     * Ambil daftar desa/kelurahan (bisa difilter subdistrict_id via query).
+     * Ambil daftar desa/kelurahan (bisa difilter subdistrict_id via query, atau dicari via search/q).
      */
     public function villages(Request $request)
     {
         $subdistrictId = $request->query('subdistrict_id');
+        $search = $request->query('search') ?? $request->query('q');
 
-        $query = Village::query();
+        $query = Village::with(['subdistrict.district.province']);
 
         if ($subdistrictId) {
             $query->where('subdistrict_id', $subdistrictId);
         }
 
-        $villages = $query->orderBy('name', 'asc')
-            ->get(['id', 'code', 'name', 'subdistrict_id']);
+        if (!empty($search)) {
+            $search = trim($search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhereHas('subdistrict', function ($sq) use ($search) {
+                      $sq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $villages = $query->orderBy('name', 'asc')->get();
+
+        $formatted = $villages->map(function ($village) {
+            $sub = $village->subdistrict;
+            $dist = $sub ? $sub->district : null;
+            $prov = $dist ? $dist->province : null;
+
+            $subName = $sub ? $sub->name : '';
+            $distName = $dist ? $dist->name : '';
+            $provName = $prov ? $prov->name : '';
+
+            $parentParts = array_filter([$subName, $distName]);
+            $parentDisplay = implode(' • ', $parentParts);
+
+            return [
+                'id'             => $village->id,
+                'code'           => $village->code,
+                'name'           => $village->name,
+                'subdistrict_id' => $sub ? $sub->id : null,
+                'district_id'    => $dist ? $dist->id : null,
+                'province_id'    => $prov ? $prov->id : null,
+                'subdistrict'    => $sub ? [
+                    'id'   => $sub->id,
+                    'name' => $sub->name,
+                ] : null,
+                'district'       => $dist ? [
+                    'id'   => $dist->id,
+                    'name' => $dist->name,
+                ] : null,
+                'regency'        => $dist ? [
+                    'id'   => $dist->id,
+                    'name' => $dist->name,
+                ] : null,
+                'province'       => $prov ? [
+                    'id'   => $prov->id,
+                    'name' => $prov->name,
+                ] : null,
+                'parent_display' => $parentDisplay,
+                'full_address'   => implode(', ', array_filter([$village->name, $subName ? "Kec. $subName" : '', $distName, $provName])),
+            ];
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Daftar desa/kelurahan berhasil diambil.',
-            'data'    => $villages
+            'data'    => $formatted
         ]);
+    }
+
+    /**
+     * Pencarian desa/kelurahan beserta relasi wilayah parent.
+     */
+    public function searchVillages(Request $request)
+    {
+        return $this->villages($request);
     }
 }

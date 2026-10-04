@@ -173,8 +173,9 @@ class PatientRegistrationTreatmentTest extends TestCase
         $uniqueNik = '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT);
 
         $payload = $this->generatePayload([
-            'phone' => $uniquePhone,
-            'nik'   => $uniqueNik,
+            'phone'                => $uniquePhone,
+            'nik'                  => $uniqueNik,
+            'treatment_start_date' => '1999-01-01',
         ]);
 
         // Pasang event hook untuk mensimulasikan kegagalan saat insert PatientTreatment

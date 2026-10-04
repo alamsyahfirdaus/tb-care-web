@@ -48,6 +48,22 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
+Route::get('/run-migration', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return response()->json([
+            'success' => true,
+            'message' => 'Migrasi berhasil dijalankan.',
+            'output'  => $output,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal menjalankan migrasi: ' . $e->getMessage(),
+        ], 500);
+    }
+});
 
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
@@ -57,6 +73,7 @@ Route::get('/districts', [RegionController::class, 'districts']);
 Route::get('/districts/{id}/subdistricts', [RegionController::class, 'subdistrictsByDistrict']);
 Route::get('/subdistricts', [SubdistrictController::class, 'index']);
 Route::get('/subdistricts/{id}/villages', [SubdistrictController::class, 'getVillages']);
+Route::get('/villages/search', [RegionController::class, 'searchVillages']);
 Route::get('/villages', [RegionController::class, 'villages']);
 
 // Skrining
@@ -105,7 +122,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Kunjungan Pasien (Home Visit atau Faskes)
+    Route::get('/patient/visits', [TreatmentVisitController::class, 'patientVisits']); // Daftar jadwal kunjungan pasien terautentikasi
     Route::prefix('visits')->group(function () {
+        Route::get('/{id}', [TreatmentVisitController::class, 'show']);                      // Detail kunjungan
         Route::match(['post', 'put'], '/store', [TreatmentVisitController::class, 'store']); // Simpan / update kunjungan
         Route::delete('/{id}/delete', [TreatmentVisitController::class, 'destroy']);         // Hapus kunjungan
     });

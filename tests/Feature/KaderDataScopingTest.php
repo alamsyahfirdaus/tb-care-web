@@ -311,7 +311,7 @@ class KaderDataScopingTest extends TestCase
 
         $payload = [
             'name'           => 'Pasien Luar Wilayah',
-            'phone'          => '081299998888',
+            'phone'          => '0898' . rand(10000000, 99999999),
             'nik'            => '3201999988887777',
             'gender'         => 'L',
             'place_of_birth' => 'Bandung',

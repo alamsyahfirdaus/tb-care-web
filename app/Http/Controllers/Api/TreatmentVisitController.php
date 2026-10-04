@@ -105,4 +105,104 @@ class TreatmentVisitController extends Controller
             'message' => 'Kunjungan berhasil dihapus.'
         ]);
     }
+
+    public function patientVisits(Request $request)
+    {
+        $user = Auth::user();
+
+        $patient = null;
+        if ($user->user_type_id == 2) {
+            $patient = $user->patient;
+        } elseif ($request->filled('patient_id')) {
+            $patient = \App\Models\Patient::with('puskesmas')->find($request->patient_id);
+            if ($patient && !$patient->isAccessibleBy($user)) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang mengakses data pasien ini.'
+                ], 403);
+            }
+        } else {
+            $patient = $user->patient;
+        }
+
+        if (!$patient) {
+            return response()->json([
+                'message' => 'Data pasien tidak ditemukan.',
+                'data'    => []
+            ], 404);
+        }
+
+        $treatment = PatientTreatment::where('patient_id', $patient->id)
+            ->orderByDesc('start_date')
+            ->first();
+
+        $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+
+        if (!$treatment) {
+            return response()->json([
+                'message'        => 'Belum ada data pengobatan.',
+                'puskesmas_name' => $puskesmasName,
+                'data'           => []
+            ], 200);
+        }
+
+        $visits = TreatmentVisit::where('patient_treatment_id', $treatment->id)
+            ->orderBy('visit_date', 'asc')
+            ->orderBy('visit_time', 'asc')
+            ->get()
+            ->map(function ($visit) use ($puskesmasName) {
+                return [
+                    'id'                   => $visit->id,
+                    'patient_treatment_id' => $visit->patient_treatment_id,
+                    'visit_date'           => $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : null,
+                    'visit_time'           => $visit->visit_time,
+                    'visit_status'         => $visit->visit_status,
+                    'notes'                => $visit->notes,
+                    'puskesmas_name'       => $puskesmasName,
+                    'created_at'           => $visit->created_at,
+                    'updated_at'           => $visit->updated_at,
+                ];
+            });
+
+        return response()->json([
+            'message'        => 'Daftar jadwal kunjungan berhasil diambil.',
+            'puskesmas_name' => $puskesmasName,
+            'data'           => $visits
+        ]);
+    }
+
+    public function show($id)
+    {
+        $visit = TreatmentVisit::with(['patientTreatment.patient.puskesmas'])->find($id);
+
+        if (!$visit) {
+            return response()->json([
+                'message' => 'Data kunjungan tidak ditemukan.'
+            ], 404);
+        }
+
+        $user = Auth::user();
+        $patient = $visit->patientTreatment?->patient;
+        if ($patient && !$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang mengakses data kunjungan ini.'
+            ], 403);
+        }
+
+        $puskesmasName = optional($patient?->puskesmas)->name ?? 'Puskesmas';
+
+        return response()->json([
+            'message' => 'Detail jadwal kunjungan berhasil diambil.',
+            'data'    => [
+                'id'                   => $visit->id,
+                'patient_treatment_id' => $visit->patient_treatment_id,
+                'visit_date'           => $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : null,
+                'visit_time'           => $visit->visit_time,
+                'visit_status'         => $visit->visit_status,
+                'notes'                => $visit->notes,
+                'puskesmas_name'       => $puskesmasName,
+                'created_at'           => $visit->created_at,
+                'updated_at'           => $visit->updated_at,
+            ]
+        ]);
+    }
 }

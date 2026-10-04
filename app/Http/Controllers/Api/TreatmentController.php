@@ -324,7 +324,7 @@ class TreatmentController extends Controller
 
     public function getVisitsByTreatment($treatmentId)
     {
-        $treatment = PatientTreatment::with('patient')->find($treatmentId);
+        $treatment = PatientTreatment::with('patient.puskesmas')->find($treatmentId);
 
         if (!$treatment) {
             return response()->json(['message' => 'Data pengobatan tidak ditemukan.'], 404);
@@ -337,13 +337,30 @@ class TreatmentController extends Controller
             ], 403);
         }
 
+        $puskesmasName = optional($treatment->patient?->puskesmas)->name ?? 'Puskesmas';
+
         $visits = TreatmentVisit::where('patient_treatment_id', $treatmentId)
             ->orderBy('visit_date', 'asc')
-            ->get();
+            ->orderBy('visit_time', 'asc')
+            ->get()
+            ->map(function ($visit) use ($puskesmasName) {
+                return [
+                    'id'                   => $visit->id,
+                    'patient_treatment_id' => $visit->patient_treatment_id,
+                    'visit_date'           => $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : null,
+                    'visit_time'           => $visit->visit_time,
+                    'visit_status'         => $visit->visit_status,
+                    'notes'                => $visit->notes,
+                    'puskesmas_name'       => $puskesmasName,
+                    'created_at'           => $visit->created_at,
+                    'updated_at'           => $visit->updated_at,
+                ];
+            });
 
         return response()->json([
-            'message' => 'Daftar kunjungan berhasil diambil.',
-            'data'    => $visits
+            'message'        => 'Daftar kunjungan berhasil diambil.',
+            'puskesmas_name' => $puskesmasName,
+            'data'           => $visits
         ]);
     }
 
