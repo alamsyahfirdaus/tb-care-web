@@ -30,6 +30,13 @@ class PuskesmasController extends Controller
                     ? $item->name . ' (' . $subdistrictName . ', ' . $districtName . ')'
                     : $item->name,
 
+                'raw_name'         => $item->name,
+                'subdistrict_name' => $subdistrictName,
+                'district_name'    => $districtName,
+                'location'         => ($subdistrictName && $districtName)
+                    ? ($subdistrictName . ' - ' . $districtName)
+                    : ($subdistrictName ?: $districtName),
+
                 'address' => $item->address,
 
                 // Lokasi administratif lengkap
