@@ -26,4 +26,9 @@ class MedicationRecord extends Model
     {
         return self::where('patient_treatment_id', $patient_treatment_id)->count();
     }
+
+    public function patientTreatment()
+    {
+        return $this->belongsTo(PatientTreatment::class, 'patient_treatment_id');
+    }
 }

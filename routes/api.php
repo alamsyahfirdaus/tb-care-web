@@ -148,8 +148,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/recipients', [ConsultationController::class, 'getRecipients']); // Ambil daftar penerima untuk konsultasi
     });
 
+    // Dashboard / Beranda Pasien Terpadu
+    Route::get('/patient/home', [PatientController::class, 'home']);
+
     // Data Pasien TB
     Route::prefix('patients')->group(function () {
+        Route::get('/home', [PatientController::class, 'home']);
+        Route::get('/{id}/home', [PatientController::class, 'home']);
         Route::match(['get', 'post'], '/', [PatientController::class, 'index']);           // Pencarian atau daftar pasien
         Route::match(['post', 'put'], '/store', [PatientController::class, 'store']);      // Simpan / update data pasien
         Route::get('/{id}/show', [PatientController::class, 'show']);                      // Detail pasien

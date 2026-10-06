@@ -7,8 +7,14 @@ use App\Models\Officer;
 use App\Models\Patient;
 use App\Models\PatientMedicationSchedule;
 use App\Models\PatientTreatment;
+use App\Models\TreatmentVisit;
+use App\Models\MedicationRecord;
+use App\Models\Consultation;
+use App\Models\EducationalMaterial;
+use App\Models\SystemNotification;
 use App\Models\User;
 use App\Models\Village;
+use Carbon\Carbon;
 use App\Policies\PatientPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -349,6 +355,8 @@ class PatientController extends Controller
         $districtName    = optional($patient->subdistrict?->district)->name;
         $provinceName    = optional($patient->subdistrict?->district?->province)->name;
 
+        $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+
         $patientData = [
             'id'             => $patient->id,
             'user_id'        => $patient->user_id,
@@ -379,9 +387,9 @@ class PatientController extends Controller
             'place_of_birth' => optional($patient->user)->place_of_birth,
             'date_of_birth'  => optional($patient->user)->date_of_birth,
 
-            'puskesmas'      => optional($patient->puskesmas)->name,
+            'puskesmas'      => $puskesmasName,
 
-            'treatments'     => $patient->treatments ? $patient->treatments->map(function ($treatment) {
+            'treatments'     => $patient->treatments ? $patient->treatments->map(function ($treatment) use ($puskesmasName) {
                 return [
                     'id'                => $treatment->id,
                     'treatment_type_id' => $treatment->treatment_type_id,
@@ -392,14 +400,14 @@ class PatientController extends Controller
                     'treatment_days'    => $treatment->treatment_days,
                     'medication_time'   => $treatment->medication_time,
 
-                    'visits' => $treatment->visits ? $treatment->visits->map(function ($visit) use ($patient) {
+                    'visits' => $treatment->visits ? $treatment->visits->map(function ($visit) use ($puskesmasName) {
                         return [
                             'id'             => $visit->id,
                             'visit_date'     => $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('Y-m-d') : null,
                             'visit_time'     => $visit->visit_time,
                             'visit_status'   => $visit->visit_status,
                             'notes'          => $visit->notes,
-                            'puskesmas_name' => optional($patient->puskesmas)->name ?? 'Puskesmas',
+                            'puskesmas_name' => $puskesmasName,
                         ];
                     }) : [],
                     'prescription'     => $treatment->prescription ? (is_array($treatment->prescription) ? $treatment->prescription : json_decode($treatment->prescription, true)) : null,
@@ -795,5 +803,270 @@ class PatientController extends Controller
     public function storeSchedule(Request $request, $id = null)
     {
         return $this->saveMedicationSchedule($request, $id);
+    }
+
+    /**
+     * Dashboard / Beranda Pasien Terpadu
+     * Mengembalikan data komprehensif pasien untuk beranda dalam 1 kali request efisien.
+     */
+    public function home(Request $request, $id = null)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi tidak valid. Silakan login kembali.'
+            ], 401);
+        }
+
+        // Tentukan ID pasien: dari parameter URL ($id), query/body (patient_id), atau profil user
+        $targetPatientId = $id ?: ($request->input('patient_id') ?: null);
+
+        $patient = null;
+        if ($targetPatientId) {
+            $patient = Patient::find($targetPatientId);
+            if (!$patient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data pasien tidak ditemukan.'
+                ], 404);
+            }
+
+            if (!$patient->isAccessibleBy($user)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki wewenang mengakses data pasien ini.'
+                ], 403);
+            }
+        } else {
+            if ($user->user_type_id == 2) {
+                $patient = Patient::where('user_id', $user->id)->first();
+            }
+        }
+
+        if (!$patient) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil pasien tidak ditemukan. Pastikan akun terdaftar sebagai pasien.'
+            ], 404);
+        }
+
+        // Eager load relasi penting
+        $patient->loadMissing([
+            'user:id,name,phone,gender,photo',
+            'puskesmas:id,name'
+        ]);
+
+        $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+
+        // 1. Info Pasien
+        $patientData = [
+            'id'                   => $patient->id,
+            'user_id'              => $patient->user_id,
+            'name'                 => optional($patient->user)->name ?? 'Pasien TB',
+            'nik'                  => $patient->nik,
+            'phone'                => optional($patient->user)->phone,
+            'gender'               => optional($patient->user)->gender,
+            'photo'                => optional($patient->user)->photo ? asset('images/' . $patient->user->photo) : null,
+            'puskesmas_id'         => $patient->puskesmas_id,
+            'puskesmas_name'       => $puskesmasName,
+            'treatment_start_date' => $patient->treatment_start_date ? Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
+        ];
+
+        // 2. Info Pengobatan Aktif (Treatment)
+        $treatment = PatientTreatment::with('treatmentType:id,treatment_type')
+            ->where('patient_id', $patient->id)
+            ->orderByDesc('start_date')
+            ->first();
+
+        $treatmentData = null;
+        $activeTreatmentId = null;
+        if ($treatment) {
+            $activeTreatmentId = $treatment->id;
+            $startDate = $treatment->start_date ? Carbon::parse($treatment->start_date) : null;
+            $endDate = $treatment->end_date ? Carbon::parse($treatment->end_date) : null;
+            $totalDays = $treatment->treatment_days ?: ($startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 180);
+
+            $now = Carbon::today();
+            $currentDay = 0;
+            if ($startDate) {
+                if ($now->greaterThanOrEqualTo($startDate)) {
+                    $currentDay = $startDate->diffInDays($now) + 1;
+                    if ($currentDay > $totalDays) {
+                        $currentDay = $totalDays;
+                    }
+                }
+            }
+
+            $progressPercent = $totalDays > 0 ? (int) round(($currentDay / $totalDays) * 100) : 0;
+            if ($progressPercent > 100) $progressPercent = 100;
+
+            // Resolve reminder time
+            $schedule = $this->resolveMedicationSchedule($patient);
+            $reminderTime = $schedule['reminder_time'] ?? $treatment->medication_time;
+            if ($reminderTime && strlen($reminderTime) >= 5) {
+                $reminderTime = substr($reminderTime, 0, 5);
+            }
+
+            $treatmentData = [
+                'id'                  => $treatment->id,
+                'treatment_type_id'   => $treatment->treatment_type_id,
+                'treatment_type_name' => optional($treatment->treatmentType)->treatment_type ?? 'TB Sensitif Obat',
+                'treatment_status'    => $treatment->treatment_status ?? 'Berjalan',
+                'start_date'          => $treatment->start_date ? Carbon::parse($treatment->start_date)->format('Y-m-d') : null,
+                'end_date'            => $treatment->end_date ? Carbon::parse($treatment->end_date)->format('Y-m-d') : null,
+                'treatment_days'      => $treatment->treatment_days,
+                'current_day'         => $currentDay,
+                'total_days'          => $totalDays,
+                'progress_percent'    => $progressPercent,
+                'medication_time'     => $reminderTime,
+            ];
+        }
+
+        // 3. Jadwal Kunjungan Terdekat (Next Visit) & Upcoming Visits
+        $nextVisitData = null;
+        $upcomingVisits = [];
+        $visitsQuery = TreatmentVisit::whereHas('patientTreatment', function ($q) use ($patient) {
+                $q->where('patient_id', $patient->id);
+            })
+            ->where('visit_status', '!=', 'Batal')
+            ->whereDate('visit_date', '>=', Carbon::today())
+            ->orderBy('visit_date', 'asc')
+            ->orderBy('visit_time', 'asc');
+
+        $nextVisit = (clone $visitsQuery)->first();
+        if ($nextVisit) {
+            $nextVisitData = [
+                'id'             => $nextVisit->id,
+                'visit_date'     => $nextVisit->visit_date ? Carbon::parse($nextVisit->visit_date)->format('Y-m-d') : null,
+                'visit_time'     => $nextVisit->visit_time ? substr($nextVisit->visit_time, 0, 5) : null,
+                'visit_status'   => $nextVisit->visit_status,
+                'notes'          => $nextVisit->notes,
+                'puskesmas_name' => $puskesmasName,
+            ];
+        }
+
+        $upcomingVisits = $visitsQuery->take(3)->get()->map(function ($v) use ($puskesmasName) {
+            return [
+                'id'             => $v->id,
+                'visit_date'     => $v->visit_date ? Carbon::parse($v->visit_date)->format('Y-m-d') : null,
+                'visit_time'     => $v->visit_time ? substr($v->visit_time, 0, 5) : null,
+                'visit_status'   => $v->visit_status,
+                'notes'          => $v->notes,
+                'puskesmas_name' => $puskesmasName,
+            ];
+        });
+
+        // 4. Status Minum Obat Hari Ini (Medication)
+        $isTakenToday = false;
+        $todayRecordData = null;
+        $todayRecord = MedicationRecord::whereHas('patientTreatment', function ($q) use ($patient) {
+                $q->where('patient_id', $patient->id);
+            })
+            ->whereDate('created_at', Carbon::today())
+            ->latest()
+            ->first();
+
+        if ($todayRecord) {
+            $isTakenToday = true;
+            $todayRecordData = [
+                'id'           => $todayRecord->id,
+                'is_verified'  => (bool) $todayRecord->is_verified,
+                'submitted_at' => $todayRecord->created_at ? $todayRecord->created_at->format('Y-m-d H:i:s') : null,
+                'photo'        => $todayRecord->photo ? asset('images/' . $todayRecord->photo) : null,
+            ];
+        }
+
+        $medicationData = [
+            'reminder_time'  => $treatmentData['medication_time'] ?? null,
+            'is_taken_today' => $isTakenToday,
+            'today_record'   => $todayRecordData,
+        ];
+
+        // 5. Ringkasan Konsultasi Terakhir
+        $consultation = Consultation::with(['recipient:id,name', 'replies.user:id,name'])
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('recipient_id', $user->id);
+            })
+            ->latest('updated_at')
+            ->first();
+
+        $consultationData = null;
+        if ($consultation) {
+            $doctorOrOfficer = optional($consultation->recipient)->name;
+            if (!$doctorOrOfficer && $consultation->replies->isNotEmpty()) {
+                $doctorOrOfficer = optional($consultation->replies->last()->user)->name;
+            }
+
+            $consultationData = [
+                'id'                     => $consultation->id,
+                'title'                  => $consultation->title,
+                'latest_message'         => $consultation->replies->isNotEmpty()
+                    ? $consultation->replies->last()->message
+                    : $consultation->message,
+                'doctor_or_officer_name' => $doctorOrOfficer ?? 'Petugas TB Care',
+                'is_answered'            => (bool) $consultation->is_answered,
+                'updated_at'             => $consultation->updated_at ? $consultation->updated_at->format('Y-m-d H:i') : null,
+                'unread_replies_count'   => $consultation->replies->where('is_read', false)->where('user_id', '!=', $user->id)->count(),
+            ];
+        }
+
+        // 6. Notifikasi Sistem Terbaru
+        $notifications = SystemNotification::where(function ($q) use ($patient) {
+                $q->whereIn('target_role', ['Pasien', 'Semua']);
+                if ($patient->puskesmas_id) {
+                    $q->where(function ($sq) use ($patient) {
+                        $sq->whereNull('target_puskesmas_id')
+                           ->orWhere('target_puskesmas_id', $patient->puskesmas_id);
+                    });
+                }
+            })
+            ->where('status', 'Terkirim')
+            ->latest('created_at')
+            ->take(5)
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id'         => $n->id,
+                    'title'      => $n->title,
+                    'message'    => $n->message,
+                    'type'       => $n->type,
+                    'created_at' => $n->created_at ? $n->created_at->format('Y-m-d H:i') : null,
+                ];
+            });
+
+        // 7. Materi Edukasi Terbaru
+        $education = EducationalMaterial::where('is_publish', 1)
+            ->latest('created_at')
+            ->take(5)
+            ->get()
+            ->map(function ($e) {
+                return [
+                    'id'             => $e->id,
+                    'title_material' => $e->title_material,
+                    'description'    => $e->description,
+                    'material_type'  => $e->material_type,
+                    'photo'          => $e->material_type === 'image' && $e->image_path ? asset('images/' . $e->image_path) : null,
+                    'video_url'      => $e->material_type === 'video' ? $e->video_url : null,
+                    'created_at'     => $e->created_at ? $e->created_at->format('Y-m-d H:i') : null,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data beranda berhasil dimuat.',
+            'data'    => [
+                'patient'                    => $patientData,
+                'treatment'                  => $treatmentData,
+                'next_visit'                 => $nextVisitData,
+                'upcoming_visits'            => $upcomingVisits,
+                'medication'                 => $medicationData,
+                'consultation'               => $consultationData,
+                'notifications'              => $notifications,
+                'unread_notifications_count' => $notifications->count(),
+                'education'                  => $education,
+            ]
+        ], 200);
     }
 }
