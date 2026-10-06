@@ -142,6 +142,11 @@ class EducationController extends Controller
                     'created_by'     => Auth::id() ?? 1,
                 ])->save();
 
+                // Trigger notifikasi pasien jika materi dipublikasikan
+                if ($material->is_publish) {
+                    $material->sendPublishNotification();
+                }
+
                 ActivityLog::log('Tambah Edukasi', 'Edukasi', "Menambahkan materi edukasi: {$material->title_material}.");
                 $message = 'Materi edukasi berhasil diterbitkan.';
             } else {
@@ -153,6 +158,11 @@ class EducationController extends Controller
                     'description'    => $request->description,
                     'is_publish'     => $request->is_publish,
                 ]);
+
+                // Trigger notifikasi jika status diubah dari draft menjadi publish
+                if ($material->is_publish) {
+                    $material->sendPublishNotification();
+                }
 
                 ActivityLog::log('Perbarui Edukasi', 'Edukasi', "Memperbarui materi edukasi {$material->title_material}.");
                 $message = 'Materi edukasi berhasil diperbarui.';
@@ -196,6 +206,10 @@ class EducationController extends Controller
         $material = EducationalMaterial::findOrFail($id);
         $material->is_publish = !$material->is_publish;
         $material->save();
+
+        if ($material->is_publish) {
+            $material->sendPublishNotification();
+        }
 
         $statusStr = $material->is_publish ? 'dipublikasikan' : 'diarsipkan (draft)';
         ActivityLog::log('Ubah Status Edukasi', 'Edukasi', "Mengubah status materi {$material->title_material} menjadi {$statusStr}.");

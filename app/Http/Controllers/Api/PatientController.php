@@ -1047,7 +1047,7 @@ class PatientController extends Controller
                     'title_material' => $e->title_material,
                     'description'    => $e->description,
                     'material_type'  => $e->material_type,
-                    'photo'          => $e->material_type === 'image' && $e->image_path ? asset('images/' . $e->image_path) : null,
+                    'photo'          => $e->material_type === 'image' ? ($e->image_path ?: null) : null,
                     'video_url'      => $e->material_type === 'video' ? $e->video_url : null,
                     'created_at'     => $e->created_at ? $e->created_at->format('Y-m-d H:i') : null,
                 ];

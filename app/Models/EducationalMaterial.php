@@ -18,7 +18,8 @@ class EducationalMaterial extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'is_publish' => 'boolean',
+        'is_publish'        => 'boolean',
+        'notification_sent' => 'boolean',
     ];
 
     public function author()
@@ -56,6 +57,9 @@ class EducationalMaterial extends Model
             if (file_exists(public_path('storage/' . $this->image_path))) {
                 return asset('storage/' . $this->image_path);
             }
+            if (file_exists(public_path('images/' . $this->image_path))) {
+                return asset('images/' . $this->image_path);
+            }
             if (file_exists(public_path($this->image_path))) {
                 return asset($this->image_path);
             }
@@ -65,6 +69,62 @@ class EducationalMaterial extends Model
             return asset('storage/' . $this->image_path);
         }
         return null;
+    }
+
+    /**
+     * Memicu notifikasi materi edukasi baru ke pasien TB Care
+     * Hanya dikirim jika materi berstatus publish dan belum pernah dikirim notifikasi.
+     */
+    public function sendPublishNotification(): bool
+    {
+        if (!$this->is_publish || $this->notification_sent) {
+            return false;
+        }
+
+        // Kunci status notifikasi terlebih dahulu agar tidak terjadi duplikasi
+        $this->notification_sent = true;
+        $this->saveQuietly();
+
+        $tokens = User::whereNotNull('fcm_token')
+            ->where('user_type_id', 2) // Pasien TB Care
+            ->where('fcm_token', '!=', '')
+            ->pluck('fcm_token')
+            ->toArray();
+
+        $title = 'Materi Edukasi Baru';
+        $body  = "Ada materi edukasi baru untuk Anda: {$this->title_material}";
+        $data  = [
+            'type'         => 'education',
+            'material_id'  => (string) $this->id,
+            'education_id' => (string) $this->id,
+        ];
+
+        // 1. Simpan catatan ke Notification Center / System Notifications
+        try {
+            SystemNotification::create([
+                'title'                => $title,
+                'message'              => $body,
+                'type'                 => 'Edukasi',
+                'target_role'          => 'Pasien',
+                'target_puskesmas_id'  => null,
+                'sent_by'              => $this->created_by ?? (Auth::check() ? Auth::id() : 1),
+                'sent_count'           => count($tokens),
+                'status'               => 'Terkirim',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Gagal mencatat SystemNotification edukasi: ' . $e->getMessage());
+        }
+
+        // 2. Kirim Push Notification via FCM
+        if (!empty($tokens)) {
+            try {
+                \App\Services\FcmService::sendNotification($tokens, $title, $body, $data);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Gagal mengirim FCM edukasi: ' . $e->getMessage());
+            }
+        }
+
+        return true;
     }
 
     public static function getAllMaterials()

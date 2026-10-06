@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class EducationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $query = EducationalMaterial::orderBy('created_at', 'desc');
@@ -19,6 +19,10 @@ class EducationController extends Controller
         // Pasien (user_type_id == 2) hanya boleh melihat materi yang dipublikasikan
         if ($user && $user->user_type_id === 2) {
             $query->where('is_publish', 1);
+        }
+
+        if ($request->has('limit')) {
+            $query->take((int) $request->query('limit'));
         }
 
         $materials = $query->get();
@@ -39,9 +43,9 @@ class EducationController extends Controller
                 'description'    => $material->description,
                 'material_type'  => $material->material_type, // image atau video
 
-                // URL file gambar jika tipe 'image'
-                'photo' => $material->material_type === 'image' && $material->image_path
-                    ? $material->image_path
+                // Nama/path file gambar jika tipe 'image' (konsisten dengan Riwayat Minum Obat)
+                'photo' => $material->material_type === 'image'
+                    ? ($material->image_path ?: null)
                     : null,
 
                 // URL video jika tipe 'video'
@@ -49,9 +53,9 @@ class EducationController extends Controller
                     ? $material->video_url
                     : null,
 
-                'is_publish' => $material->is_publish,
+                'is_publish' => (int) ($material->is_publish ? 1 : 0),
                 'created_by' => $material->created_by,
-                'created_at' => $material->created_at->format('Y-m-d H:i:s'),
+                'created_at' => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
             ];
         });
 
@@ -150,9 +154,9 @@ class EducationController extends Controller
         // Simpan data ke database
         $material->fill($data)->save();
 
-        // Kirim notifikasi jika baru dipublikasikan
-        if ($material->is_publish == 1 && !$wasPublished) {
-            $this->sendNewMaterialNotification($material);
+        // Kirim notifikasi jika baru dipublikasikan (idempotent, dicegah duplikasi)
+        if ($material->is_publish == 1) {
+            $material->sendPublishNotification();
         }
 
         return response()->json([
@@ -178,7 +182,7 @@ class EducationController extends Controller
 
         // Pasien (user_type_id == 2) tidak boleh melihat materi draft (is_publish = 0)
         $user = Auth::user();
-        if ($user && $user->user_type_id === 2 && $material->is_publish !== 1) {
+        if ($user && $user->user_type_id === 2 && !$material->is_publish) {
             return response()->json([
                 'message' => 'Materi edukasi ini belum dipublikasikan.',
                 'data'    => null
@@ -192,9 +196,9 @@ class EducationController extends Controller
             'description'    => $material->description,
             'material_type'  => $material->material_type,
 
-            // URL file gambar jika tipe 'image'
-            'photo' => $material->material_type === 'image' && $material->image_path
-                ? $material->image_path
+            // Nama/path file gambar jika tipe 'image' (konsisten dengan Riwayat Minum Obat)
+            'photo' => $material->material_type === 'image'
+                ? ($material->image_path ?: null)
                 : null,
 
             // URL video jika tipe 'video'
@@ -202,10 +206,10 @@ class EducationController extends Controller
                 ? $material->video_url
                 : null,
 
-            'is_publish'     => $material->is_publish,
+            'is_publish'     => (int) ($material->is_publish ? 1 : 0),
             'created_by'     => $material->created_by,
-            'created_at'     => $material->created_at->format('Y-m-d H:i:s'),
-            'updated_at'     => $material->updated_at->format('Y-m-d H:i:s'),
+            'created_at'     => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
+            'updated_at'     => $material->updated_at ? $material->updated_at->format('Y-m-d H:i:s') : null,
         ];
 
         return response()->json([
@@ -277,40 +281,17 @@ class EducationController extends Controller
             ], 404);
         }
 
-        $wasPublished = $material->is_publish == 1;
-
         // Ubah status publikasi
         $material->is_publish = !$material->is_publish;
         $material->save();
 
-        if ($material->is_publish == 1 && !$wasPublished) {
-            $this->sendNewMaterialNotification($material);
+        if ($material->is_publish == 1) {
+            $material->sendPublishNotification();
         }
 
         return response()->json([
             'message'    => 'Status publikasi berhasil diperbarui.',
             'is_publish' => $material->is_publish
         ]);
-    }
-
-    private function sendNewMaterialNotification($material)
-    {
-        $tokens = \App\Models\User::whereNotNull('fcm_token')
-            ->where('user_type_id', 2) // Kirim ke pasien saja
-            ->pluck('fcm_token')
-            ->toArray();
-
-        if (empty($tokens)) {
-            return;
-        }
-
-        $title = 'Materi Edukasi Baru';
-        $body = $material->title_material;
-        $data = [
-            'material_id' => (string) $material->id,
-            'type' => 'education',
-        ];
-
-        \App\Services\FcmService::sendNotification($tokens, $title, $body, $data);
     }
 }

@@ -166,16 +166,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/medication-schedule/store', [PatientController::class, 'storeMedicationSchedule']);
         Route::match(['post', 'put'], '/medication-schedule', [PatientController::class, 'saveMedicationSchedule']);
     });
+});
 
-    Route::get('/image/{filename}', function ($filename) {
+// Endpoint akses gambar publik (dapat diakses dengan atau tanpa auth sanctum)
+Route::get('/image/{filename}', function ($filename) {
+    // 1. Cek di public/images (lokasi utama upload bukti minum obat & edukasi)
     $path = public_path('images/' . $filename);
-
-    if (!file_exists($path)) {
-        abort(404);
+    if (file_exists($path)) {
+        return response()->file($path, [
+            'Access-Control-Allow-Origin' => '*'
+        ]);
     }
 
-    return response()->file($path, [
-        'Access-Control-Allow-Origin' => '*'
-    ]);
-});
+    // 2. Fallback cek di storage/app/public/education
+    $storageEduPath = storage_path('app/public/education/' . $filename);
+    if (file_exists($storageEduPath)) {
+        return response()->file($storageEduPath, [
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+
+    // 3. Fallback cek di storage/app/public
+    $storagePath = storage_path('app/public/' . $filename);
+    if (file_exists($storagePath)) {
+        return response()->file($storagePath, [
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+
+    abort(404);
 });
