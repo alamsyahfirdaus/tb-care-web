@@ -15,10 +15,30 @@ class CloseContact extends Model
 
     protected $casts = [
         'screening_date' => 'date',
+        'date_of_birth'  => 'date',
     ];
+
+    protected $appends = [
+        'gender_label',
+    ];
+
+    public function getGenderLabelAttribute()
+    {
+        return $this->gender === 'P' ? 'Perempuan' : 'Laki-laki';
+    }
 
     public function patient()
     {
         return $this->belongsTo(Patient::class, 'patient_id');
+    }
+
+    public function screenings()
+    {
+        return $this->hasMany(Screening::class, 'close_contact_id')->orderByDesc('id');
+    }
+
+    public function latestScreening()
+    {
+        return $this->hasOne(Screening::class, 'close_contact_id')->latestOfMany();
     }
 }

@@ -28,6 +28,11 @@ class Screening extends Model
         return $this->belongsTo(Patient::class, 'patient_id');
     }
 
+    public function closeContact()
+    {
+        return $this->belongsTo(CloseContact::class, 'close_contact_id');
+    }
+
     public function puskesmas()
     {
         return $this->belongsTo(Puskesmas::class, 'puskesmas_id');

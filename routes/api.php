@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\SubdistrictController;
 use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
+use App\Http\Controllers\Api\CloseContactController;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,6 +85,8 @@ Route::prefix('screening')->group(function () {
     Route::post('/questions', [ScreeningController::class, 'getQuestions']);
     // Kirim jawaban untuk proses skrining
     Route::post('/submit', [ScreeningController::class, 'submitAnswers']);
+    // Detail data skrining
+    Route::get('/{id}', [ScreeningController::class, 'show']);
 });
 
 // Route yang membutuhkan autentikasi (sanctum)
@@ -110,6 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Pengobatan Pasien
     Route::prefix('treatments')->group(function () {
+        Route::get('/medications', [TreatmentController::class, 'patientMedications']); // Daftar obat pasien
         Route::match(['post', 'put'], '/store', [TreatmentController::class, 'store']); // Simpan/update pengobatan
         Route::get('/{id}/show', [TreatmentController::class, 'show']);                // Detail pengobatan
         Route::delete('/{id}/delete', [TreatmentController::class, 'destroy']);        // Hapus pengobatan
@@ -150,6 +154,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard / Beranda Pasien Terpadu
     Route::get('/patient/home', [PatientController::class, 'home']);
+    Route::get('/patient/medications', [TreatmentController::class, 'patientMedications']);
 
     // Data Pasien TB
     Route::prefix('patients')->group(function () {
@@ -165,6 +170,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['post', 'put'], '/{id}/medication-schedule', [PatientController::class, 'saveMedicationSchedule']); // Simpan/update jadwal minum obat
         Route::post('/{id}/medication-schedule/store', [PatientController::class, 'storeMedicationSchedule']);
         Route::match(['post', 'put'], '/medication-schedule', [PatientController::class, 'saveMedicationSchedule']);
+    });
+
+    // Kontak Erat / Anggota Serumah Pasien
+    Route::prefix('contacts')->group(function () {
+        Route::get('/count', [CloseContactController::class, 'count']);
+        Route::get('/', [CloseContactController::class, 'index']);
+        Route::post('/', [CloseContactController::class, 'store']);
+        Route::get('/{id}', [CloseContactController::class, 'show']);
+        Route::match(['put', 'post'], '/{id}', [CloseContactController::class, 'update']);
+        Route::delete('/{id}', [CloseContactController::class, 'destroy']);
     });
 });
 

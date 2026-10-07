@@ -133,7 +133,8 @@ class PatientController extends Controller
                                 'notes'        => $visit->notes,
                             ];
                         }) : [],
-                        'prescription'     => $treatment->prescription ? (is_array($treatment->prescription) ? $treatment->prescription : json_decode($treatment->prescription, true)) : null,
+                        'prescription'     => $this->normalizePrescriptionNames($treatment->prescription),
+                        'medications'      => $this->normalizePrescription($treatment->prescription, $treatment->medication_time),
                     ];
                 }) : [],
             ];
@@ -386,6 +387,7 @@ class PatientController extends Controller
             'gender'         => optional($patient->user)->gender,
             'place_of_birth' => optional($patient->user)->place_of_birth,
             'date_of_birth'  => optional($patient->user)->date_of_birth,
+            'close_contacts_count' => $patient->closeContacts()->count(),
 
             'puskesmas'      => $puskesmasName,
 
@@ -410,7 +412,8 @@ class PatientController extends Controller
                             'puskesmas_name' => $puskesmasName,
                         ];
                     }) : [],
-                    'prescription'     => $treatment->prescription ? (is_array($treatment->prescription) ? $treatment->prescription : json_decode($treatment->prescription, true)) : null,
+                    'prescription'     => $this->normalizePrescriptionNames($treatment->prescription),
+                    'medications'      => $this->normalizePrescription($treatment->prescription, $treatment->medication_time),
                 ];
             }) : [],
         ];
@@ -483,14 +486,20 @@ class PatientController extends Controller
             ->get();
 
         $treatmentHistory = $treatments->map(function ($treatment) {
+            $normalizedMedications = $this->normalizePrescription($treatment->prescription, $treatment->medication_time);
+            $normalizedNames = $this->normalizePrescriptionNames($treatment->prescription);
+
             return [
+                'id'               => $treatment->id,
+                'patient_id'       => $treatment->patient_id,
                 'treatment_type'   => optional($treatment->treatmentType)->treatment_type,
                 'start_date'       => $treatment->start_date,
                 'end_date'         => $treatment->end_date,
                 'treatment_days'   => $treatment->treatment_days,
                 'medication_time'  => $treatment->medication_time,
                 'treatment_status' => $treatment->treatment_status,
-                'prescription'     => $treatment->prescription ? json_decode($treatment->prescription, true) : null,
+                'prescription'     => $normalizedNames,
+                'medications'      => $normalizedMedications,
             ];
         });
 
@@ -1069,4 +1078,111 @@ class PatientController extends Controller
             ]
         ], 200);
     }
+
+    /**
+     * Normalisasi resep obat (JSON string, array, atau string berpemisah newline/koma)
+     * menjadi format list obat yang terstruktur dan bersih.
+     *
+     * @param mixed $rawPrescription
+     * @param string|null $defaultMedicationTime
+     * @return array
+     */
+    protected function normalizePrescription($rawPrescription, $defaultMedicationTime = null): array
+    {
+        if (empty($rawPrescription)) {
+            return [];
+        }
+
+        $items = [];
+
+        if (is_string($rawPrescription)) {
+            $decoded = json_decode($rawPrescription, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $items = $decoded;
+            } else {
+                $lines = preg_split('/[\r\n,]+/', $rawPrescription);
+                $items = array_filter(array_map('trim', $lines));
+            }
+        } elseif (is_array($rawPrescription)) {
+            $items = $rawPrescription;
+        }
+
+        $formattedMedications = [];
+
+        foreach ($items as $item) {
+            if ($item === null || $item === '') {
+                continue;
+            }
+
+            if (is_string($item)) {
+                $splitParts = preg_split('/[\r\n,]+/', $item);
+                foreach ($splitParts as $part) {
+                    $cleaned = trim($part);
+                    if ($cleaned !== '' && $cleaned !== '-') {
+                        $formattedMedications[] = [
+                            'name'          => $cleaned,
+                            'dosage'        => null,
+                            'frequency'     => null,
+                            'rules'         => null,
+                            'schedule_time' => $defaultMedicationTime ? substr($defaultMedicationTime, 0, 5) : null,
+                        ];
+                    }
+                }
+            } elseif (is_array($item)) {
+                $rawName = $item['name'] ?? $item['nama_obat'] ?? $item['nama'] ?? $item['drug_name'] ?? $item['medicine_name'] ?? '-';
+                $dosage = $item['dosage'] ?? $item['dosis'] ?? null;
+                $frequency = $item['frequency'] ?? $item['frekuensi'] ?? $item['aturan_pakai'] ?? null;
+                $rules = $item['rules'] ?? $item['instruksi'] ?? $item['aturan'] ?? $item['catatan'] ?? null;
+                $time = $item['schedule_time'] ?? $item['time'] ?? $item['jadwal'] ?? ($defaultMedicationTime ? substr($defaultMedicationTime, 0, 5) : null);
+
+                if (is_string($rawName) && (strpos($rawName, "\n") !== false || strpos($rawName, "\r") !== false)) {
+                    $splitNames = preg_split('/[\r\n]+/', $rawName);
+                    foreach ($splitNames as $subName) {
+                        $cleanSub = trim($subName);
+                        if ($cleanSub !== '' && $cleanSub !== '-') {
+                            $formattedMedications[] = [
+                                'name'          => $cleanSub,
+                                'dosage'        => $dosage,
+                                'frequency'     => $frequency,
+                                'rules'         => $rules,
+                                'schedule_time' => $time,
+                            ];
+                        }
+                    }
+                } else {
+                    $cleanName = trim((string)$rawName);
+                    if ($cleanName !== '' && $cleanName !== '-') {
+                        $formattedMedications[] = [
+                            'name'          => $cleanName,
+                            'dosage'        => $dosage,
+                            'frequency'     => $frequency,
+                            'rules'         => $rules,
+                            'schedule_time' => $time,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $formattedMedications;
+    }
+
+    /**
+     * Mengambil daftar nama obat bersih sebagai array string.
+     *
+     * @param mixed $rawPrescription
+     * @return array|null
+     */
+    protected function normalizePrescriptionNames($rawPrescription): ?array
+    {
+        $meds = $this->normalizePrescription($rawPrescription);
+        if (empty($meds)) {
+            return null;
+        }
+
+        return array_map(function ($med) {
+            return $med['name'];
+        }, $meds);
+    }
 }
+

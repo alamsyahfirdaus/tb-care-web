@@ -11,6 +11,7 @@ use App\Models\TreatmentVisit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -423,5 +424,147 @@ class TreatmentController extends Controller
                 'updated_at'           => $record->updated_at->format('Y-m-d H:i:s'),
             ]
         ]);
+    }
+
+    /**
+     * GET /api/treatments/medications
+     * Mengambil daftar obat untuk pengobatan pasien terautentikasi.
+     * Terproteksi otorisasi penuh: Pasien hanya dapat melihat obatnya sendiri.
+     */
+    public function patientMedications(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi tidak valid. Silakan login kembali.'
+            ], 401);
+        }
+
+        $patient = null;
+        // 1. Jika pengguna adalah Pasien (user_type_id == 2)
+        if ($user->user_type_id == 2) {
+            $patient = Patient::where('user_id', $user->id)->first();
+        } else {
+            // 2. Petugas / Admin: cek patient_id dari parameter query dengan proteksi otorisasi
+            $patientId = $request->query('patient_id');
+            if ($patientId) {
+                $patient = Patient::find($patientId);
+                if ($patient && method_exists($patient, 'isAccessibleBy') && !$patient->isAccessibleBy($user)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki wewenang mengakses data pasien ini.'
+                    ], 403);
+                }
+            }
+        }
+
+        if (!$patient) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        // Ambil pengobatan aktif pasien: utamakan yang berstatus 'Berjalan', atau pengobatan terbaru
+        $treatment = PatientTreatment::with('treatmentType')
+            ->where('patient_id', $patient->id)
+            ->where('treatment_status', 'Berjalan')
+            ->orderByDesc('start_date')
+            ->first();
+
+        if (!$treatment) {
+            $treatment = PatientTreatment::with('treatmentType')
+                ->where('patient_id', $patient->id)
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if (!$treatment) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Belum ada data pengobatan yang terdaftar.',
+                'data'    => [
+                    'treatment_id'     => null,
+                    'treatment_type'   => null,
+                    'treatment_status' => null,
+                    'medication_time'  => null,
+                    'count'            => 0,
+                    'medications'      => [],
+                ]
+            ], 200);
+        }
+
+        // Resolusi waktu minum obat
+        $medicationTime = $treatment->medication_time;
+        if (Schema::hasTable('patient_medication_schedules')) {
+            $schedule = $patient->medicationSchedule;
+            if ($schedule && $schedule->reminder_time) {
+                $medicationTime = $schedule->reminder_time;
+            }
+        }
+        if ($medicationTime && strlen($medicationTime) >= 5) {
+            $medicationTime = substr($medicationTime, 0, 5);
+        }
+
+        // Parse resep obat (JSON string, array, atau comma-separated)
+        $prescription = $treatment->prescription;
+        if (is_string($prescription)) {
+            $decoded = json_decode($prescription, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $prescription = $decoded;
+            } else {
+                $prescription = array_values(array_filter(array_map('trim', explode(',', $prescription))));
+            }
+        }
+
+        if (!is_array($prescription)) {
+            $prescription = [];
+        }
+
+        $medications = [];
+        foreach ($prescription as $item) {
+            if ($item === null || $item === '') continue;
+
+            if (is_string($item)) {
+                $splitParts = preg_split('/[\r\n,]+/', $item);
+                foreach ($splitParts as $part) {
+                    $itemStr = trim($part);
+                    if ($itemStr === '' || $itemStr === '-') continue;
+
+                    $medications[] = [
+                        'name'          => $itemStr,
+                        'dosage'        => null,
+                        'frequency'     => null,
+                        'rules'         => null,
+                        'schedule_time' => $medicationTime,
+                    ];
+                }
+            } elseif (is_array($item)) {
+                $medName = $item['name'] ?? $item['nama_obat'] ?? $item['nama'] ?? $item['drug_name'] ?? '-';
+                $medications[] = [
+                    'name'          => $medName,
+                    'dosage'        => $item['dosage'] ?? $item['dosis'] ?? null,
+                    'frequency'     => $item['frequency'] ?? $item['frekuensi'] ?? $item['aturan_pakai'] ?? null,
+                    'rules'         => $item['rules'] ?? $item['instruksi'] ?? $item['catatan'] ?? null,
+                    'schedule_time' => $item['time'] ?? $item['jadwal'] ?? $medicationTime,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar obat berhasil diambil.',
+            'data'    => [
+                'treatment_id'     => $treatment->id,
+                'treatment_type'   => optional($treatment->treatmentType)->treatment_type ?? 'TB Care',
+                'treatment_status' => $treatment->treatment_status,
+                'start_date'       => $treatment->start_date,
+                'end_date'         => $treatment->end_date,
+                'medication_time'  => $medicationTime,
+                'count'            => count($medications),
+                'medications'      => $medications,
+            ]
+        ], 200);
     }
 }
