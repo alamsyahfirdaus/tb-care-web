@@ -81,9 +81,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('{id}/edit', [UserController::class, 'edit'])->name('profile.edit');
     });
 
-    Route::middleware(['checkrole:1-2-3'])->group(function () {
-        // UserController
-        Route::prefix('user')->group(function () {
+    Route::middleware(['checkrole:1-3'])->group(function () {
+        // UserController (Restricted to Administrator)
+        Route::prefix('user')->middleware('checkrole:1')->group(function () {
             Route::get('{id}/list', [UserController::class, 'list'])->name('user.list');
             Route::get('{id}/add', [UserController::class, 'create'])->name('user.add');
             Route::get('{id}/edit', [UserController::class, 'edit'])->name('user.edit');
@@ -157,16 +157,6 @@ Route::middleware(['auth'])->group(function () {
             Route::post('save', [KaderAreaController::class, 'store'])->name('kader-area.store');
             Route::delete('{id}', [KaderAreaController::class, 'destroy'])->name('kader-area.delete');
             Route::get('villages/{subdistrictId}', [KaderAreaController::class, 'getVillages'])->name('kader-area.villages');
-        });
-    });
-
-    Route::middleware(['checkrole:1-2'])->group(function () {
-        // PuskesmasController
-        Route::prefix('pkm')->group(function () {
-            Route::get('/', [PuskesmasController::class, 'index'])->name('pkm');
-            Route::get('{id}/edit', [PuskesmasController::class, 'edit'])->name('pkm.edit');
-            Route::match(['post', 'put'], 'save/{id?}', [PuskesmasController::class, 'save'])->name('pkm.save');
-            Route::delete('{id}', [PuskesmasController::class, 'destroy'])->name('pkm.delete');
         });
     });
 

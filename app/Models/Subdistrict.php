@@ -41,6 +41,40 @@ class Subdistrict extends Model
         return $this->hasMany(Screening::class, 'subdistrict_id');
     }
 
+    public function scopeAccessibleBy($query, ?User $user = null)
+    {
+        $user = $user ?? Auth::user();
+        if (!$user || $user->user_type_id == 1 || $user->user_type_id == 2) {
+            return $query;
+        }
+
+        if ($user->user_type_id == 3 && $user->officer) {
+            $officer = $user->officer;
+            if (in_array($officer->officer_type_id, [3, 4]) && $officer->puskesmas_id) {
+                $pusk = Puskesmas::find($officer->puskesmas_id);
+                if ($pusk && $pusk->subdistrict_id) {
+                    return $query->where('id', $pusk->subdistrict_id);
+                }
+            }
+
+            if ($officer->officer_type_id == 2 && $officer->district_id) {
+                return $query->where('district_id', $officer->district_id);
+            }
+
+            if ($officer->officer_type_id == 1 && $officer->district_id) {
+                $dist = District::find($officer->district_id);
+                $provId = $dist ? $dist->province_id : null;
+                if ($provId) {
+                    return $query->whereHas('district', function ($q) use ($provId) {
+                        $q->where('province_id', $provId);
+                    });
+                }
+            }
+        }
+
+        return $query;
+    }
+
     public static function getAllSubdistricts()
     {
         $districtId = $provinceId = null;

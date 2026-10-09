@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Village;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -63,6 +64,13 @@ class AuthController extends Controller
             // Jika user adalah pasien, ambil data pasien
             $patient = Patient::where('user_id', $user->id)->first();
             $user->patient = $patient;
+        } elseif ($user->user_type_id == 3) {
+            // Jika user adalah petugas, load officer beserta relasi wilayah
+            $officer = Officer::with(['puskesmas', 'district.province', 'kaderAreas.village', 'kaderAreas.subdistrict'])->where('user_id', $user->id)->first();
+            if ($officer) {
+                $officer->append(['officer_type_name', 'scope_description']);
+            }
+            $user->officer = $officer;
         }
 
         // Buat token baru
@@ -398,8 +406,15 @@ class AuthController extends Controller
         ]);
     }
 
-    public function updatePassword()
+    public function updatePassword(Request $request)
     {
+        $user = Auth::user();
+        if (!$user || $user->user_type_id != 1) {
+            return response()->json([
+                'message' => 'Hanya Administrator yang memiliki akses untuk fitur ini.'
+            ], 403);
+        }
+
         User::whereBetween('id', [139, 289])
         ->update([
             'password' => Hash::make('123456'),

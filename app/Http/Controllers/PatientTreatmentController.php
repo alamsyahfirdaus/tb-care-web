@@ -52,9 +52,9 @@ class PatientTreatmentController extends Controller
 
             $data['treatments'] = $patientTreatments;
         } else {
-
-            $data['treatments'] = PatientTreatment::getPatientTreatments();
-            $data['patients']   = Patient::getPatientWithUser();
+            $user = Auth::user();
+            $data['treatments'] = PatientTreatment::accessibleBy($user)->with(['patient.user', 'treatmentType'])->get();
+            $data['patients']   = Patient::accessibleBy($user)->with('user')->get();
             $data['trtypes']    = TreatmentType::getTreatmentTypes();
         }
 
@@ -63,16 +63,20 @@ class PatientTreatmentController extends Controller
 
     public function edit($id)
     {
-        $treatment = PatientTreatment::getTreatmentById(base64_decode($id));
+        $treatment = PatientTreatment::find(base64_decode($id));
 
         if (!$treatment) {
             return redirect()->back();
         }
 
+        if (Auth::check() && !$treatment->isAccessibleBy(Auth::user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke pengobatan ini.');
+        }
+
         $data = [
             'title'         => 'Pengobatan',
             'data'          => $treatment,
-            'patients'      => Patient::getPatientWithUser(),
+            'patients'      => Patient::accessibleBy(Auth::user())->with('user')->get(),
             'trtypes'       => TreatmentType::getTreatmentTypes(),
         ];
 
@@ -81,16 +85,20 @@ class PatientTreatmentController extends Controller
 
     public function show($id)
     {
-        $treatment = PatientTreatment::getTreatmentById(base64_decode($id));
+        $treatment = PatientTreatment::find(base64_decode($id));
 
         if (!$treatment) {
             return redirect()->back();
         }
 
+        if (Auth::check() && !$treatment->isAccessibleBy(Auth::user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke pengobatan ini.');
+        }
+
         $data = [
             'title'     => 'Pengobatan',
             'data'      => $treatment,
-            'dateRange' => PatientTreatment::getTreatmentDateRange($treatment['id']),
+            'dateRange' => PatientTreatment::getTreatmentDateRange($treatment->id),
         ];
 
         return view('patient-treatment-detail', $data);
@@ -98,9 +106,16 @@ class PatientTreatmentController extends Controller
 
     public function save(Request $request, $id = null): JsonResponse
     {
-        $treatment = PatientTreatment::find(base64_decode($id));
-
-        if (!$treatment) {
+        $treatment = null;
+        if ($id) {
+            $treatment = PatientTreatment::find(base64_decode($id));
+            if (!$treatment) {
+                return response()->json(['status' => false, 'message' => 'Data pengobatan tidak ditemukan.'], 404);
+            }
+            if (Auth::check() && !$treatment->isAccessibleBy(Auth::user())) {
+                return response()->json(['status' => false, 'message' => 'Anda tidak memiliki hak akses ke pengobatan ini.'], 403);
+            }
+        } else {
             $treatment = new PatientTreatment();
         }
 
@@ -123,6 +138,11 @@ class PatientTreatmentController extends Controller
         // $rules['start_date'] = ['required', 'date_format:d/m/Y', $startDateRule];
 
         $validatedData = $request->validate($rules);
+
+        $targetPatient = Patient::find($validatedData['patient_id']);
+        if (!$targetPatient || (Auth::check() && !$targetPatient->isAccessibleBy(Auth::user()))) {
+            return response()->json(['status' => false, 'message' => 'Anda tidak memiliki hak akses ke pasien ini.'], 403);
+        }
 
         $treatment->patient_id = $validatedData['patient_id'];
         $treatment->treatment_type_id = $validatedData['treatment_type_id'];
@@ -188,6 +208,10 @@ class PatientTreatmentController extends Controller
 
         if (!$treatment) {
             return redirect()->route('treatments')->with('error', 'Pengobatan Pasien tidak ditemukan.');
+        }
+
+        if (Auth::check() && !$treatment->isAccessibleBy(Auth::user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus pengobatan ini.');
         }
 
         $treatment->delete();

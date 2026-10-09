@@ -20,7 +20,7 @@ class CloseContactController extends Controller
         $resultFilter = $request->query('result');
         $keyword = $request->query('q');
 
-        $query = CloseContact::with(['patient.user', 'patient.puskesmas']);
+        $query = CloseContact::accessibleBy(auth()->user())->with(['patient.user', 'patient.puskesmas']);
 
         if ($filterType == 'keluarga') {
             $query->where('relationship', 'Keluarga Serumah');
@@ -71,10 +71,13 @@ class CloseContactController extends Controller
         if ($encryptedId) {
             $id = decrypt_id($encryptedId);
             $contact = CloseContact::with('patient.user')->findOrFail($id);
+            if (!$contact->isAccessibleBy(auth()->user())) {
+                abort(403, 'Anda tidak memiliki hak akses ke data kontak erat ini.');
+            }
             $isEdit = true;
         }
 
-        $patients = Patient::with('user')->get();
+        $patients = Patient::accessibleBy(auth()->user())->with('user')->get();
 
         return view('admin.contacts.form', compact('contact', 'patients', 'isEdit'))->with([
             'title'        => $isEdit ? ('Edit Kontak Erat: ' . $contact->name) : 'Tambah Kontak Erat',
@@ -99,6 +102,10 @@ class CloseContactController extends Controller
         $isEdit = !empty($resolvedEncryptedId);
         $contact = $isEdit ? CloseContact::findOrFail(decrypt_id($resolvedEncryptedId)) : new CloseContact();
 
+        if ($isEdit && !$contact->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah data kontak erat ini.');
+        }
+
         $request->validate([
             'patient_id'       => 'required|exists:patients,id',
             'name'             => 'required|string|max:255',
@@ -118,6 +125,11 @@ class CloseContactController extends Controller
             'relationship.required' => 'Hubungan kontak wajib dipilih.',
             'age.required'          => 'Umur kontak wajib diisi.',
         ]);
+
+        $targetPatient = Patient::findOrFail($request->patient_id);
+        if (!$targetPatient->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk pasien yang dipilih.');
+        }
 
         return DB::transaction(function () use ($request, $contact, $isEdit) {
             $data = [
@@ -167,6 +179,9 @@ class CloseContactController extends Controller
     {
         $id = decrypt_id($id);
         $contact = CloseContact::with('patient.user')->findOrFail($id);
+        if (!$contact->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data kontak erat ini.');
+        }
         return redirect()->route('admin.contacts.edit', $contact);
     }
 
@@ -174,6 +189,11 @@ class CloseContactController extends Controller
     {
         $id = decrypt_id($id);
         $contact = CloseContact::findOrFail($id);
+
+        if (!$contact->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data kontak erat ini.');
+        }
+
         $name = $contact->name;
 
         DB::transaction(function () use ($contact) {

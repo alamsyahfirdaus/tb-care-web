@@ -22,7 +22,7 @@ class TreatmentController extends Controller
         $puskesmasFilter = $request->query('puskesmas_id');
         $keyword = $request->query('q');
 
-        $query = PatientTreatment::with([
+        $query = PatientTreatment::accessibleBy(auth()->user())->with([
             'patient.user',
             'patient.puskesmas',
             'treatmentType',
@@ -55,7 +55,7 @@ class TreatmentController extends Controller
 
         $treatments = $query->orderByDesc('id')->get();
         $treatmentTypes = TreatmentType::all();
-        $puskesmasList = Puskesmas::orderBy('name')->get();
+        $puskesmasList = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
 
         $pageTitle = 'Pasien Dalam Pengobatan';
         if ($statusFilter == 'Selesai') $pageTitle = 'Hasil Pengobatan TB (Selesai / Sembuh)';
@@ -82,7 +82,7 @@ class TreatmentController extends Controller
         $verifiedFilter = $request->query('verified');
         $puskesmasFilter = $request->query('puskesmas_id');
 
-        $query = MedicationRecord::with([
+        $query = MedicationRecord::accessibleBy(auth()->user())->with([
             'patientTreatment.patient.user',
             'patientTreatment.patient.puskesmas',
             'patientTreatment.treatmentType'
@@ -103,12 +103,12 @@ class TreatmentController extends Controller
         }
 
         $records = $query->orderByDesc('created_at')->get();
-        $puskesmasList = Puskesmas::orderBy('name')->get();
+        $puskesmasList = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
 
         // Daily statistics
-        $totalHariIni = MedicationRecord::whereDate('created_at', $dateFilter)->count();
-        $verifiedHariIni = MedicationRecord::whereDate('created_at', $dateFilter)->where('is_verified', 1)->count();
-        $tepatWaktuHariIni = MedicationRecord::whereDate('created_at', $dateFilter)->where('late', 0)->count();
+        $totalHariIni = MedicationRecord::accessibleBy(auth()->user())->whereDate('created_at', $dateFilter)->count();
+        $verifiedHariIni = MedicationRecord::accessibleBy(auth()->user())->whereDate('created_at', $dateFilter)->where('is_verified', 1)->count();
+        $tepatWaktuHariIni = MedicationRecord::accessibleBy(auth()->user())->whereDate('created_at', $dateFilter)->where('late', 0)->count();
 
         return view('admin.treatments.monitoring', compact(
             'records',
@@ -130,6 +130,11 @@ class TreatmentController extends Controller
     {
         $id = decrypt_id($id);
         $record = MedicationRecord::findOrFail($id);
+
+        if (!$record->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data monitoring ini.');
+        }
+
         $record->update([
             'is_verified' => 1
         ]);
@@ -148,6 +153,11 @@ class TreatmentController extends Controller
         ]);
 
         $treatment = PatientTreatment::with('patient.user')->findOrFail($id);
+
+        if (!$treatment->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data pengobatan ini.');
+        }
+
         $treatment->update([
             'treatment_status' => $request->treatment_status,
             'prescription'     => $request->prescription ?? $treatment->prescription,
@@ -169,7 +179,19 @@ class TreatmentController extends Controller
             'notes'                => 'nullable|string',
         ]);
 
-        TreatmentVisit::create($request->all());
+        $treatment = PatientTreatment::findOrFail($request->patient_treatment_id);
+
+        if (!$treatment->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses mencatat kunjungan untuk pengobatan ini.');
+        }
+
+        TreatmentVisit::create($request->only([
+            'patient_treatment_id',
+            'visit_date',
+            'visit_time',
+            'visit_status',
+            'notes',
+        ]));
 
         return redirect()->back()->with('success', 'Jadwal kunjungan kontrol berhasil ditambahkan.');
     }
@@ -178,6 +200,10 @@ class TreatmentController extends Controller
     {
         $id = decrypt_id($id);
         $treatment = PatientTreatment::with('patient.user')->findOrFail($id);
+
+        if (!$treatment->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data pengobatan ini.');
+        }
         $patientName = optional($treatment->patient->user)->name ?? 'Pasien';
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($treatment) {

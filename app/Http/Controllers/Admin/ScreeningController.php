@@ -26,7 +26,7 @@ class ScreeningController extends Controller
         $dateEnd = $request->query('date_end');
         $keyword = $request->query('q');
 
-        $query = Screening::with(['puskesmas', 'subdistrict', 'village', 'category', 'patient']);
+        $query = Screening::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'village', 'category', 'patient']);
 
         if ($riskFilter) {
             $query->where('risk_level', $riskFilter);
@@ -66,8 +66,8 @@ class ScreeningController extends Controller
         }
 
         $screenings = $query->orderByDesc('id')->get();
-        $puskesmasList = Puskesmas::orderBy('name')->get();
-        $subdistricts = Subdistrict::orderBy('name')->get();
+        $puskesmasList = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
+        $subdistricts = Subdistrict::accessibleBy(auth()->user())->orderBy('name')->get();
 
         $pageTitle = 'Semua Skrining TB';
         if ($riskFilter) {
@@ -112,6 +112,10 @@ class ScreeningController extends Controller
             'answers.question'
         ])->findOrFail($id);
 
+        if (!$screening->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data skrining ini.');
+        }
+
         // Group answers by group_name ('Faktor Risiko', 'Skrining Gejala')
         $groupedAnswers = $screening->answers->groupBy('group_name');
 
@@ -131,6 +135,11 @@ class ScreeningController extends Controller
         ]);
 
         $screening = Screening::findOrFail($id);
+
+        if (!$screening->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data skrining ini.');
+        }
+
         $screening->update([
             'status' => $request->status,
             'notes'  => $request->notes,
@@ -145,6 +154,11 @@ class ScreeningController extends Controller
     {
         $id = decrypt_id($id);
         $screening = Screening::findOrFail($id);
+
+        if (!$screening->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data skrining ini.');
+        }
+
         $code = $screening->code;
 
         DB::transaction(function () use ($screening) {

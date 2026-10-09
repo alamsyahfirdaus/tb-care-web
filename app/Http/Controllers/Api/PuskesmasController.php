@@ -8,13 +8,17 @@ use Illuminate\Http\Request;
 
 class PuskesmasController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Ambil semua data Puskesmas beserta relasi ke subdistrict, district, dan province
-        $puskesmas = Puskesmas::with('subdistrict.district.province')
-            ->select('id', 'name', 'address', 'subdistrict_id')
-            ->orderBy('name', 'asc')
-            ->get();
+        $user = auth('sanctum')->user();
+        $query = Puskesmas::with('subdistrict.district.province')
+            ->select('id', 'name', 'address', 'subdistrict_id');
+
+        if ($user && $user->user_type_id == 3 && $user->officer) {
+            $query->accessibleBy($user);
+        }
+
+        $puskesmas = $query->orderBy('name', 'asc')->get();
 
         // Format data untuk response JSON
         $data = $puskesmas->map(function ($item) {

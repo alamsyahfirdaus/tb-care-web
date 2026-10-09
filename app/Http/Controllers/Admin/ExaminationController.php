@@ -21,7 +21,7 @@ class ExaminationController extends Controller
         $puskesmasFilter = $request->query('puskesmas_id');
         $keyword = $request->query('q');
 
-        $query = ClinicalExamination::with(['patient.user', 'puskesmas']);
+        $query = ClinicalExamination::accessibleBy(auth()->user())->with(['patient.user', 'puskesmas']);
 
         if ($typeFilter) {
             $query->where('examination_type', $typeFilter);
@@ -46,7 +46,7 @@ class ExaminationController extends Controller
         }
 
         $examinations = $query->orderByDesc('examination_date')->get();
-        $puskesmasList = Puskesmas::orderBy('name')->get();
+        $puskesmasList = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
 
         $pageTitle = 'Semua Pemeriksaan TB';
         if ($viewType == 'results') $pageTitle = 'Hasil Pemeriksaan Laboratorium TB';
@@ -75,13 +75,16 @@ class ExaminationController extends Controller
         if ($encryptedId) {
             $id = decrypt_id($encryptedId);
             $examination = ClinicalExamination::with('patient.user')->findOrFail($id);
+            if (!$examination->isAccessibleBy(auth()->user())) {
+                abort(403, 'Anda tidak memiliki hak akses ke data pemeriksaan ini.');
+            }
             $isEdit = true;
         } else {
             $examination = new ClinicalExamination();
         }
 
-        $patients = Patient::with('user')->get();
-        $puskesmas = Puskesmas::orderBy('name')->get();
+        $patients = Patient::accessibleBy(auth()->user())->with('user')->get();
+        $puskesmas = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
 
         return view('admin.examinations.form', compact('examination', 'patients', 'puskesmas', 'isEdit'))->with([
             'title'        => $isEdit ? ('Edit Pemeriksaan: ' . $examination->examination_code) : 'Tambah Pemeriksaan TB',
@@ -99,6 +102,9 @@ class ExaminationController extends Controller
     {
         $id = decrypt_id($id);
         $examination = ClinicalExamination::with(['patient.user', 'puskesmas'])->findOrFail($id);
+        if (!$examination->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data pemeriksaan ini.');
+        }
         return redirect()->route('admin.examinations.edit', $examination);
     }
 
@@ -116,6 +122,9 @@ class ExaminationController extends Controller
         if ($rawId) {
             $id = decrypt_id($rawId);
             $examination = ClinicalExamination::findOrFail($id);
+            if (!$examination->isAccessibleBy(auth()->user())) {
+                abort(403, 'Anda tidak memiliki hak akses untuk mengubah data pemeriksaan ini.');
+            }
             $isUpdate = true;
         }
 
@@ -135,6 +144,11 @@ class ExaminationController extends Controller
             'result.required'           => 'Hasil pemeriksaan wajib dipilih.',
             'diagnosis.required'        => 'Diagnosis klinis wajib diisi.',
         ]);
+
+        $targetPatient = Patient::findOrFail($request->patient_id);
+        if (!$targetPatient->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk pasien yang dipilih.');
+        }
 
         return DB::transaction(function () use ($request, $examination, $isUpdate) {
             if ($isUpdate) {
@@ -188,6 +202,10 @@ class ExaminationController extends Controller
     {
         $id = decrypt_id($id);
         $examination = ClinicalExamination::findOrFail($id);
+
+        if (!$examination->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data pemeriksaan ini.');
+        }
         $code = $examination->examination_code;
         
         DB::transaction(function () use ($examination) {

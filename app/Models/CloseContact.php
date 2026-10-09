@@ -41,4 +41,24 @@ class CloseContact extends Model
     {
         return $this->hasOne(Screening::class, 'close_contact_id')->latestOfMany();
     }
+
+    public function scopeAccessibleBy($query, User $user)
+    {
+        if ($user->user_type_id == 1) {
+            return $query;
+        }
+
+        return $query->whereHas('patient', function ($q) use ($user) {
+            $q->accessibleBy($user);
+        });
+    }
+
+    public function isAccessibleBy(User $user): bool
+    {
+        if ($user->user_type_id == 1) {
+            return true;
+        }
+
+        return optional($this->patient)->isAccessibleBy($user) ?? false;
+    }
 }

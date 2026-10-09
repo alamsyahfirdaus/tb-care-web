@@ -22,14 +22,14 @@ class ReportController extends Controller
         $puskesmasId= $request->query('puskesmas_id');
         $riskLevel  = $request->query('risk_level');
 
-        $puskesmasList = Puskesmas::orderBy('name')->get();
-        $subdistricts  = Subdistrict::orderBy('name')->get();
+        $puskesmasList = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
+        $subdistricts  = Subdistrict::accessibleBy(auth()->user())->orderBy('name')->get();
 
         $data = null;
         $regionalSummary = null;
 
         if ($type == 'screening') {
-            $query = Screening::with(['puskesmas', 'subdistrict', 'user'])
+            $query = Screening::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'user'])
                 ->where(function($q) use ($startDate, $endDate) {
                     $q->whereBetween('screened_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                       ->orWhereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
@@ -40,31 +40,35 @@ class ReportController extends Controller
 
             $data = $query->orderByDesc('id')->get();
         } elseif ($type == 'patient') {
-            $query = Patient::with(['puskesmas', 'subdistrict', 'user', 'activeTreatment'])
+            $query = Patient::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'user', 'activeTreatment'])
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
             if ($puskesmasId) $query->where('puskesmas_id', $puskesmasId);
 
             $data = $query->orderByDesc('created_at')->get();
         } elseif ($type == 'regional') {
-            $regionalSummary = Puskesmas::with(['subdistrict.district'])
+            $regionalSummary = Puskesmas::accessibleBy(auth()->user())->with(['subdistrict.district'])
                 ->withCount([
-                    'patients',
-                    'screenings',
+                    'patients' => fn($q) => $q->accessibleBy(auth()->user()),
+                    'screenings' => fn($q) => $q->accessibleBy(auth()->user()),
                     'screenings as high_risk_count' => function($q) {
-                        $q->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']);
+                        $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']);
                     },
                     'screenings as medium_risk_count' => function($q) {
-                        $q->whereIn('risk_level', ['Risiko Sedang', 'sedang']);
+                        $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Sedang', 'sedang']);
                     },
                     'screenings as low_risk_count' => function($q) {
-                        $q->whereIn('risk_level', ['Risiko Rendah', 'rendah']);
+                        $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Rendah', 'rendah']);
                     }
                 ])
                 ->orderBy('name')
                 ->get();
         } else {
-            // User report
+            // User report - restricted to Administrator only
+            if (auth()->user()->user_type_id !== 1) {
+                abort(403, 'Akses ke laporan pengguna hanya diperuntukkan bagi Administrator.');
+            }
+
             $query = User::with(['role', 'patient', 'officer'])
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
@@ -95,7 +99,7 @@ class ReportController extends Controller
         $regionalSummary = null;
 
         if ($type == 'screening') {
-            $query = Screening::with(['puskesmas', 'subdistrict', 'user'])
+            $query = Screening::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'user'])
                 ->where(function($q) use ($startDate, $endDate) {
                     $q->whereBetween('screened_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                       ->orWhereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
@@ -104,28 +108,33 @@ class ReportController extends Controller
             if ($riskLevel) $query->where('risk_level', $riskLevel);
             $items = $query->orderBy('id', 'asc')->get();
         } elseif ($type == 'patient') {
-            $query = Patient::with(['puskesmas', 'subdistrict', 'village', 'user', 'activeTreatment'])
+            $query = Patient::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'village', 'user', 'activeTreatment'])
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
             if ($puskesmasId) $query->where('puskesmas_id', $puskesmasId);
             $items = $query->orderBy('created_at', 'asc')->get();
         } elseif ($type == 'regional') {
-            $regionalSummary = Puskesmas::with(['subdistrict.district'])
+            $regionalSummary = Puskesmas::accessibleBy(auth()->user())->with(['subdistrict.district'])
                 ->withCount([
-                    'patients',
-                    'screenings',
+                    'patients' => fn($q) => $q->accessibleBy(auth()->user()),
+                    'screenings' => fn($q) => $q->accessibleBy(auth()->user()),
                     'screenings as high_risk_count' => function($q) {
-                        $q->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']);
+                        $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']);
                     },
                     'screenings as medium_risk_count' => function($q) {
-                        $q->whereIn('risk_level', ['Risiko Sedang', 'sedang']);
+                        $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Sedang', 'sedang']);
                     },
                     'screenings as low_risk_count' => function($q) {
-                        $q->whereIn('risk_level', ['Risiko Rendah', 'rendah']);
+                        $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Rendah', 'rendah']);
                     }
                 ])
                 ->orderBy('name')
                 ->get();
         } else {
+            // User report - restricted to Administrator only
+            if (auth()->user()->user_type_id !== 1) {
+                abort(403, 'Akses ke cetak laporan pengguna hanya diperuntukkan bagi Administrator.');
+            }
+
             $items = User::with(['role', 'patient', 'officer'])
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->orderBy('created_at', 'asc')
@@ -147,6 +156,10 @@ class ReportController extends Controller
         $puskesmasId= $request->query('puskesmas_id');
         $riskLevel  = $request->query('risk_level');
 
+        if ($type === 'user' && auth()->user()->user_type_id !== 1) {
+            abort(403, 'Akses ekspor data pengguna hanya diperuntukkan bagi Administrator.');
+        }
+
         $fileName = "Laporan_{$type}_" . date('Ymd_His') . ".csv";
 
         $headers = [
@@ -163,7 +176,7 @@ class ReportController extends Controller
 
             if ($type == 'screening') {
                 fputcsv($file, ['No', 'Kode Skrining', 'Nama Pasien', 'NIK', 'Jenis Kelamin', 'Usia', 'Puskesmas', 'Kecamatan', 'Skor', 'Kategori Risiko', 'Status', 'Tanggal Skrining']);
-                $query = Screening::with(['puskesmas', 'subdistrict', 'user'])
+                $query = Screening::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'user'])
                     ->where(function($q) use ($startDate, $endDate) {
                         $q->whereBetween('screened_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                           ->orWhereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
@@ -190,7 +203,7 @@ class ReportController extends Controller
                 }
             } elseif ($type == 'patient') {
                 fputcsv($file, ['No', 'No Registrasi TB', 'Nama Pasien', 'NIK', 'JK', 'Usia', 'No HP', 'Puskesmas', 'Desa/Kel', 'Status Pengobatan', 'Tanggal Terdaftar']);
-                $query = Patient::with(['puskesmas', 'subdistrict', 'village', 'user', 'activeTreatment'])
+                $query = Patient::accessibleBy(auth()->user())->with(['puskesmas', 'subdistrict', 'village', 'user', 'activeTreatment'])
                     ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
                 if ($puskesmasId) $query->where('puskesmas_id', $puskesmasId);
 
@@ -213,12 +226,13 @@ class ReportController extends Controller
                 }
             } elseif ($type == 'regional') {
                 fputcsv($file, ['No', 'Nama Puskesmas', 'Kecamatan', 'Kabupaten/Kota', 'Total Pasien', 'Total Skrining', 'Risiko Tinggi', 'Risiko Sedang', 'Risiko Rendah']);
-                $pkmData = Puskesmas::with(['subdistrict.district'])
+                $pkmData = Puskesmas::accessibleBy(auth()->user())->with(['subdistrict.district'])
                     ->withCount([
-                        'patients', 'screenings',
-                        'screenings as high_risk' => function($q) { $q->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']); },
-                        'screenings as med_risk' => function($q) { $q->whereIn('risk_level', ['Risiko Sedang', 'sedang']); },
-                        'screenings as low_risk' => function($q) { $q->whereIn('risk_level', ['Risiko Rendah', 'rendah']); },
+                        'patients' => fn($q) => $q->accessibleBy(auth()->user()),
+                        'screenings' => fn($q) => $q->accessibleBy(auth()->user()),
+                        'screenings as high_risk' => function($q) { $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Tinggi', 'tinggi']); },
+                        'screenings as med_risk' => function($q) { $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Sedang', 'sedang']); },
+                        'screenings as low_risk' => function($q) { $q->accessibleBy(auth()->user())->whereIn('risk_level', ['Risiko Rendah', 'rendah']); },
                     ])->orderBy('name')->get();
 
                 $idx = 1;

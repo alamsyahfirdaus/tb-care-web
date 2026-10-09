@@ -33,7 +33,7 @@ class PatientController extends Controller
         $statusFilter = $request->query('treatment_status');
         $keyword = $request->query('q');
 
-        $query = Patient::with(['user', 'puskesmas', 'subdistrict.district.province', 'village', 'treatments.treatmentType']);
+        $query = Patient::accessibleBy(auth()->user())->with(['user', 'puskesmas', 'subdistrict.district.province', 'village', 'treatments.treatmentType']);
 
         if ($puskesmasFilter) {
             $query->where('puskesmas_id', $puskesmasFilter);
@@ -70,8 +70,8 @@ class PatientController extends Controller
         }
 
         $patients = $query->orderByDesc('id')->get();
-        $puskesmasList = Puskesmas::orderBy('name')->get();
-        $subdistricts = Subdistrict::orderBy('name')->get();
+        $puskesmasList = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
+        $subdistricts = Subdistrict::accessibleBy(auth()->user())->orderBy('name')->get();
 
         return view('admin.patients.index', compact('patients', 'puskesmasList', 'subdistricts', 'puskesmasFilter', 'subdistrictFilter', 'genderFilter', 'statusFilter', 'keyword'))
             ->with([
@@ -105,6 +105,10 @@ class PatientController extends Controller
                 $q->orderByDesc('id');
             }
         ])->findOrFail($id);
+
+        if (!$patient->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses ke data pasien ini.');
+        }
 
         // Calculate BMI and Nutritional Status
         $bmi = null;
@@ -153,6 +157,9 @@ class PatientController extends Controller
         if ($encryptedId) {
             $id = decrypt_id($encryptedId);
             $patient = Patient::with(['user', 'subdistrict.district.province', 'treatments.treatmentType'])->findOrFail($id);
+            if (!$patient->isAccessibleBy(auth()->user())) {
+                abort(403, 'Anda tidak memiliki hak akses ke data pasien ini.');
+            }
             $isEdit = true;
 
             $selectedProvinceId = optional(optional(optional($patient->subdistrict)->district)->province)->id;
@@ -171,13 +178,13 @@ class PatientController extends Controller
 
         $subdistricts = $selectedDistrictId 
             ? Subdistrict::where('district_id', $selectedDistrictId)->orderBy('name')->get() 
-            : Subdistrict::orderBy('name')->get();
+            : Subdistrict::accessibleBy(auth()->user())->orderBy('name')->get();
 
         $villages = $selectedSubdistrictId 
             ? Village::where('subdistrict_id', $selectedSubdistrictId)->orderBy('name')->get() 
             : Village::orderBy('name')->get();
 
-        $puskesmas = Puskesmas::orderBy('name')->get();
+        $puskesmas = Puskesmas::accessibleBy(auth()->user())->orderBy('name')->get();
         $treatmentTypes = TreatmentType::all();
 
         return view('admin.patients.form', compact(
@@ -209,7 +216,21 @@ class PatientController extends Controller
         if ($rawId) {
             $id = decrypt_id($rawId);
             $patient = Patient::with('user')->findOrFail($id);
+            if (!$patient->isAccessibleBy(auth()->user())) {
+                abort(403, 'Anda tidak memiliki hak akses untuk memperbarui data pasien ini.');
+            }
             $isUpdate = true;
+        }
+
+        $policy = app(\App\Policies\PatientPolicy::class);
+        if (!$policy->canAssignTerritory(
+            auth()->user(),
+            $request->input('village_id'),
+            $request->input('rw'),
+            $request->input('rt'),
+            $request->input('puskesmas_id')
+        )) {
+            abort(403, 'Anda tidak memiliki wewenang untuk menugaskan pasien ke wilayah atau faskes ini.');
         }
 
         $request->validate([
@@ -352,6 +373,11 @@ class PatientController extends Controller
     {
         $id = decrypt_id($id);
         $patient = Patient::with('user')->findOrFail($id);
+
+        if (!$patient->isAccessibleBy(auth()->user())) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data pasien ini.');
+        }
+
         $user = $patient->user;
         $name = optional($user)->name ?? 'Pasien #' . $id;
 

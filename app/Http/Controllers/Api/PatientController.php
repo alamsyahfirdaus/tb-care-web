@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use App\Policies\PatientPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -224,10 +225,13 @@ class PatientController extends Controller
             'puskesmas_id.exists'      => 'Puskesmas tidak ditemukan.',
         ]);
 
-        // 3. Verifikasi Wilayah Wewenang untuk Kader
-        if ($user->user_type_id == 3 && $user->officer && $user->officer->isKader()) {
-            // Jangan mempercayai puskesmas_id dari client; gunakan puskesmas milik officer
-            $validated['puskesmas_id'] = $user->officer->puskesmas_id;
+        // 3. Verifikasi Wilayah Wewenang untuk Petugas
+        if ($user->user_type_id == 3 && $user->officer) {
+            if ($user->officer->isKader() || $user->officer->isPJTB()) {
+                if ($user->officer->puskesmas_id) {
+                    $validated['puskesmas_id'] = $user->officer->puskesmas_id;
+                }
+            }
 
             $policy = app(PatientPolicy::class);
             $hasAuthority = $policy->canAssignTerritory(
@@ -235,78 +239,85 @@ class PatientController extends Controller
                 $validated['village_id'] ?? null,
                 $validated['rw'] ?? null,
                 $validated['rt'] ?? null,
-                $validated['puskesmas_id']
+                $validated['puskesmas_id'] ?? null
             );
 
             if (!$hasAuthority) {
                 return response()->json([
-                    'message' => 'Anda tidak memiliki wewenang menggunakan wilayah tersebut.'
+                    'message' => 'Anda tidak memiliki wewenang menugaskan pasien ke wilayah atau faskes tersebut.'
                 ], 403);
             }
         }
 
-        // 4. Jika user akun pasien belum ada, buat user baru
-        if (!$existingUser) {
-            $baseUsername = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'] ?? $validated['phone'])[0]);
-            $username = $baseUsername ?: 'user';
-            $counter = 1;
+        // 4-7. Simpan user dan pasien dalam satu transaksi database atomik
+        DB::transaction(function () use (
+            &$existingUser,
+            &$existingPatient,
+            $validated
+        ) {
+            // 4. Jika user akun pasien belum ada, buat user baru
+            if (!$existingUser) {
+                $baseUsername = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'] ?? $validated['phone'])[0]);
+                $username = $baseUsername ?: 'user';
+                $counter = 1;
 
-            while (User::where('username', $username)->exists()) {
-                $username = $baseUsername . $counter++;
+                while (User::where('username', $username)->exists()) {
+                    $username = $baseUsername . $counter++;
+                }
+
+                $existingUser = new User([
+                    'username' => $username,
+                    'password' => Hash::make($username),
+                ]);
             }
 
-            $existingUser = new User([
-                'username' => $username,
-                'password' => Hash::make($username),
+            // 5. Simpan data user
+            $existingUser->fill([
+                'name'           => $validated['name'],
+                'email'          => $validated['email'] ?? null,
+                'phone'          => $validated['phone'],
+                'gender'         => $validated['gender'],
+                'place_of_birth' => $validated['place_of_birth'],
+                'date_of_birth'  => $validated['date_of_birth'],
+                'user_type_id'   => 2, // 2 = Pasien
+                'is_active'      => true,
             ]);
-        }
+            $existingUser->save();
 
-        // 5. Simpan data user
-        $existingUser->fill([
-            'name'           => $validated['name'],
-            'email'          => $validated['email'] ?? null,
-            'phone'          => $validated['phone'],
-            'gender'         => $validated['gender'],
-            'place_of_birth' => $validated['place_of_birth'],
-            'date_of_birth'  => $validated['date_of_birth'],
-            'user_type_id'   => 2, // 2 = Pasien
-            'is_active'      => true,
-        ]);
-        $existingUser->save();
-
-        // 6. Jika pasien belum ada, buat data pasien baru
-        if (!$existingPatient) {
-            $existingPatient = new Patient([
-                'user_id' => $existingUser->id,
-            ]);
-        }
-
-        // Sinkronisasi subdistrict_id jika village_id diberikan
-        $subdistrictId = $validated['subdistrict_id'] ?? null;
-        if (!empty($validated['village_id'])) {
-            $village = Village::find($validated['village_id']);
-            if ($village && $village->subdistrict_id) {
-                $subdistrictId = $village->subdistrict_id;
+            // 6. Jika pasien belum ada, buat data pasien baru
+            if (!$existingPatient) {
+                $existingPatient = new Patient([
+                    'user_id' => $existingUser->id,
+                ]);
             }
-        }
 
-        // 7. Simpan atau perbarui data pasien
-        $existingPatient->fill([
-            'nik'             => $validated['nik'] ?? null,
-            'address'         => $validated['address'] ?? null,
-            'subdistrict_id'  => $subdistrictId,
-            'village_id'      => $validated['village_id'] ?? null,
-            'rw'              => $validated['rw'] ?? null,
-            'rt'              => $validated['rt'] ?? null,
-            'occupation'      => $validated['occupation'] ?? null,
-            'height'          => $validated['height'] ?? null,
-            'weight'          => $validated['weight'] ?? null,
-            'blood_type'      => $validated['blood_type'] ?? null,
-            'diagnosis_date'  => $validated['diagnosis_date'] ?? null,
-            'treatment_start_date' => array_key_exists('treatment_start_date', $validated) ? $validated['treatment_start_date'] : ($existingPatient?->treatment_start_date ?? null),
-            'puskesmas_id'    => $validated['puskesmas_id'],
-        ]);
-        $existingPatient->save();
+            // Sinkronisasi subdistrict_id jika village_id diberikan
+            $subdistrictId = $validated['subdistrict_id'] ?? null;
+            if (!empty($validated['village_id'])) {
+                $village = Village::find($validated['village_id']);
+                if ($village && $village->subdistrict_id) {
+                    $subdistrictId = $village->subdistrict_id;
+                }
+            }
+
+            // 7. Simpan atau perbarui data pasien
+            $existingPatient->fill([
+                'nik'             => $validated['nik'] ?? null,
+                'address'         => $validated['address'] ?? null,
+                'subdistrict_id'  => $subdistrictId,
+                'village_id'      => $validated['village_id'] ?? null,
+                'rw'              => $validated['rw'] ?? null,
+                'rt'              => $validated['rt'] ?? null,
+                'occupation'      => $validated['occupation'] ?? null,
+                'height'          => $validated['height'] ?? null,
+                'weight'          => $validated['weight'] ?? null,
+                'blood_type'      => $validated['blood_type'] ?? null,
+                'diagnosis_date'  => $validated['diagnosis_date'] ?? null,
+                'treatment_start_date' => array_key_exists('treatment_start_date', $validated) ? $validated['treatment_start_date'] : ($existingPatient?->treatment_start_date ?? null),
+                'puskesmas_id'    => $validated['puskesmas_id'],
+            ]);
+            $existingPatient->save();
+        });
 
         $message = $isUpdate
             ? 'Data pasien berhasil diperbarui.'

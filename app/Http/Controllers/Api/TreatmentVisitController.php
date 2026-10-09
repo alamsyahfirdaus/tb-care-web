@@ -47,23 +47,35 @@ class TreatmentVisitController extends Controller
             ], 422);
         }
 
+        $user = Auth::user();
+
+        // Validasi akses jika sedang melakukan update
+        if ($request->filled('id')) {
+            $existingVisit = TreatmentVisit::with('patientTreatment.patient')->find($request->id);
+            if (!$existingVisit) {
+                return response()->json(['message' => 'Data kunjungan tidak ditemukan.'], 404);
+            }
+            if (!$existingVisit->isAccessibleBy($user)) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang mengubah data kunjungan ini.'
+                ], 403);
+            }
+            $visit = $existingVisit;
+        } else {
+            $visit = new TreatmentVisit();
+        }
+
         // Proteksi Otorisasi Wilayah Pasien
         $treatment = PatientTreatment::with('patient')->find($request->patient_treatment_id);
         if (!$treatment || !$treatment->patient) {
             return response()->json(['message' => 'Data pengobatan tidak ditemukan.'], 404);
         }
 
-        $user = Auth::user();
         if (!$treatment->patient->isAccessibleBy($user)) {
             return response()->json([
                 'message' => 'Anda tidak memiliki wewenang mencatat kunjungan untuk pasien di luar wilayah binaan Anda.'
             ], 403);
         }
-
-        // Proses simpan (create baru atau update)
-        $visit = $request->filled('id')
-            ? TreatmentVisit::findOrFail($request->id)
-            : new TreatmentVisit();
 
         $visit->patient_treatment_id = $request->patient_treatment_id;
         $visit->visit_date           = $request->visit_date;
@@ -92,8 +104,7 @@ class TreatmentVisitController extends Controller
         }
 
         $user = Auth::user();
-        $patient = $visit->patientTreatment?->patient;
-        if ($patient && !$patient->isAccessibleBy($user)) {
+        if (!$visit->isAccessibleBy($user)) {
             return response()->json([
                 'message' => 'Anda tidak memiliki wewenang menghapus data kunjungan pasien di luar wilayah binaan Anda.'
             ], 403);
@@ -181,13 +192,13 @@ class TreatmentVisitController extends Controller
         }
 
         $user = Auth::user();
-        $patient = $visit->patientTreatment?->patient;
-        if ($patient && !$patient->isAccessibleBy($user)) {
+        if (!$visit->isAccessibleBy($user)) {
             return response()->json([
                 'message' => 'Anda tidak memiliki wewenang mengakses data kunjungan ini.'
             ], 403);
         }
 
+        $patient = $visit->patientTreatment?->patient;
         $puskesmasName = optional($patient?->puskesmas)->name ?? 'Puskesmas';
 
         return response()->json([

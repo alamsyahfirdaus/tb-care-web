@@ -31,4 +31,24 @@ class ClinicalExamination extends Model
     {
         return $this->belongsTo(Officer::class, 'officer_id');
     }
+
+    public function scopeAccessibleBy($query, User $user)
+    {
+        if ($user->user_type_id == 1) {
+            return $query;
+        }
+
+        return $query->whereHas('patient', function ($q) use ($user) {
+            $q->accessibleBy($user);
+        });
+    }
+
+    public function isAccessibleBy(User $user): bool
+    {
+        if ($user->user_type_id == 1) {
+            return true;
+        }
+
+        return optional($this->patient)->isAccessibleBy($user) ?? false;
+    }
 }

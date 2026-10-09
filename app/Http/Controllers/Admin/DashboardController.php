@@ -21,23 +21,27 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+
         // 1. Info Box Metrics from actual database
-        $totalPengguna = User::count();
-        $totalPasien = Patient::count();
-        $totalSkrining = Screening::count();
-        $risikoRendah = Screening::where('risk_level', 'Risiko Rendah')->count();
-        $risikoSedang = Screening::where('risk_level', 'Risiko Sedang')->count();
-        $risikoTinggi = Screening::where('risk_level', 'Risiko Tinggi')->count();
-        $totalPuskesmas = Puskesmas::count();
+        $totalPengguna = $user->user_type_id == 1
+            ? User::count()
+            : User::whereHas('patient', fn($q) => $q->accessibleBy($user))->count();
+        $totalPasien = Patient::accessibleBy($user)->count();
+        $totalSkrining = Screening::accessibleBy($user)->count();
+        $risikoRendah = Screening::accessibleBy($user)->where('risk_level', 'Risiko Rendah')->count();
+        $risikoSedang = Screening::accessibleBy($user)->where('risk_level', 'Risiko Sedang')->count();
+        $risikoTinggi = Screening::accessibleBy($user)->where('risk_level', 'Risiko Tinggi')->count();
+        $totalPuskesmas = Puskesmas::accessibleBy($user)->count();
         $totalEdukasi = EducationalMaterial::count();
 
         // Additional clinical metrics
-        $pasienAktif = PatientTreatment::where('treatment_status', 'Berjalan')->count();
-        $pasienSelesai = PatientTreatment::where('treatment_status', 'Selesai')->count();
-        $totalMinumObat = MedicationRecord::count();
-        $minumTepatWaktu = MedicationRecord::where('late', 0)->count();
+        $pasienAktif = PatientTreatment::accessibleBy($user)->where('treatment_status', 'Berjalan')->count();
+        $pasienSelesai = PatientTreatment::accessibleBy($user)->where('treatment_status', 'Selesai')->count();
+        $totalMinumObat = MedicationRecord::accessibleBy($user)->count();
+        $minumTepatWaktu = MedicationRecord::accessibleBy($user)->where('late', 0)->count();
         $tingkatKepatuhan = $totalMinumObat > 0 ? round(($minumTepatWaktu / $totalMinumObat) * 100, 1) : 0;
-        $perluTindakLanjut = Screening::where('status', 'Perlu Tindak Lanjut')->count();
+        $perluTindakLanjut = Screening::accessibleBy($user)->where('status', 'Perlu Tindak Lanjut')->count();
 
         // 2. Chart 1: Status / Risiko Skrining (Doughnut / Pie Chart)
         $chartRisk = [
@@ -47,7 +51,7 @@ class DashboardController extends Controller
         ];
 
         // 3. Chart 2: Tren Skrining (Harian 7 hari terakhir, Bulanan 6 bulan)
-        $monthlyTrend = Screening::select(
+        $monthlyTrend = Screening::accessibleBy($user)->select(
                 DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month_year'),
                 DB::raw('DATE_FORMAT(created_at, "%b %Y") as month_label'),
                 DB::raw('count(*) as total'),
@@ -65,7 +69,10 @@ class DashboardController extends Controller
         ];
 
         // 4. Chart 3: Distribusi Wilayah (Pasien dan Skrining per Kecamatan)
-        $subdistrictStats = Subdistrict::withCount(['patients', 'screenings'])
+        $subdistrictStats = Subdistrict::accessibleBy($user)->withCount([
+                'patients' => fn($q) => $q->accessibleBy($user),
+                'screenings' => fn($q) => $q->accessibleBy($user),
+            ])
             ->orderByDesc('screenings_count')
             ->limit(7)
             ->get();
@@ -77,8 +84,8 @@ class DashboardController extends Controller
         ];
 
         // 5. Chart 4: Jenis Kelamin (Pasien & Skrining)
-        $genderMale = Screening::where('gender', 'L')->count();
-        $genderFemale = Screening::where('gender', 'P')->count();
+        $genderMale = Screening::accessibleBy($user)->where('gender', 'L')->count();
+        $genderFemale = Screening::accessibleBy($user)->where('gender', 'P')->count();
 
         $chartGender = [
             'labels' => ['Laki-laki', 'Perempuan'],
@@ -87,7 +94,7 @@ class DashboardController extends Controller
         ];
 
         // 6. Recent Screenings & Activities
-        $latestScreenings = Screening::with(['puskesmas', 'subdistrict'])
+        $latestScreenings = Screening::accessibleBy($user)->with(['puskesmas', 'subdistrict'])
             ->orderByDesc('id')
             ->limit(5)
             ->get();

@@ -105,24 +105,55 @@ class PatientPolicy
                     return false;
                 }
 
-                if (empty($villageId) || empty($rw)) {
+                if (empty($villageId)) {
                     return false;
                 }
 
-                // Check if the combination exists in kader_areas
-                return $officer->kaderAreas()
-                    ->where('village_id', $villageId)
-                    ->where('rw', $rw)
-                    ->where(function ($q) use ($rt) {
-                        $q->whereNull('rt');
-                        if (!is_null($rt) && $rt !== '') {
-                            $q->orWhere('rt', $rt);
-                        }
-                    })
-                    ->exists();
+                $rwStr = !is_null($rw) ? (string)$rw : '';
+                $rwVariants = array_unique([$rwStr, ltrim($rwStr, '0'), sprintf('%02d', (int)$rwStr), sprintf('%03d', (int)$rwStr)]);
+
+                $query = $officer->kaderAreas()->where('village_id', $villageId);
+                if (!empty($rwStr)) {
+                    $query->where(function ($q) use ($rwVariants) {
+                        $q->whereNull('rw')->orWhereIn('rw', $rwVariants);
+                    });
+                }
+
+                if (!is_null($rt) && $rt !== '') {
+                    $rtStr = (string)$rt;
+                    $rtVariants = array_unique([$rtStr, ltrim($rtStr, '0'), sprintf('%02d', (int)$rtStr), sprintf('%03d', (int)$rtStr)]);
+                    $query->where(function ($q) use ($rtVariants) {
+                        $q->whereNull('rt')->orWhereIn('rt', $rtVariants);
+                    });
+                }
+
+                return $query->exists();
             }
 
-            // Dinkes
+            // Dinkes Kab/Kota (2): Puskesmas must belong to officer's district
+            if ($officer->officer_type_id == 2) {
+                if ($puskesmasId) {
+                    $pusk = \App\Models\Puskesmas::with('subdistrict')->find($puskesmasId);
+                    if (!$pusk || optional($pusk->subdistrict)->district_id != $officer->district_id) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // Dinkes Provinsi (1): Puskesmas must belong to officer's province
+            if ($officer->officer_type_id == 1) {
+                $dist = \App\Models\District::find($officer->district_id);
+                $provId = $dist ? $dist->province_id : null;
+                if ($puskesmasId && $provId) {
+                    $pusk = \App\Models\Puskesmas::with('subdistrict.district')->find($puskesmasId);
+                    if (!$pusk || optional(optional($pusk->subdistrict)->district)->province_id != $provId) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
             return true;
         }
 

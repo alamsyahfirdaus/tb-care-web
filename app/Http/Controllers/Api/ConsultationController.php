@@ -101,11 +101,18 @@ class ConsultationController extends Controller
         }
 
         // Ambil atau buat objek konsultasi
-        $consultation = $request->filled('id')
-            ? Consultation::findOrFail($request->id)
-            : new Consultation();
+        if ($request->filled('id')) {
+            $consultation = Consultation::findOrFail($request->id);
+            if ($consultation->user_id !== $user->id && $user->user_type_id !== 1) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang mengubah konsultasi ini.'
+                ], 403);
+            }
+        } else {
+            $consultation = new Consultation();
+            $consultation->user_id = $user->id;
+        }
 
-        $consultation->user_id      = $user->id;
         $consultation->recipient_id = $request->recipient_id;
         $consultation->title        = $request->title;
         $consultation->message      = $request->message;
@@ -142,6 +149,13 @@ class ConsultationController extends Controller
             ], 404);
         }
 
+        $user = Auth::user();
+        if ($consultation->user_id !== $user->id && $user->user_type_id !== 1) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki hak untuk menghapus konsultasi ini.'
+            ], 403);
+        }
+
         // Hapus file lampiran jika ada
         if ($consultation->attachment && Storage::disk('public')->exists('images/' . $consultation->attachment)) {
             Storage::disk('public')->delete('images/' . $consultation->attachment);
@@ -171,14 +185,33 @@ class ConsultationController extends Controller
             'attachment.max'         => 'Ukuran lampiran maksimal 2MB.',
         ]);
 
+        $user = Auth::user();
         $consultation = Consultation::find($request->consultation_id);
 
-        $reply = $request->filled('reply_id')
-            ? ConsultationReply::findOrFail($request->reply_id)
-            : new ConsultationReply();
+        if (!$consultation) {
+            return response()->json(['message' => 'Konsultasi tidak ditemukan.'], 404);
+        }
 
-        $reply->consultation_id = $consultation->id;
-        $reply->user_id         = Auth::id();
+        // Jika konsultasi bersifat private dengan recipient, pastikan user adalah pengirim, penerima, atau admin
+        if ($consultation->recipient_id && !in_array($user->id, [$consultation->user_id, $consultation->recipient_id]) && $user->user_type_id !== 1) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang membalas konsultasi privat ini.'
+            ], 403);
+        }
+
+        if ($request->filled('reply_id')) {
+            $reply = ConsultationReply::findOrFail($request->reply_id);
+            if ($reply->user_id !== $user->id && $user->user_type_id !== 1) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang mengubah balasan ini.'
+                ], 403);
+            }
+        } else {
+            $reply = new ConsultationReply();
+            $reply->consultation_id = $consultation->id;
+            $reply->user_id         = $user->id;
+        }
+
         $reply->message         = $request->message;
 
         // Upload lampiran jika ada
@@ -214,6 +247,13 @@ class ConsultationController extends Controller
             return response()->json([
                 'message' => 'Data balasan tidak ditemukan.'
             ], 404);
+        }
+
+        $user = Auth::user();
+        if ($reply->user_id !== $user->id && $user->user_type_id !== 1) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki hak untuk menghapus balasan ini.'
+            ], 403);
         }
 
         // Hapus lampiran jika ada

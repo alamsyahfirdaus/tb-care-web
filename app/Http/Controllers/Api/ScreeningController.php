@@ -297,13 +297,18 @@ class ScreeningController extends Controller
         }
 
         $user = auth('sanctum')->user() ?? auth()->user();
-        if ($user) {
-            if ($screening->patient && method_exists($screening->patient, 'isAccessibleBy') && !$screening->patient->isAccessibleBy($user)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki wewenang mengakses data skrining ini.',
-                ], 403);
-            }
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Autentikasi diperlukan untuk mengakses rincian data skrining.',
+            ], 401);
+        }
+
+        if (!$screening->isAccessibleBy($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki wewenang mengakses data skrining ini.',
+            ], 403);
         }
 
         return response()->json([

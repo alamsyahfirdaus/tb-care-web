@@ -12,6 +12,7 @@ class District extends Model
     protected $table = 'districts';
     protected $primaryKey = 'id';
     public $timestamps = false;
+    protected $guarded = [];
 
     public function province()
     {

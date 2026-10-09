@@ -96,50 +96,104 @@ class Patient extends Model
                 return $query->whereRaw('1 = 0');
             }
 
-            // Dinkes Provinsi (officer_type_id = 1)
+            // Dinkes Provinsi (officer_type_id = 1): Pasien dalam provinsi faskes atau domisili
             if ($officer->officer_type_id == 1) {
+                $provinceId = null;
                 if ($officer->district_id) {
                     $district = District::find($officer->district_id);
-                    if ($district && $district->province_id) {
-                        return $query->whereHas('subdistrict.district', function ($q) use ($district) {
-                            $q->where('province_id', $district->province_id);
-                        });
-                    }
+                    $provinceId = $district ? $district->province_id : null;
                 }
-                return $query;
+
+                if (!$provinceId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where(function ($q) use ($provinceId) {
+                    $q->whereHas('puskesmas.subdistrict.district', function ($pq) use ($provinceId) {
+                        $pq->where('province_id', $provinceId);
+                    })
+                    ->orWhereHas('subdistrict.district', function ($sq) use ($provinceId) {
+                        $sq->where('province_id', $provinceId);
+                    })
+                    ->orWhereHas('village.subdistrict.district', function ($vq) use ($provinceId) {
+                        $vq->where('province_id', $provinceId);
+                    });
+                });
             }
 
-            // Dinkes Kab/Kota (officer_type_id = 2)
+            // Dinkes Kab/Kota (officer_type_id = 2): Pasien dalam kab/kota faskes atau domisili
             if ($officer->officer_type_id == 2) {
-                return $query->whereHas('subdistrict', function ($q) use ($officer) {
-                    $q->where('district_id', $officer->district_id);
+                $districtId = $officer->district_id;
+                if (!$districtId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where(function ($q) use ($districtId) {
+                    $q->whereHas('puskesmas.subdistrict', function ($pq) use ($districtId) {
+                        $pq->where('district_id', $districtId);
+                    })
+                    ->orWhereHas('subdistrict', function ($sq) use ($districtId) {
+                        $sq->where('district_id', $districtId);
+                    })
+                    ->orWhereHas('village.subdistrict', function ($vq) use ($districtId) {
+                        $vq->where('district_id', $districtId);
+                    });
                 });
             }
 
             // PJTB Puskesmas (officer_type_id = 3): All patients in the Puskesmas
             if ($officer->officer_type_id == 3) {
+                if (!$officer->puskesmas_id) {
+                    return $query->whereRaw('1 = 0');
+                }
                 return $query->where('puskesmas_id', $officer->puskesmas_id);
             }
 
-            // Kader Puskesmas (officer_type_id = 4): Strictly scoped to assigned kader_areas
+            // Kader Puskesmas (officer_type_id = 4): Strictly scoped to assigned kader_areas within Puskesmas
             if ($officer->officer_type_id == 4) {
                 $areas = $officer->kaderAreas;
                 if ($areas->isEmpty()) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('puskesmas_id', $officer->puskesmas_id)
-                    ->where(function ($q) use ($areas) {
+                return $query->where(function ($q) use ($officer, $areas) {
+                    if ($officer->puskesmas_id) {
+                        $q->where('puskesmas_id', $officer->puskesmas_id);
+                    }
+                    $q->where(function ($aq) use ($areas) {
                         foreach ($areas as $area) {
-                            $q->orWhere(function ($sub) use ($area) {
-                                $sub->where('village_id', $area->village_id)
-                                    ->where('rw', $area->rw);
+                            $aq->orWhere(function ($sub) use ($area) {
+                                if ($area->village_id) {
+                                    $sub->where('village_id', $area->village_id);
+                                } elseif ($area->subdistrict_id) {
+                                    $sub->where('subdistrict_id', $area->subdistrict_id);
+                                }
+
+                                if (!is_null($area->rw) && $area->rw !== '') {
+                                    $rwStr = (string)$area->rw;
+                                    $rwClean = ltrim($rwStr, '0');
+                                    $sub->where(function ($rwQ) use ($rwStr, $rwClean) {
+                                        $rwQ->where('rw', $rwStr)
+                                            ->orWhere('rw', $rwClean)
+                                            ->orWhere('rw', sprintf('%02d', (int)$rwStr))
+                                            ->orWhere('rw', sprintf('%03d', (int)$rwStr));
+                                    });
+                                }
+
                                 if (!is_null($area->rt) && $area->rt !== '') {
-                                    $sub->where('rt', $area->rt);
+                                    $rtStr = (string)$area->rt;
+                                    $rtClean = ltrim($rtStr, '0');
+                                    $sub->where(function ($rtQ) use ($rtStr, $rtClean) {
+                                        $rtQ->where('rt', $rtStr)
+                                            ->orWhere('rt', $rtClean)
+                                            ->orWhere('rt', sprintf('%02d', (int)$rtStr))
+                                            ->orWhere('rt', sprintf('%03d', (int)$rtStr));
+                                    });
                                 }
                             });
                         }
                     });
+                });
             }
         }
 

@@ -31,4 +31,24 @@ class MedicationRecord extends Model
     {
         return $this->belongsTo(PatientTreatment::class, 'patient_treatment_id');
     }
+
+    public function scopeAccessibleBy($query, User $user)
+    {
+        if ($user->user_type_id == 1) {
+            return $query;
+        }
+
+        return $query->whereHas('patientTreatment.patient', function ($q) use ($user) {
+            $q->accessibleBy($user);
+        });
+    }
+
+    public function isAccessibleBy(User $user): bool
+    {
+        if ($user->user_type_id == 1) {
+            return true;
+        }
+
+        return optional(optional($this->patientTreatment)->patient)->isAccessibleBy($user) ?? false;
+    }
 }

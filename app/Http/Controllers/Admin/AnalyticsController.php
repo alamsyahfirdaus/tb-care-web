@@ -16,11 +16,13 @@ class AnalyticsController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+
         // 1. Risk Distribution (Support both canonical and lowercase values)
-        $riskRendah = Screening::whereIn('risk_level', ['Risiko Rendah', 'rendah'])->count();
-        $riskSedang = Screening::whereIn('risk_level', ['Risiko Sedang', 'sedang'])->count();
-        $riskTinggi = Screening::whereIn('risk_level', ['Risiko Tinggi', 'tinggi'])->count();
-        $totalScreening = Screening::count();
+        $riskRendah = Screening::accessibleBy($user)->whereIn('risk_level', ['Risiko Rendah', 'rendah'])->count();
+        $riskSedang = Screening::accessibleBy($user)->whereIn('risk_level', ['Risiko Sedang', 'sedang'])->count();
+        $riskTinggi = Screening::accessibleBy($user)->whereIn('risk_level', ['Risiko Tinggi', 'tinggi'])->count();
+        $totalScreening = Screening::accessibleBy($user)->count();
 
         // 2. Monthly Trend (last 6 months)
         $monthlyTrend = [];
@@ -31,7 +33,7 @@ class AnalyticsController extends Controller
             $monthName = $monthDate->translatedFormat('M Y');
             $months[] = $monthName;
 
-            $count = Screening::where(function($q) use ($monthKey) {
+            $count = Screening::accessibleBy($user)->where(function($q) use ($monthKey) {
                 $q->where('screened_at', 'like', "{$monthKey}%")
                   ->orWhere('created_at', 'like', "{$monthKey}%");
             })->count();
@@ -40,17 +42,18 @@ class AnalyticsController extends Controller
         }
 
         // 3. Gender Breakdown (Supports 'L'/'P' and 'male'/'female')
-        $screeningMale   = Screening::whereIn('gender', ['L', 'male'])->count();
-        $screeningFemale = Screening::whereIn('gender', ['P', 'female'])->count();
+        $screeningMale   = Screening::accessibleBy($user)->whereIn('gender', ['L', 'male'])->count();
+        $screeningFemale = Screening::accessibleBy($user)->whereIn('gender', ['P', 'female'])->count();
 
         // 4. Age Demographics
-        $ageAnak       = Screening::where('age', '<', 15)->count();
-        $ageRemaja     = Screening::whereBetween('age', [15, 24])->count();
-        $ageProduktif  = Screening::whereBetween('age', [25, 54])->count();
-        $ageLansia     = Screening::where('age', '>=', 55)->count();
+        $ageAnak       = Screening::accessibleBy($user)->where('age', '<', 15)->count();
+        $ageRemaja     = Screening::accessibleBy($user)->whereBetween('age', [15, 24])->count();
+        $ageProduktif  = Screening::accessibleBy($user)->whereBetween('age', [25, 54])->count();
+        $ageLansia     = Screening::accessibleBy($user)->where('age', '>=', 55)->count();
 
-        // 5. Top 5 Puskesmas by Screenings
-        $topPuskesmas = Puskesmas::withCount('screenings')
+        // 5. Top 5 Puskesmas by Screenings within user scope
+        $topPuskesmas = Puskesmas::accessibleBy($user)
+            ->withCount(['screenings' => fn($q) => $q->accessibleBy($user)])
             ->orderByDesc('screenings_count')
             ->limit(5)
             ->get();
@@ -59,14 +62,17 @@ class AnalyticsController extends Controller
         $pkmCounts = $topPuskesmas->pluck('screenings_count')->toArray();
 
         // 6. Clinical Examination Results (TCM / BTA)
-        $examPositive = ClinicalExamination::where('result', 'like', '%Positif%')->count();
-        $examNegative = ClinicalExamination::where('result', 'like', '%Negatif%')->count();
-        $examWaiting  = ClinicalExamination::where('result', 'like', '%Menunggu%')->orWhere('status', 'Menunggu Hasil')->count();
+        $examPositive = ClinicalExamination::accessibleBy($user)->where('result', 'like', '%Positif%')->count();
+        $examNegative = ClinicalExamination::accessibleBy($user)->where('result', 'like', '%Negatif%')->count();
+        $examWaiting  = ClinicalExamination::accessibleBy($user)->where(function($q) {
+            $q->where('result', 'like', '%Menunggu%')
+              ->orWhere('status', 'Menunggu Hasil');
+        })->count();
 
         // 7. Treatment Statuses
-        $treatmentActive    = PatientTreatment::whereIn('treatment_status', ['Berjalan', 'Aktif'])->count();
-        $treatmentCompleted = PatientTreatment::where('treatment_status', 'Selesai')->count();
-        $treatmentDropped   = PatientTreatment::whereIn('treatment_status', ['Gagal', 'Putus Obat', 'Meninggal'])->count();
+        $treatmentActive    = PatientTreatment::accessibleBy($user)->whereIn('treatment_status', ['Berjalan', 'Aktif'])->count();
+        $treatmentCompleted = PatientTreatment::accessibleBy($user)->where('treatment_status', 'Selesai')->count();
+        $treatmentDropped   = PatientTreatment::accessibleBy($user)->whereIn('treatment_status', ['Gagal', 'Putus Obat', 'Meninggal'])->count();
 
         return view('admin.analytics.index', compact(
             'riskRendah', 'riskSedang', 'riskTinggi', 'totalScreening',

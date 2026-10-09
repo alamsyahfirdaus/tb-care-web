@@ -49,23 +49,6 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
-Route::get('/run-migration', function () {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        return response()->json([
-            'success' => true,
-            'message' => 'Migrasi berhasil dijalankan.',
-            'output'  => $output,
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal menjalankan migrasi: ' . $e->getMessage(),
-        ], 500);
-    }
-});
-
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
 Route::get('/provinces', [RegionController::class, 'provinces']);
@@ -100,6 +83,25 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin maintenance password update (terproteksi auth)
     Route::post('/password/batch-reset', [AuthController::class, 'updatePassword']);
+    Route::post('/run-migration', function (\Illuminate\Http\Request $request) {
+        if (!$request->user() || $request->user()->user_type_id != 1) {
+            return response()->json(['message' => 'Hanya Administrator yang dapat menjalankan migrasi.'], 403);
+        }
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            return response()->json([
+                'success' => true,
+                'message' => 'Migrasi berhasil dijalankan.',
+                'output'  => $output,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menjalankan migrasi: ' . $e->getMessage(),
+            ], 500);
+        }
+    });
 
     // Profil Pengguna
     Route::prefix('profile')->group(function () {
@@ -162,8 +164,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/home', [PatientController::class, 'home']);
         Route::match(['get', 'post'], '/', [PatientController::class, 'index']);           // Pencarian atau daftar pasien
         Route::match(['post', 'put'], '/store', [PatientController::class, 'store']);      // Simpan / update data pasien
-        Route::get('/{id}/show', [PatientController::class, 'show']);                      // Detail pasien
-        Route::delete('/{id}/delete', [PatientController::class, 'destroy']);              // Hapus data pasien
+        Route::get('/{id}/show', [PatientController::class, 'show'])->whereNumber('id');                      // Detail pasien
+        Route::get('/{id}', [PatientController::class, 'show'])->whereNumber('id');
+        Route::delete('/{id}/delete', [PatientController::class, 'destroy'])->whereNumber('id');              // Hapus data pasien
+        Route::delete('/{id}', [PatientController::class, 'destroy'])->whereNumber('id');
         Route::get('/{id}/treatments', [PatientController::class, 'treatmentHistory']);    // Riwayat pengobatan pasien
         Route::get('/adherence', [PatientController::class, 'treatmentAdherence']);        // Tingkat kepatuhan minum obat
         Route::get('/{id}/medication-schedule', [PatientController::class, 'getMedicationSchedule']); // Jadwal minum obat

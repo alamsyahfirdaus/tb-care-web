@@ -31,13 +31,26 @@ class ProfileController extends Controller
                 'patient.subdistrict.district.province',
             ]);
         } elseif (in_array($user->user_type_id, [3, 4])) {
-            $user->load(['officer.puskesmas', 'officer.district']);
+            $user->load([
+                'officer.puskesmas.subdistrict.district',
+                'officer.district.province',
+                'officer.kaderAreas.village',
+                'officer.kaderAreas.subdistrict',
+            ]);
+            if ($user->officer) {
+                $user->officer->append(['officer_type_name', 'scope_description']);
+            }
         }
 
         // Tambahkan URL/path ke gambar profil jika ada
         $user->photo = $user->photo ? $user->photo : null;
 
         $userData = $user->toArray();
+        if ($user->officer) {
+            $userData['officer_type_id'] = $user->officer->officer_type_id;
+            $userData['officer_type_name'] = $user->officer->officer_type_name;
+            $userData['scope_description'] = $user->officer->scope_description;
+        }
         if ($user->patient) {
             $p = $user->patient;
             $subdistrict = $p->subdistrict ?? $p->village?->subdistrict;
