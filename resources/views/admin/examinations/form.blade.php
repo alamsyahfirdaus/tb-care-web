@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.examinations.index') }}">Pemeriksaan</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('examinations.index') }}">Pemeriksaan</a></li>
     <li class="breadcrumb-item active">{{ $isEdit ? 'Edit Pemeriksaan' : 'Tambah Pemeriksaan' }}</li>
 @endsection
 
@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Data Pemeriksaan TB' : 'Formulir Catat Pemeriksaan Laboratorium TB Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.examinations.update', $examination->encrypted_id) : route('admin.examinations.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('examinations.update', $examination->encrypted_id) : route('examinations.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')
@@ -103,7 +103,7 @@
                         </div>
                     </div>
                     <div class="card-footer bg-white border-top d-flex justify-content-between">
-                        <a href="{{ route('admin.examinations.index') }}" class="btn btn-default font-weight-bold">
+                        <a href="{{ route('examinations.index') }}" class="btn btn-default font-weight-bold">
                             <i class="fas fa-times mr-1"></i> Batal
                         </a>
                         <button type="submit" class="btn btn-info font-weight-bold shadow-sm">

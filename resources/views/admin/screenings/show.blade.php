@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.screenings.index') }}">Skrining TB</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('screenings.index') }}">Skrining TB</a></li>
     <li class="breadcrumb-item active">{{ $screening->code }}</li>
 @endsection
 
@@ -127,7 +127,7 @@
                 <div class="alert alert-success shadow-sm">
                     <h6 class="font-weight-bold mb-1"><i class="fas fa-link mr-1"></i> Terhubung ke Rekam Pasien</h6>
                     <span class="text-xs d-block mb-2">Responden ini sudah terdaftar sebagai Pasien Pengobatan TB Care.</span>
-                    <a href="{{ route('admin.patients.show', $screening->patient->encrypted_id) }}" class="btn btn-xs btn-success font-weight-bold">
+                    <a href="{{ route('patients.show', $screening->patient->encrypted_id) }}" class="btn btn-xs btn-success font-weight-bold">
                         Buka Rekam Pasien <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
@@ -223,7 +223,7 @@
     <div class="modal fade" id="modal-update-status" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <form action="{{ route('admin.screenings.update_status', $screening->encrypted_id) }}" method="POST">
+                <form action="{{ route('screenings.update_status', $screening->encrypted_id) }}" method="POST">
                     @csrf
                     @method('PATCH')
                     <div class="modal-header bg-primary text-white">

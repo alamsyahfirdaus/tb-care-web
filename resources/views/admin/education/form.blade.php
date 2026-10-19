@@ -10,7 +10,7 @@
                     {{ $isEdit ? 'Edit Materi Edukasi' : 'Tambah Materi Edukasi Baru' }}
                 </h3>
             </div>
-            <form action="{{ $isEdit ? route('admin.education.update', $material->encrypted_id) : route('admin.education.store') }}" 
+            <form action="{{ $isEdit ? route('education.update', $material->encrypted_id) : route('education.store') }}" 
                   method="POST" enctype="multipart/form-data">
                 @csrf
                 @if($isEdit)
@@ -128,7 +128,7 @@
                 </div>
 
                 <div class="card-footer bg-light d-flex justify-content-between">
-                    <a href="{{ route('admin.education.index') }}" class="btn btn-default">
+                    <a href="{{ route('education.index') }}" class="btn btn-default">
                         <i class="fas fa-arrow-left mr-1"></i> Batal / Kembali
                     </a>
                     <button type="submit" class="btn btn-primary px-4 font-weight-bold">

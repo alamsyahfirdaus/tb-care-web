@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.patients.index') }}">Pasien TB</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('patients.index') }}">Pasien TB</a></li>
     <li class="breadcrumb-item active">Semua Pasien</li>
 @endsection
 
@@ -12,7 +12,7 @@
             <h5 class="font-weight-bold text-dark mb-0">
                 <i class="fas fa-user-injured text-danger mr-1"></i> Data Pasien Tuberkulosis Terdaftar
             </h5>
-            <a href="{{ route('admin.patients.create') }}" class="btn btn-sm btn-danger font-weight-bold shadow-sm">
+            <a href="{{ route('patients.create') }}" class="btn btn-sm btn-danger font-weight-bold shadow-sm">
                 <i class="fas fa-plus-circle mr-1"></i> Tambah Pasien Baru
             </a>
         </div>
@@ -21,7 +21,7 @@
     <!-- Filter Card -->
     <div class="card card-outline card-danger filter-card mb-3 shadow-sm">
         <div class="card-body py-2">
-            <form action="{{ route('admin.patients.index') }}" method="GET" class="form-row align-items-center">
+            <form action="{{ route('patients.index') }}" method="GET" class="form-row align-items-center">
                 <div class="col-md-3 my-1">
                     <div class="input-group input-group-sm">
                         <div class="input-group-prepend">
@@ -60,7 +60,7 @@
                     <button type="submit" class="btn btn-sm btn-danger font-weight-bold mr-2 flex-grow-1">
                         <i class="fas fa-filter mr-1"></i> Filter
                     </button>
-                    <a href="{{ route('admin.patients.index') }}" class="btn btn-sm btn-default" title="Reset Filter">
+                    <a href="{{ route('patients.index') }}" class="btn btn-sm btn-default" title="Reset Filter">
                         <i class="fas fa-undo"></i>
                     </a>
                 </div>
@@ -74,7 +74,7 @@
             <h3 class="card-title font-weight-bold mb-0">
                 <i class="fas fa-table mr-1 text-danger"></i> Daftar Rekam Pasien <span class="badge badge-light border ml-2">Total: {{ $patients->count() }} pasien</span>
             </h3>
-            <a href="{{ route('admin.patients.create') }}" class="btn btn-sm btn-danger font-weight-bold shadow-sm">
+            <a href="{{ route('patients.create') }}" class="btn btn-sm btn-danger font-weight-bold shadow-sm">
                 <i class="fas fa-plus mr-1"></i> Tambah Pasien
             </a>
         </div>
@@ -104,7 +104,7 @@
                                         <img src="{{ optional($p->user)->photo ? asset('upload_images/' . $p->user->photo) : asset('assets/img/profile.png') }}" 
                                              class="img-circle mr-2 elevation-1" style="width: 38px; height: 38px; object-fit: cover;" alt="">
                                         <div>
-                                            <a href="{{ route('admin.patients.show', $p->encrypted_id) }}" class="font-weight-bold text-dark d-block">
+                                            <a href="{{ route('patients.show', $p->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                                 {{ optional($p->user)->name ?? 'Pasien #' . ($p->patient_number ?? $loop->iteration) }}
                                             </a>
                                             <span class="text-xs text-muted">
@@ -150,14 +150,14 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
-                                        <a href="{{ route('admin.patients.show', $p->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Pasien Lengkap">
+                                        <a href="{{ route('patients.show', $p->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Pasien Lengkap">
                                             <i class="fas fa-folder-open"></i> Rekam
                                         </a>
-                                        <a href="{{ route('admin.patients.edit', $p->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
+                                        <a href="{{ route('patients.edit', $p->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <button type="button" class="btn btn-danger btn-xs" title="Hapus Pasien" 
-                                                onclick="confirmDelete('{{ route('admin.patients.destroy', $p->encrypted_id) }}', '{{ addslashes(optional($p->user)->name ?? 'Pasien #' . $p->id) }}')">
+                                                onclick="confirmDelete('{{ route('patients.destroy', $p->encrypted_id) }}', '{{ addslashes(optional($p->user)->name ?? 'Pasien #' . $p->id) }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>

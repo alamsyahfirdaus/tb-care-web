@@ -142,7 +142,7 @@ class PuskesmasController extends Controller
                 $message = 'Data Puskesmas berhasil diperbarui.';
             }
 
-            return redirect()->route('admin.puskesmas.show', $puskesmas)->with('success', $message);
+            return redirect()->route('puskesmas.show', $puskesmas)->with('success', $message);
         });
     }
 
@@ -169,7 +169,7 @@ class PuskesmasController extends Controller
         $hasExaminations = ClinicalExamination::where('puskesmas_id', $id)->exists();
 
         if ($hasPatients || $hasOfficers || $hasScreenings || $hasExaminations) {
-            return redirect()->route('admin.puskesmas.index')
+            return redirect()->route('puskesmas.index')
                 ->with('error', "Puskesmas {$name} tidak dapat dihapus karena masih memiliki relasi data pasien, petugas, atau riwayat pelayanan.");
         }
 
@@ -179,6 +179,6 @@ class PuskesmasController extends Controller
 
         ActivityLog::log('Hapus Puskesmas', 'Faskes', "Menghapus Puskesmas {$name}.");
 
-        return redirect()->route('admin.puskesmas.index')->with('success', "Puskesmas {$name} berhasil dihapus.");
+        return redirect()->route('puskesmas.index')->with('success', "Puskesmas {$name} berhasil dihapus.");
     }
 }

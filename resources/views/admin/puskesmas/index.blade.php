@@ -56,13 +56,13 @@
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filter & Pencarian Faskes</h3>
         <div class="card-tools">
-            <a href="{{ route('admin.puskesmas.create') }}" class="btn btn-sm btn-primary">
+            <a href="{{ route('puskesmas.create') }}" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus-circle mr-1"></i> Tambah Faskes Baru
             </a>
         </div>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.puskesmas.index') }}" class="row">
+        <form method="GET" action="{{ route('puskesmas.index') }}" class="row">
             <div class="col-md-5 mb-2">
                 <label class="small text-muted font-weight-bold">Kecamatan</label>
                 <select name="subdistrict_id" class="form-control select2">
@@ -84,7 +84,7 @@
                 </div>
             </div>
             <div class="col-md-2 mb-2 d-flex align-items-end">
-                <a href="{{ route('admin.puskesmas.index') }}" class="btn btn-default btn-block">
+                <a href="{{ route('puskesmas.index') }}" class="btn btn-default btn-block">
                     <i class="fas fa-undo mr-1"></i> Reset
                 </a>
             </div>
@@ -97,7 +97,7 @@
         <h3 class="card-title font-weight-bold mb-0">
             <i class="fas fa-clinic-medical mr-1 text-teal"></i> {{ $pageTitle }} <span class="badge badge-light border ml-2">Total: {{ $puskesmas->count() }} Faskes</span>
         </h3>
-        <a href="{{ route('admin.puskesmas.create') }}" class="btn btn-sm btn-teal font-weight-bold shadow-sm text-white" style="background-color: #20c997;">
+        <a href="{{ route('puskesmas.create') }}" class="btn btn-sm btn-teal font-weight-bold shadow-sm text-white" style="background-color: #20c997;">
             <i class="fas fa-plus mr-1"></i> Tambah Faskes
         </a>
     </div>
@@ -155,13 +155,13 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('admin.puskesmas.show', $pkm->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
+                                <a href="{{ route('puskesmas.show', $pkm->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('admin.puskesmas.edit', $pkm->encrypted_id) }}" class="btn btn-warning" title="Edit Faskes">
+                                <a href="{{ route('puskesmas.edit', $pkm->encrypted_id) }}" class="btn btn-warning" title="Edit Faskes">
                                     <i class="fas fa-pencil-alt"></i>
                                 </a>
-                                <button type="button" class="btn btn-danger" title="Hapus Faskes" onclick="confirmDelete('{{ route('admin.puskesmas.destroy', $pkm->encrypted_id) }}', '{{ addslashes($pkm->name) }}')">
+                                <button type="button" class="btn btn-danger" title="Hapus Faskes" onclick="confirmDelete('{{ route('puskesmas.destroy', $pkm->encrypted_id) }}', '{{ addslashes($pkm->name) }}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>

@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.patients.index') }}">Pasien TB</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('patients.index') }}">Pasien TB</a></li>
     <li class="breadcrumb-item active">{{ $isEdit ? 'Edit Pasien' : 'Tambah Pasien' }}</li>
 @endsection
 
@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Rekam Medis Pasien' : 'Formulir Registrasi Pasien TB Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.patients.update', $patient->encrypted_id) : route('admin.patients.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('patients.update', $patient->encrypted_id) : route('patients.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')
@@ -227,7 +227,7 @@
                     </div>
 
                     <div class="card-footer bg-white border-top d-flex justify-content-between">
-                        <a href="{{ route('admin.patients.index') }}" class="btn btn-default font-weight-bold">
+                        <a href="{{ route('patients.index') }}" class="btn btn-default font-weight-bold">
                             <i class="fas fa-times mr-1"></i> Batal
                         </a>
                         <button type="submit" class="btn btn-danger font-weight-bold shadow-sm">
@@ -250,7 +250,7 @@
             return;
         }
 
-        $.getJSON('{{ route("admin.regions.ajax.districts") }}?province_id=' + provinceId, function (data) {
+        $.getJSON('{{ route("regions.ajax.districts") }}?province_id=' + provinceId, function (data) {
             let options = '<option value="">-- Pilih Kabupaten/Kota --</option>';
             $.each(data, function (key, item) {
                 options += '<option value="' + item.id + '">' + item.name + '</option>';
@@ -268,7 +268,7 @@
             return;
         }
 
-        $.getJSON('{{ route("admin.regions.ajax.subdistricts") }}?district_id=' + districtId, function (data) {
+        $.getJSON('{{ route("regions.ajax.subdistricts") }}?district_id=' + districtId, function (data) {
             let options = '<option value="">-- Pilih Kecamatan --</option>';
             $.each(data, function (key, item) {
                 options += '<option value="' + item.id + '">' + item.name + '</option>';
@@ -284,7 +284,7 @@
             return;
         }
 
-        $.getJSON('{{ route("admin.regions.ajax.villages") }}?subdistrict_id=' + subdistrictId, function (data) {
+        $.getJSON('{{ route("regions.ajax.villages") }}?subdistrict_id=' + subdistrictId, function (data) {
             let options = '<option value="">-- Pilih Kelurahan/Desa --</option>';
             $.each(data, function (key, item) {
                 options += '<option value="' + item.id + '">' + item.name + '</option>';

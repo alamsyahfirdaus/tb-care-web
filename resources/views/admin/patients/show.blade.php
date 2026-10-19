@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.patients.index') }}">Pasien TB</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('patients.index') }}">Pasien TB</a></li>
     <li class="breadcrumb-item active">Detail: {{ optional($patient->user)->name }}</li>
 @endsection
 
@@ -35,7 +35,7 @@
                             @else
                                 <span class="badge badge-warning px-3 py-2 text-md font-weight-bold">Belum Ada Pengobatan</span>
                             @endif
-                            <a href="{{ route('admin.patients.edit', $patient->encrypted_id) }}" class="btn btn-sm btn-outline-secondary font-weight-bold ml-2">
+                            <a href="{{ route('patients.edit', $patient->encrypted_id) }}" class="btn btn-sm btn-outline-secondary font-weight-bold ml-2">
                                 <i class="fas fa-edit mr-1"></i> Edit Data
                             </a>
                         </div>
@@ -473,7 +473,7 @@
                                                     </td>
                                                     <td class="text-xs" style="max-width: 300px;">{{ $scr->recommendation ?? '-' }}</td>
                                                     <td class="text-center">
-                                                        <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-xs btn-primary font-weight-bold">
+                                                        <a href="{{ route('screenings.show', $scr->encrypted_id) }}" class="btn btn-xs btn-primary font-weight-bold">
                                                             <i class="fas fa-eye"></i> Detail Skrining
                                                         </a>
                                                     </td>

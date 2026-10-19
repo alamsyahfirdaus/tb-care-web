@@ -6,7 +6,7 @@
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filter Jejak Audit</h3>
         <div class="card-tools">
-            <form action="{{ route('admin.activity-logs.clear') }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus log lama yang berumur lebih dari 30 hari?');">
+            <form action="{{ route('activity_logs.clear') }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus log lama yang berumur lebih dari 30 hari?');">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-danger">
                     <i class="fas fa-trash-alt mr-1"></i> Bersihkan Log Lama (&gt; 30 Hari)
@@ -15,7 +15,7 @@
         </div>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.activity-logs.index') }}" class="row">
+        <form method="GET" action="{{ route('activity_logs.index') }}" class="row">
             <div class="col-md-4 mb-2">
                 <label class="small text-muted font-weight-bold">Modul Sistem</label>
                 <select name="module" class="form-control select2">
@@ -31,7 +31,7 @@
             </div>
             <div class="col-md-2 mb-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary mr-1 flex-fill"><i class="fas fa-search"></i> Cari</button>
-                <a href="{{ route('admin.activity-logs.index') }}" class="btn btn-default"><i class="fas fa-undo"></i></a>
+                <a href="{{ route('activity_logs.index') }}" class="btn btn-default"><i class="fas fa-undo"></i></a>
             </div>
         </form>
     </div>

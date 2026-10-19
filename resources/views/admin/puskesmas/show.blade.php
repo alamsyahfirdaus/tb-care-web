@@ -56,10 +56,10 @@
                 </div>
 
                 <div class="d-flex justify-content-between">
-                    <a href="{{ route('admin.puskesmas.edit', $pkm->encrypted_id) }}" class="btn btn-warning btn-block mr-1">
+                    <a href="{{ route('puskesmas.edit', $pkm->encrypted_id) }}" class="btn btn-warning btn-block mr-1">
                         <i class="fas fa-pencil-alt mr-1"></i> Edit Data
                     </a>
-                    <a href="{{ route('admin.puskesmas.index') }}" class="btn btn-default btn-block ml-1">
+                    <a href="{{ route('puskesmas.index') }}" class="btn btn-default btn-block ml-1">
                         <i class="fas fa-arrow-left mr-1"></i> Kembali
                     </a>
                 </div>
@@ -131,7 +131,7 @@
                                         </td>
                                         <td class="text-center">
                                             @if($officer->user_id)
-                                            <a href="{{ route('admin.users.show', optional($officer->user)->encrypted_id ?? encrypt_id($officer->user_id)) }}" class="btn btn-sm btn-info" title="Lihat Profil Petugas">
+                                            <a href="{{ route('users.show', optional($officer->user)->encrypted_id ?? encrypt_id($officer->user_id)) }}" class="btn btn-sm btn-info" title="Lihat Profil Petugas">
                                                 <i class="fas fa-user"></i>
                                             </a>
                                             @endif
@@ -180,7 +180,7 @@
                                             <small class="text-muted">{{ $pat->village->name ?? ($pat->subdistrict->name ?? '-') }}</small>
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('admin.patients.show', $pat->encrypted_id) }}" class="btn btn-sm btn-info" title="Lihat Rekam Medis Pasien">
+                                            <a href="{{ route('patients.show', $pat->encrypted_id) }}" class="btn btn-sm btn-info" title="Lihat Rekam Medis Pasien">
                                                 <i class="fas fa-folder-open"></i>
                                             </a>
                                         </td>
@@ -239,7 +239,7 @@
                                             <small class="text-muted">{{ $scr->screened_at ? $scr->screened_at->format('d/m/Y') : ($scr->created_at ? $scr->created_at->format('d/m/Y') : '-') }}</small>
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-sm btn-info" title="Lihat Detail Skrining">
+                                            <a href="{{ route('screenings.show', $scr->encrypted_id) }}" class="btn btn-sm btn-info" title="Lihat Detail Skrining">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>

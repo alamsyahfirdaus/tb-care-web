@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.screenings.index') }}">Skrining TB</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('screenings.index') }}">Skrining TB</a></li>
     <li class="breadcrumb-item active">{{ $riskFilter ?? ($statusFilter == 'Perlu Tindak Lanjut' ? 'Perlu Tindak Lanjut' : 'Semua Skrining') }}</li>
 @endsection
 
@@ -10,19 +10,19 @@
     <div class="row mb-3">
         <div class="col-12">
             <div class="btn-group btn-group-sm flex-wrap" role="group">
-                <a href="{{ route('admin.screenings.index') }}" class="btn {{ empty($riskFilter) && empty($statusFilter) ? 'btn-primary' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('screenings.index') }}" class="btn {{ empty($riskFilter) && empty($statusFilter) ? 'btn-primary' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-list mr-1"></i> Semua Skrining
                 </a>
-                <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Rendah']) }}" class="btn {{ $riskFilter == 'Risiko Rendah' ? 'btn-success' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('screenings.index', ['risk' => 'Risiko Rendah']) }}" class="btn {{ $riskFilter == 'Risiko Rendah' ? 'btn-success' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-shield-alt mr-1"></i> Risiko Rendah
                 </a>
-                <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Sedang']) }}" class="btn {{ $riskFilter == 'Risiko Sedang' ? 'btn-warning' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('screenings.index', ['risk' => 'Risiko Sedang']) }}" class="btn {{ $riskFilter == 'Risiko Sedang' ? 'btn-warning' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-exclamation-circle mr-1"></i> Risiko Sedang
                 </a>
-                <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Tinggi']) }}" class="btn {{ $riskFilter == 'Risiko Tinggi' ? 'btn-danger' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('screenings.index', ['risk' => 'Risiko Tinggi']) }}" class="btn {{ $riskFilter == 'Risiko Tinggi' ? 'btn-danger' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-biohazard mr-1"></i> Risiko Tinggi
                 </a>
-                <a href="{{ route('admin.screenings.action_needed') }}" class="btn {{ $statusFilter == 'Perlu Tindak Lanjut' ? 'btn-danger' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('screenings.action_needed') }}" class="btn {{ $statusFilter == 'Perlu Tindak Lanjut' ? 'btn-danger' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-bell mr-1"></i> Perlu Tindak Lanjut
                 </a>
             </div>
@@ -32,7 +32,7 @@
     <!-- Filter Card -->
     <div class="card card-outline card-warning filter-card mb-3 shadow-sm">
         <div class="card-body py-2">
-            <form action="{{ route('admin.screenings.index') }}" method="GET" class="form-row align-items-center">
+            <form action="{{ route('screenings.index') }}" method="GET" class="form-row align-items-center">
                 @if($riskFilter)
                     <input type="hidden" name="risk" value="{{ $riskFilter }}">
                 @endif
@@ -74,7 +74,7 @@
                     <button type="submit" class="btn btn-sm btn-primary font-weight-bold mr-1 flex-grow-1" title="Filter Data">
                         <i class="fas fa-filter"></i>
                     </button>
-                    <a href="{{ route('admin.screenings.index') }}" class="btn btn-sm btn-default" title="Reset">
+                    <a href="{{ route('screenings.index') }}" class="btn btn-sm btn-default" title="Reset">
                         <i class="fas fa-undo"></i>
                     </a>
                 </div>
@@ -112,7 +112,7 @@
                             <tr>
                                 <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                 <td>
-                                    <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="font-weight-bold text-primary">
+                                    <a href="{{ route('screenings.show', $scr->encrypted_id) }}" class="font-weight-bold text-primary">
                                         {{ $scr->code }}
                                     </a>
                                 </td>
@@ -157,11 +157,11 @@
                                     @endif
                                 </td>
                                 <td class="text-center text-nowrap">
-                                    <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-info btn-xs font-weight-bold" title="Buka Detail & Seluruh Jawaban">
+                                    <a href="{{ route('screenings.show', $scr->encrypted_id) }}" class="btn btn-info btn-xs font-weight-bold" title="Buka Detail & Seluruh Jawaban">
                                         <i class="fas fa-eye"></i> Detail
                                     </a>
                                     <button type="button" class="btn btn-danger btn-xs" title="Hapus Skrining" 
-                                            onclick="confirmDelete('{{ route('admin.screenings.destroy', $scr->encrypted_id) }}', 'Skrining {{ $scr->code }} - {{ addslashes($scr->person_name) }}')">
+                                            onclick="confirmDelete('{{ route('screenings.destroy', $scr->encrypted_id) }}', 'Skrining {{ $scr->code }} - {{ addslashes($scr->person_name) }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>

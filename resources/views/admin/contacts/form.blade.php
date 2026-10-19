@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.contacts.index') }}">Kontak Erat</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('contacts.index') }}">Kontak Erat</a></li>
     <li class="breadcrumb-item active">{{ $isEdit ? 'Edit Kontak' : 'Tambah Kontak' }}</li>
 @endsection
 
@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Data Kontak Erat' : 'Formulir Pencatatan Kontak Erat Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.contacts.update', $contact->encrypted_id) : route('admin.contacts.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('contacts.update', $contact->encrypted_id) : route('contacts.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')
@@ -122,7 +122,7 @@
                         </div>
                     </div>
                     <div class="card-footer bg-white border-top d-flex justify-content-between">
-                        <a href="{{ route('admin.contacts.index') }}" class="btn btn-default font-weight-bold">
+                        <a href="{{ route('contacts.index') }}" class="btn btn-default font-weight-bold">
                             <i class="fas fa-times mr-1"></i> Batal
                         </a>
                         <button type="submit" class="btn btn-teal font-weight-bold shadow-sm text-white" style="background-color: #20c997;">

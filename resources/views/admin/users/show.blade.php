@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.users.index') }}">Pengguna</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Pengguna</a></li>
     <li class="breadcrumb-item active">Detail: {{ $user->name }}</li>
 @endsection
 
@@ -70,10 +70,10 @@
                     </ul>
 
                     <div class="d-flex justify-content-between">
-                        <a href="{{ route('admin.users.edit', $user->encrypted_id) }}" class="btn btn-warning btn-sm font-weight-bold flex-grow-1 mr-2">
+                        <a href="{{ route('users.edit', $user->encrypted_id) }}" class="btn btn-warning btn-sm font-weight-bold flex-grow-1 mr-2">
                             <i class="fas fa-edit mr-1"></i> Edit Data
                         </a>
-                        <a href="{{ route('admin.users.index') }}" class="btn btn-default btn-sm font-weight-bold">
+                        <a href="{{ route('users.index') }}" class="btn btn-default btn-sm font-weight-bold">
                             <i class="fas fa-arrow-left mr-1"></i> Kembali
                         </a>
                     </div>
@@ -91,7 +91,7 @@
                             <h3 class="card-title font-weight-bold text-danger">
                                 <i class="fas fa-id-card mr-1"></i> Rekam Medis Pasien Terhubung
                             </h3>
-                            <a href="{{ route('admin.patients.show', $user->patient->encrypted_id) }}" class="btn btn-xs btn-outline-danger font-weight-bold">
+                            <a href="{{ route('patients.show', $user->patient->encrypted_id) }}" class="btn btn-xs btn-outline-danger font-weight-bold">
                                 <i class="fas fa-external-link-alt mr-1"></i> Buka Detail Lengkap Pasien
                             </a>
                         </div>
@@ -132,7 +132,7 @@
                 @else
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle mr-1"></i> Pengguna terdaftar sebagai Pasien, namun belum ada profil rekam medis pasien di database. 
-                        <a href="{{ route('admin.patients.create') }}" class="font-weight-bold text-dark underline">Klik di sini untuk membuatkan profil pasien.</a>
+                        <a href="{{ route('patients.create') }}" class="font-weight-bold text-dark underline">Klik di sini untuk membuatkan profil pasien.</a>
                     </div>
                 @endif
             @endif
@@ -178,9 +178,30 @@
                                 </div>
                             </div>
 
-                            @if($user->officer->kaderAreas->count() > 0)
+                            @if($user->officer->officer_type_id == 4)
+                                @php
+                                    $canManageKaderArea = false;
+                                    if (auth()->check()) {
+                                        $curUser = auth()->user();
+                                        if ($curUser->user_type_id == 1) {
+                                            $canManageKaderArea = true;
+                                        } elseif ($curUser->user_type_id == 3) {
+                                            $curPjtb = \App\Models\Officer::where('user_id', $curUser->id)->first();
+                                            if ($curPjtb && $curPjtb->officer_type_id == 3 && $curPjtb->puskesmas_id == optional($user->officer)->puskesmas_id) {
+                                                $canManageKaderArea = true;
+                                            }
+                                        }
+                                    }
+                                @endphp
                                 <hr>
-                                <h6 class="font-weight-bold text-dark"><i class="fas fa-map-marked-alt mr-1"></i> Wilayah Binaan Kader (Kader Areas):</h6>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="font-weight-bold text-dark m-0"><i class="fas fa-map-marked-alt mr-1"></i> Wilayah Binaan Kader (Kader Areas):</h6>
+                                    @if($canManageKaderArea)
+                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modalAddKaderArea">
+                                            <i class="fas fa-plus-circle mr-1"></i> Tambah Wilayah Binaan
+                                        </button>
+                                    @endif
+                                </div>
                                 <div class="table-responsive">
                                     <table id="userKaderAreasTable" class="table table-sm table-bordered table-striped data-table">
                                         <thead>
@@ -189,17 +210,37 @@
                                                 <th>Kelurahan / Desa</th>
                                                 <th>RW</th>
                                                 <th>RT</th>
+                                                @if($canManageKaderArea)
+                                                    <th style="width: 80px; text-align: center;">Aksi</th>
+                                                @endif
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($user->officer->kaderAreas as $area)
+                                            @forelse($user->officer->kaderAreas as $area)
                                                 <tr>
                                                     <td>{{ optional($area->subdistrict)->name ?? '-' }}</td>
                                                     <td>{{ optional($area->village)->name ?? '-' }}</td>
                                                     <td>{{ $area->rw }}</td>
                                                     <td>{{ $area->rt ?? 'Semua RT' }}</td>
+                                                    @if($canManageKaderArea)
+                                                        <td class="text-center">
+                                                            <form action="{{ route('kader-areas.destroy', $area->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus wilayah binaan ini?');" style="display:inline;">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-danger btn-xs" title="Hapus Wilayah">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    @endif
                                                 </tr>
-                                            @endforeach
+                                            @empty
+                                                <tr>
+                                                    <td colspan="{{ $canManageKaderArea ? 5 : 4 }}" class="text-center text-muted py-3">
+                                                        <em>Belum ada wilayah binaan yang ditetapkan untuk Kader ini.</em>
+                                                    </td>
+                                                </tr>
+                                            @endforelse
                                         </tbody>
                                     </table>
                                 </div>
@@ -247,4 +288,94 @@
             </div>
         </div>
     </div>
+
+    @if($user->officer && $user->officer->officer_type_id == 4)
+        <!-- Modal Tambah Wilayah Binaan -->
+        <div class="modal fade" id="modalAddKaderArea" tabindex="-1" role="dialog" aria-labelledby="modalAddKaderAreaLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <form action="{{ route('kader-areas.store') }}" method="POST" id="formAddKaderArea">
+                        @csrf
+                        <input type="hidden" name="officer_id" value="{{ $user->officer->id }}">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title font-weight-bold" id="modalAddKaderAreaLabel">
+                                <i class="fas fa-map-marker-alt mr-1"></i> Tambah Wilayah Binaan Kader
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="area_subdistrict_id">Kecamatan <span class="text-danger">*</span></label>
+                                <select class="form-control" name="subdistrict_id" id="area_subdistrict_id" required>
+                                    <option value="">-- Pilih Kecamatan --</option>
+                                    @foreach($subdistricts ?? [] as $sub)
+                                        <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="area_village_id">Kelurahan / Desa <span class="text-danger">*</span></label>
+                                <select class="form-control" name="village_id" id="area_village_id" required disabled>
+                                    <option value="">-- Pilih Kecamatan Terlebih Dahulu --</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label for="area_rw">RW <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="rw" id="area_rw" placeholder="Contoh: 01" maxlength="5" required>
+                                    <small class="text-muted">Nomor RW binaan</small>
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label for="area_rt">RT <span class="text-muted">(Opsional)</span></label>
+                                    <input type="text" class="form-control" name="rt" id="area_rt" placeholder="Contoh: 02" maxlength="5">
+                                    <small class="text-muted">Kosongkan jika membina semua RT di RW ini</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary font-weight-bold">
+                                <i class="fas fa-save mr-1"></i> Simpan Wilayah
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @push('scripts')
+        <script>
+            $(document).ready(function() {
+                $('#area_subdistrict_id').on('change', function() {
+                    let subdistrictId = $(this).val();
+                    let $villageSelect = $('#area_village_id');
+                    $villageSelect.empty().prop('disabled', true);
+
+                    if (subdistrictId) {
+                        $villageSelect.append('<option value="">Memuat desa...</option>');
+                        $.ajax({
+                            url: '{{ url("kader-areas/villages") }}/' + subdistrictId,
+                            type: 'GET',
+                            dataType: 'json',
+                            success: function(data) {
+                                $villageSelect.empty().append('<option value="">-- Pilih Kelurahan/Desa --</option>');
+                                $.each(data, function(key, village) {
+                                    $villageSelect.append('<option value="' + village.id + '">' + village.name + '</option>');
+                                });
+                                $villageSelect.prop('disabled', false);
+                            },
+                            error: function() {
+                                $villageSelect.empty().append('<option value="">Gagal memuat desa</option>');
+                            }
+                        });
+                    } else {
+                        $villageSelect.append('<option value="">-- Pilih Kecamatan Terlebih Dahulu --</option>');
+                    }
+                });
+            });
+        </script>
+        @endpush
+    @endif
 @endsection

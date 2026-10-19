@@ -112,10 +112,10 @@ class AdminDeleteCrudTest extends TestCase
         $scrId = $scr->id;
 
         // Perform DELETE request with encrypted ID
-        $response = $this->actingAs($this->admin)->delete(route('admin.patients.destroy', $patient->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('patients.destroy', $patient->encrypted_id));
 
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.patients.index'));
+        $response->assertRedirect(route('patients.index'));
         $response->assertSessionHas('success');
 
         // Verify Database: Patient & User are gone
@@ -145,7 +145,7 @@ class AdminDeleteCrudTest extends TestCase
     {
         // A. Attempt to delete Admin ID 1
         $adminEnc = User::find(1)->encrypted_id;
-        $responseAdmin = $this->actingAs($this->admin)->delete(route('admin.users.destroy', $adminEnc));
+        $responseAdmin = $this->actingAs($this->admin)->delete(route('users.destroy', $adminEnc));
         $responseAdmin->assertStatus(302);
         $responseAdmin->assertSessionHas('error');
         $this->assertNotNull(User::find(1));
@@ -161,9 +161,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $testUserId = $testUser->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.users.destroy', $testUser->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('users.destroy', $testUser->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.users.index'));
+        $response->assertRedirect(route('users.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(User::find($testUserId));
@@ -198,9 +198,9 @@ class AdminDeleteCrudTest extends TestCase
         $scrId = $scr->id;
         $ansId = $answer->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.screenings.destroy', $scr->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('screenings.destroy', $scr->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.screenings.index'));
+        $response->assertRedirect(route('screenings.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(Screening::find($scrId));
@@ -228,9 +228,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $examId = $exam->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.examinations.destroy', $exam->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('examinations.destroy', $exam->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.examinations.index'));
+        $response->assertRedirect(route('examinations.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(ClinicalExamination::find($examId));
@@ -255,9 +255,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $trId = $treatment->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.treatments.destroy', $treatment->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('treatments.destroy', $treatment->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.treatments.index'));
+        $response->assertRedirect(route('treatments.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(PatientTreatment::find($trId));
@@ -285,9 +285,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $cId = $contact->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.contacts.destroy', $contact->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('contacts.destroy', $contact->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.contacts.index'));
+        $response->assertRedirect(route('contacts.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(CloseContact::find($cId));
@@ -304,7 +304,7 @@ class AdminDeleteCrudTest extends TestCase
         // A. Puskesmas in use
         $inUsePkm = Puskesmas::whereHas('patients')->orWhereHas('screenings')->first();
         if ($inUsePkm) {
-            $resp = $this->actingAs($this->admin)->delete(route('admin.puskesmas.destroy', $inUsePkm->encrypted_id));
+            $resp = $this->actingAs($this->admin)->delete(route('puskesmas.destroy', $inUsePkm->encrypted_id));
             $resp->assertStatus(302);
             $resp->assertSessionHas('error');
             $this->assertNotNull(Puskesmas::find($inUsePkm->id));
@@ -320,9 +320,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $pkmId = $standalone->id;
 
-        $resp2 = $this->actingAs($this->admin)->delete(route('admin.puskesmas.destroy', $standalone->encrypted_id));
+        $resp2 = $this->actingAs($this->admin)->delete(route('puskesmas.destroy', $standalone->encrypted_id));
         $resp2->assertStatus(302);
-        $resp2->assertRedirect(route('admin.puskesmas.index'));
+        $resp2->assertRedirect(route('puskesmas.index'));
         $resp2->assertSessionHas('success');
 
         $this->assertNull(Puskesmas::find($pkmId));
@@ -339,7 +339,7 @@ class AdminDeleteCrudTest extends TestCase
         // A. Subdistrict in use
         $inUseSub = Subdistrict::whereHas('villages')->first();
         if ($inUseSub) {
-            $resp = $this->actingAs($this->admin)->delete(route('admin.regions.subdistricts.destroy', $inUseSub->encrypted_id));
+            $resp = $this->actingAs($this->admin)->delete(route('regions.subdistricts.destroy', $inUseSub->encrypted_id));
             $resp->assertStatus(302);
             $resp->assertSessionHas('error');
             $this->assertNotNull(Subdistrict::find($inUseSub->id));
@@ -352,7 +352,7 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $subId = $standaloneSub->id;
 
-        $respSub = $this->actingAs($this->admin)->delete(route('admin.regions.subdistricts.destroy', $standaloneSub->encrypted_id));
+        $respSub = $this->actingAs($this->admin)->delete(route('regions.subdistricts.destroy', $standaloneSub->encrypted_id));
         $respSub->assertStatus(302);
         $respSub->assertSessionHas('success');
         $this->assertNull(Subdistrict::find($subId));
@@ -364,7 +364,7 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $vilId = $standaloneVil->id;
 
-        $respVil = $this->actingAs($this->admin)->delete(route('admin.regions.villages.destroy', $standaloneVil->encrypted_id));
+        $respVil = $this->actingAs($this->admin)->delete(route('regions.villages.destroy', $standaloneVil->encrypted_id));
         $respVil->assertStatus(302);
         $respVil->assertSessionHas('success');
         $this->assertNull(Village::find($vilId));
@@ -383,9 +383,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $matId = $mat->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.education.destroy', $mat->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('education.destroy', $mat->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.education.index'));
+        $response->assertRedirect(route('education.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(EducationalMaterial::find($matId));
@@ -407,9 +407,9 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $nId = $notif->id;
 
-        $response = $this->actingAs($this->admin)->delete(route('admin.notifications.destroy', $notif->encrypted_id));
+        $response = $this->actingAs($this->admin)->delete(route('notifications.destroy', $notif->encrypted_id));
         $response->assertStatus(302);
-        $response->assertRedirect(route('admin.notifications.index'));
+        $response->assertRedirect(route('notifications.index'));
         $response->assertSessionHas('success');
 
         $this->assertNull(SystemNotification::find($nId));
@@ -426,7 +426,7 @@ class AdminDeleteCrudTest extends TestCase
         // A. Regimen in use
         $inUseRegimen = TreatmentType::whereHas('patientTreatments')->first();
         if ($inUseRegimen) {
-            $resp = $this->actingAs($this->admin)->delete(route('admin.master.treatments.destroy', $inUseRegimen->encrypted_id));
+            $resp = $this->actingAs($this->admin)->delete(route('master.treatments.destroy', $inUseRegimen->encrypted_id));
             $resp->assertStatus(302);
             $resp->assertSessionHas('error');
             $this->assertNotNull(TreatmentType::find($inUseRegimen->id));
@@ -441,7 +441,7 @@ class AdminDeleteCrudTest extends TestCase
         ]);
         $ttId = $standalone->id;
 
-        $resp2 = $this->actingAs($this->admin)->delete(route('admin.master.treatments.destroy', $standalone->encrypted_id));
+        $resp2 = $this->actingAs($this->admin)->delete(route('master.treatments.destroy', $standalone->encrypted_id));
         $resp2->assertStatus(302);
         $resp2->assertSessionHas('success');
 
@@ -457,7 +457,7 @@ class AdminDeleteCrudTest extends TestCase
     public function test_delete_with_tampered_encrypted_id_aborts_404()
     {
         $tamperedEncId = 'eyJpdiI6IlFvM0tEZmR3QXRmUGJ2UWJ...InvalidCorrupted...';
-        $response = $this->actingAs($this->admin)->delete('/admin/patients/' . $tamperedEncId);
+        $response = $this->actingAs($this->admin)->delete('/patients/' . $tamperedEncId);
         $response->assertStatus(404);
     }
 }

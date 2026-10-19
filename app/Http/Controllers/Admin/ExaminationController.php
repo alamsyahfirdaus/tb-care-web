@@ -105,7 +105,7 @@ class ExaminationController extends Controller
         if (!$examination->isAccessibleBy(auth()->user())) {
             abort(403, 'Anda tidak memiliki hak akses ke data pemeriksaan ini.');
         }
-        return redirect()->route('admin.examinations.edit', $examination);
+        return redirect()->route('examinations.edit', $examination);
     }
 
     public function edit($id)
@@ -165,7 +165,7 @@ class ExaminationController extends Controller
 
                 ActivityLog::log('Perbarui Pemeriksaan TB', 'Pemeriksaan', "Memperbarui data pemeriksaan {$examination->examination_code}.");
 
-                return redirect()->route('admin.examinations.index')->with('success', 'Data pemeriksaan berhasil diperbarui.');
+                return redirect()->route('examinations.index')->with('success', 'Data pemeriksaan berhasil diperbarui.');
             } else {
                 $code = 'EXAM-' . Carbon::parse($request->examination_date)->format('Ym') . '-' . str_pad(ClinicalExamination::count() + 1, 4, '0', STR_PAD_LEFT);
 
@@ -183,7 +183,7 @@ class ExaminationController extends Controller
 
                 ActivityLog::log('Tambah Pemeriksaan TB', 'Pemeriksaan', "Mencatat hasil pemeriksaan {$exam->examination_type} kode {$code}.");
 
-                return redirect()->route('admin.examinations.index')->with('success', 'Hasil pemeriksaan laboratorium berhasil disimpan.');
+                return redirect()->route('examinations.index')->with('success', 'Hasil pemeriksaan laboratorium berhasil disimpan.');
             }
         });
     }
@@ -214,6 +214,6 @@ class ExaminationController extends Controller
 
         ActivityLog::log('Hapus Pemeriksaan TB', 'Pemeriksaan', "Menghapus data pemeriksaan {$code}.");
 
-        return redirect()->route('admin.examinations.index')->with('success', "Pemeriksaan {$code} berhasil dihapus.");
+        return redirect()->route('examinations.index')->with('success', "Pemeriksaan {$code} berhasil dihapus.");
     }
 }

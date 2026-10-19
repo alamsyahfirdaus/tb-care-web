@@ -10,7 +10,7 @@
                     {{ $isEdit ? 'Edit Fasilitas Kesehatan' : 'Tambah Fasilitas Kesehatan Baru' }}
                 </h3>
             </div>
-            <form action="{{ $isEdit ? route('admin.puskesmas.update', $puskesmas->encrypted_id) : route('admin.puskesmas.store') }}" method="POST">
+            <form action="{{ $isEdit ? route('puskesmas.update', $puskesmas->encrypted_id) : route('puskesmas.store') }}" method="POST">
                 @csrf
                 @if($isEdit)
                     @method('PUT')
@@ -86,7 +86,7 @@
                 </div>
 
                 <div class="card-footer bg-light d-flex justify-content-between">
-                    <a href="{{ route('admin.puskesmas.index') }}" class="btn btn-default">
+                    <a href="{{ route('puskesmas.index') }}" class="btn btn-default">
                         <i class="fas fa-arrow-left mr-1"></i> Batal / Kembali
                     </a>
                     <button type="submit" class="btn btn-primary px-4">

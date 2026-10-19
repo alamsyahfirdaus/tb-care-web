@@ -5,12 +5,12 @@
     <div class="card-header p-0 pt-1 border-bottom-0">
         <ul class="nav nav-tabs" id="masterTabs">
             <li class="nav-item">
-                <a class="nav-link font-weight-bold {{ $tab == 'questions' ? 'active' : '' }}" href="{{ route('admin.master.index', ['tab' => 'questions']) }}">
+                <a class="nav-link font-weight-bold {{ $tab == 'questions' ? 'active' : '' }}" href="{{ route('master.index', ['tab' => 'questions']) }}">
                     <i class="fas fa-question-circle mr-1 text-primary"></i> Pertanyaan Skrining TB ({{ $questions->count() }})
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link font-weight-bold {{ $tab == 'treatments' ? 'active' : '' }}" href="{{ route('admin.master.index', ['tab' => 'treatments']) }}">
+                <a class="nav-link font-weight-bold {{ $tab == 'treatments' ? 'active' : '' }}" href="{{ route('master.index', ['tab' => 'treatments']) }}">
                     <i class="fas fa-pills mr-1 text-success"></i> Standar Regimen Pengobatan ({{ $treatmentTypes->count() }})
                 </a>
             </li>
@@ -63,7 +63,7 @@
                         <!-- Modal Edit Pertanyaan -->
                         <div class="modal fade" id="editModal{{ $q->encrypted_id }}" tabindex="-1" role="dialog" aria-hidden="true">
                             <div class="modal-dialog">
-                                <form action="{{ route('admin.master.questions.update', $q->encrypted_id) }}" method="POST">
+                                <form action="{{ route('master.questions.update', $q->encrypted_id) }}" method="POST">
                                     @csrf
                                     @method('PUT')
                                     <div class="modal-content">
@@ -131,7 +131,7 @@
                                 <button type="button" class="btn btn-sm btn-warning mr-1" data-toggle="modal" data-target="#editTreatmentModal{{ $tt->encrypted_id }}" title="Edit Regimen">
                                     <i class="fas fa-pencil-alt"></i>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.master.treatments.destroy', $tt->encrypted_id) }}', 'Regimen {{ addslashes($tt->treatment_type) }}')" title="Hapus Regimen">
+                                <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('master.treatments.destroy', $tt->encrypted_id) }}', 'Regimen {{ addslashes($tt->treatment_type) }}')" title="Hapus Regimen">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -140,7 +140,7 @@
                         <!-- Modal Edit Regimen -->
                         <div class="modal fade" id="editTreatmentModal{{ $tt->encrypted_id }}" tabindex="-1" role="dialog" aria-hidden="true">
                             <div class="modal-dialog">
-                                <form action="{{ route('admin.master.treatments.update', $tt->encrypted_id) }}" method="POST">
+                                <form action="{{ route('master.treatments.update', $tt->encrypted_id) }}" method="POST">
                                     @csrf
                                     @method('PUT')
                                     <div class="modal-content">
@@ -188,7 +188,7 @@
             <!-- Modal Tambah Regimen -->
             <div class="modal fade" id="modalAddTreatment" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog">
-                    <form action="{{ route('admin.master.treatments.store') }}" method="POST">
+                    <form action="{{ route('master.treatments.store') }}" method="POST">
                         @csrf
                         <div class="modal-content">
                             <div class="modal-header bg-success text-white">

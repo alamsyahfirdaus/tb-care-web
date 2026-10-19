@@ -77,7 +77,7 @@ class MasterDataController extends Controller
 
         ActivityLog::log('Tambah Regimen Pengobatan', 'Master Data', "Menambahkan tipe pengobatan: {$tt->treatment_type}.");
 
-        return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', 'Tipe pengobatan berhasil ditambahkan.');
+        return redirect()->route('master.index', ['tab' => 'treatments'])->with('success', 'Tipe pengobatan berhasil ditambahkan.');
     }
 
     public function updateTreatmentType(Request $request, $id)
@@ -113,7 +113,7 @@ class MasterDataController extends Controller
 
         ActivityLog::log('Edit Regimen Pengobatan', 'Master Data', "Memperbarui tipe pengobatan: {$tt->treatment_type}.");
 
-        return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', 'Regimen pengobatan berhasil diperbarui.');
+        return redirect()->route('master.index', ['tab' => 'treatments'])->with('success', 'Regimen pengobatan berhasil diperbarui.');
     }
 
     public function destroyTreatmentType($id)
@@ -124,7 +124,7 @@ class MasterDataController extends Controller
 
         $inUse = \App\Models\PatientTreatment::where('treatment_type_id', $id)->count();
         if ($inUse > 0) {
-            return redirect()->route('admin.master.index', ['tab' => 'treatments'])
+            return redirect()->route('master.index', ['tab' => 'treatments'])
                 ->with('error', "Regimen '{$name}' tidak dapat dihapus karena sedang digunakan oleh {$inUse} riwayat pengobatan pasien.");
         }
 
@@ -133,6 +133,6 @@ class MasterDataController extends Controller
         });
         ActivityLog::log('Hapus Regimen Pengobatan', 'Master Data', "Menghapus tipe pengobatan: {$name}.");
 
-        return redirect()->route('admin.master.index', ['tab' => 'treatments'])->with('success', "Regimen pengobatan '{$name}' berhasil dihapus.");
+        return redirect()->route('master.index', ['tab' => 'treatments'])->with('success', "Regimen pengobatan '{$name}' berhasil dihapus.");
     }
 }

@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\KaderArea;
 use App\Models\Officer;
 use App\Models\Village;
+use App\Models\ActivityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,7 +29,7 @@ class KaderAreaController extends Controller
             'rt.max'                  => 'RT maksimal 5 karakter.',
         ]);
 
-        $officer = Officer::find($validated['officer_id']);
+        $officer = Officer::with('user')->find($validated['officer_id']);
         if (!$officer) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['status' => false, 'message' => 'Petugas Kader tidak ditemukan.'], 404);
@@ -79,13 +81,17 @@ class KaderAreaController extends Controller
             return redirect()->back()->with('error', 'Wilayah binaan ini sudah terdaftar untuk Kader tersebut.');
         }
 
-        KaderArea::create([
+        $area = KaderArea::create([
             'officer_id'     => $validated['officer_id'],
             'subdistrict_id' => $validated['subdistrict_id'],
             'village_id'     => $validated['village_id'],
             'rw'             => $rw,
             'rt'             => $rt,
         ]);
+
+        $kaderName = optional($officer->user)->name ?? 'Kader';
+        $rtText = $rt ? "RT {$rt}" : "Semua RT";
+        ActivityLog::log('Tambah Wilayah Kader', 'Pengguna', "Menetapkan wilayah RW {$rw} {$rtText} untuk Kader {$kaderName}.");
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -99,8 +105,8 @@ class KaderAreaController extends Controller
 
     public function destroy($id)
     {
-        $areaId = is_numeric($id) ? $id : base64_decode($id);
-        $area = KaderArea::with('officer')->find($areaId);
+        $areaId = is_numeric($id) ? $id : decrypt_id($id);
+        $area = KaderArea::with(['officer.user'])->find($areaId);
 
         if (!$area) {
             if (request()->ajax() || request()->wantsJson()) {
@@ -127,7 +133,13 @@ class KaderAreaController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki hak untuk menghapus wilayah binaan ini.');
         }
 
+        $kaderName = optional(optional($area->officer)->user)->name ?? 'Kader';
+        $rw = $area->rw;
+        $rtText = $area->rt ? "RT {$area->rt}" : "Semua RT";
+
         $area->delete();
+
+        ActivityLog::log('Hapus Wilayah Kader', 'Pengguna', "Menghapus wilayah RW {$rw} {$rtText} dari penugasan Kader {$kaderName}.");
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([

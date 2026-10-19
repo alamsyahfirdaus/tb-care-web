@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.treatments.index') }}">Pengobatan</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('treatments.index') }}">Pengobatan</a></li>
     <li class="breadcrumb-item active">Monitoring Minum Obat</li>
 @endsection
 
@@ -40,7 +40,7 @@
     <!-- Filter Card -->
     <div class="card card-outline card-info filter-card mb-3 shadow-sm">
         <div class="card-body py-2">
-            <form action="{{ route('admin.treatments.monitoring') }}" method="GET" class="form-row align-items-center">
+            <form action="{{ route('treatments.monitoring') }}" method="GET" class="form-row align-items-center">
                 <div class="col-md-3 my-1">
                     <label class="text-xs text-muted mb-0">Pilih Tanggal:</label>
                     <input type="date" name="date" value="{{ $dateFilter }}" class="form-control form-control-sm">
@@ -64,7 +64,7 @@
                 </div>
                 <div class="col-md-2 my-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-sm btn-info font-weight-bold mr-1 flex-grow-1"><i class="fas fa-filter"></i> Filter</button>
-                    <a href="{{ route('admin.treatments.monitoring') }}" class="btn btn-sm btn-default" title="Hari Ini"><i class="fas fa-undo"></i></a>
+                    <a href="{{ route('treatments.monitoring') }}" class="btn btn-sm btn-default" title="Hari Ini"><i class="fas fa-undo"></i></a>
                 </div>
             </form>
         </div>
@@ -103,7 +103,7 @@
                                 <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                 <td>
                                     @if($patient)
-                                        <a href="{{ route('admin.patients.show', $patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
+                                        <a href="{{ route('patients.show', $patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                             {{ optional($patient->user)->name ?? 'Pasien #' . ($patient->patient_number ?? $loop->iteration) }}
                                         </a>
                                         <span class="text-xs text-muted">NIK: {{ $patient->nik ?? '-' }}</span>
@@ -144,7 +144,7 @@
                                 <td class="text-xs text-muted">{{ $rec->notes ?? '-' }}</td>
                                 <td class="text-center">
                                     @if(!$rec->is_verified)
-                                        <form action="{{ route('admin.treatments.verify_medication', $rec->encrypted_id) }}" method="POST" class="d-inline">
+                                        <form action="{{ route('treatments.verify_medication', $rec->encrypted_id) }}" method="POST" class="d-inline">
                                             @csrf
                                             @method('PATCH')
                                             <button type="submit" class="btn btn-xs btn-success font-weight-bold">

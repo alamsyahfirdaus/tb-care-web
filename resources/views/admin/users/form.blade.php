@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.users.index') }}">Pengguna</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Pengguna</a></li>
     <li class="breadcrumb-item active">{{ $isEdit ? 'Edit Akun' : 'Tambah Akun' }}</li>
 @endsection
 
@@ -15,7 +15,7 @@
                         {{ $isEdit ? 'Formulir Perbarui Data Akun Pengguna' : 'Formulir Pendaftaran Akun Pengguna Baru' }}
                     </h3>
                 </div>
-                <form action="{{ $isEdit ? route('admin.users.update', $user->encrypted_id) : route('admin.users.store') }}" method="POST">
+                <form action="{{ $isEdit ? route('users.update', $user->encrypted_id) : route('users.store') }}" method="POST">
                     @csrf
                     @if($isEdit)
                         @method('PUT')
@@ -181,7 +181,7 @@
                         </div>
                     </div>
                     <div class="card-footer bg-white border-top d-flex justify-content-between">
-                        <a href="{{ route('admin.users.index') }}" class="btn btn-default font-weight-bold">
+                        <a href="{{ route('users.index') }}" class="btn btn-default font-weight-bold">
                             <i class="fas fa-times mr-1"></i> Batal
                         </a>
                         <button type="submit" class="btn btn-primary font-weight-bold shadow-sm">

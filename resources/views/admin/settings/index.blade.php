@@ -38,17 +38,17 @@
             <div class="card-header p-0 pt-1 border-bottom-0">
                 <ul class="nav nav-tabs" id="settingsTabs">
                     <li class="nav-item">
-                        <a class="nav-link font-weight-bold {{ $tab == 'profile' ? 'active' : '' }}" href="{{ route('admin.settings.index', ['tab' => 'profile']) }}">
+                        <a class="nav-link font-weight-bold {{ $tab == 'profile' ? 'active' : '' }}" href="{{ route('settings.index', ['tab' => 'profile']) }}">
                             <i class="fas fa-user-cog mr-1 text-primary"></i> Edit Profil & Kata Sandi
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link font-weight-bold {{ $tab == 'roles' ? 'active' : '' }}" href="{{ route('admin.settings.index', ['tab' => 'roles']) }}">
+                        <a class="nav-link font-weight-bold {{ $tab == 'roles' ? 'active' : '' }}" href="{{ route('settings.index', ['tab' => 'roles']) }}">
                             <i class="fas fa-shield-alt mr-1 text-success"></i> Hak Akses & Role ({{ $userTypes->count() }})
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link font-weight-bold {{ $tab == 'system' ? 'active' : '' }}" href="{{ route('admin.settings.index', ['tab' => 'system']) }}">
+                        <a class="nav-link font-weight-bold {{ $tab == 'system' ? 'active' : '' }}" href="{{ route('settings.index', ['tab' => 'system']) }}">
                             <i class="fas fa-sliders-h mr-1 text-info"></i> Konfigurasi Sistem
                         </a>
                     </li>
@@ -56,7 +56,7 @@
             </div>
             <div class="card-body">
                 @if($tab == 'profile')
-                    <form action="{{ route('admin.settings.profile.update') }}" method="POST">
+                    <form action="{{ route('settings.profile.update') }}" method="POST">
                         @csrf
                         @method('PUT')
 
@@ -169,7 +169,7 @@
 
                 @else
                     <!-- System Config -->
-                    <form action="{{ route('admin.settings.system.update') }}" method="POST">
+                    <form action="{{ route('settings.system.update') }}" method="POST">
                         @csrf
                         <div class="form-group row">
                             <label class="col-sm-3 col-form-label font-weight-bold">Nama Aplikasi</label>

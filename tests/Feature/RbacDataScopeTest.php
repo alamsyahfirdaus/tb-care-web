@@ -264,10 +264,10 @@ class RbacDataScopeTest extends TestCase
         $this->assertTrue($this->patientB->isAccessibleBy($this->adminUser));
 
         // 2. Web Admin Index and Show
-        $response = $this->actingAs($this->adminUser)->get(route('admin.patients.index'));
+        $response = $this->actingAs($this->adminUser)->get(route('patients.index'));
         $response->assertStatus(200);
 
-        $responseShow = $this->actingAs($this->adminUser)->get(route('admin.patients.show', $this->patientB->encrypted_id));
+        $responseShow = $this->actingAs($this->adminUser)->get(route('patients.show', $this->patientB->encrypted_id));
         $responseShow->assertStatus(200);
 
         // 3. API Index & Show
@@ -316,10 +316,10 @@ class RbacDataScopeTest extends TestCase
         $this->assertFalse($this->patientB->isAccessibleBy($this->dinkesProvUser));
 
         // Web Admin Detail
-        $resIn = $this->actingAs($this->dinkesProvUser)->get(route('admin.patients.show', $this->patientA1->encrypted_id));
+        $resIn = $this->actingAs($this->dinkesProvUser)->get(route('patients.show', $this->patientA1->encrypted_id));
         $resIn->assertStatus(200);
 
-        $resOut = $this->actingAs($this->dinkesProvUser)->get(route('admin.patients.show', $this->patientB->encrypted_id));
+        $resOut = $this->actingAs($this->dinkesProvUser)->get(route('patients.show', $this->patientB->encrypted_id));
         $resOut->assertStatus(403);
 
         // API Detail
@@ -342,10 +342,10 @@ class RbacDataScopeTest extends TestCase
         $this->assertFalse($this->patientB->isAccessibleBy($this->dinkesKabUser));
 
         // Web Admin
-        $resIn = $this->actingAs($this->dinkesKabUser)->get(route('admin.patients.show', $this->patientA1->encrypted_id));
+        $resIn = $this->actingAs($this->dinkesKabUser)->get(route('patients.show', $this->patientA1->encrypted_id));
         $resIn->assertStatus(200);
 
-        $resOut = $this->actingAs($this->dinkesKabUser)->get(route('admin.patients.show', $this->patientB->encrypted_id));
+        $resOut = $this->actingAs($this->dinkesKabUser)->get(route('patients.show', $this->patientB->encrypted_id));
         $resOut->assertStatus(403);
 
         // API
@@ -370,10 +370,10 @@ class RbacDataScopeTest extends TestCase
         $this->assertFalse($this->patientB->isAccessibleBy($this->pjtbUser));
 
         // Web Admin
-        $resIn = $this->actingAs($this->pjtbUser)->get(route('admin.patients.show', $this->patientA1->encrypted_id));
+        $resIn = $this->actingAs($this->pjtbUser)->get(route('patients.show', $this->patientA1->encrypted_id));
         $resIn->assertStatus(200);
 
-        $resOut = $this->actingAs($this->pjtbUser)->get(route('admin.patients.show', $this->patientB->encrypted_id));
+        $resOut = $this->actingAs($this->pjtbUser)->get(route('patients.show', $this->patientB->encrypted_id));
         $resOut->assertStatus(403);
 
         // API
@@ -422,11 +422,11 @@ class RbacDataScopeTest extends TestCase
     public function test_mutation_idor_and_child_entities_protected()
     {
         // 1. Web Admin: PJTB attempts to delete Patient B (from Puskesmas B) -> 403
-        $delResponse = $this->actingAs($this->pjtbUser)->delete(route('admin.patients.destroy', $this->patientB->encrypted_id));
+        $delResponse = $this->actingAs($this->pjtbUser)->delete(route('patients.destroy', $this->patientB->encrypted_id));
         $delResponse->assertStatus(403);
 
         // 2. Web Admin: PJTB attempts to edit Patient B -> 403
-        $editResponse = $this->actingAs($this->pjtbUser)->get(route('admin.patients.edit', $this->patientB->encrypted_id));
+        $editResponse = $this->actingAs($this->pjtbUser)->get(route('patients.edit', $this->patientB->encrypted_id));
         $editResponse->assertStatus(403);
 
         // 3. API: PJTB attempts to delete Patient B -> 403
@@ -450,7 +450,7 @@ class RbacDataScopeTest extends TestCase
         $this->assertTrue($contactB->isAccessibleBy($this->patientUserB));
 
         // PJTB attempting to delete Contact of Patient B via Web Admin -> 403
-        $delContact = $this->actingAs($this->pjtbUser)->delete(route('admin.contacts.destroy', $contactB->encrypted_id));
+        $delContact = $this->actingAs($this->pjtbUser)->delete(route('contacts.destroy', $contactB->encrypted_id));
         $delContact->assertStatus(403);
 
         // 5. Child Entity: PatientTreatment of Patient B
@@ -549,15 +549,15 @@ class RbacDataScopeTest extends TestCase
 
         // 3. Legacy Web Routes Isolation for Patients
         // Patient attempting to access legacy /patients -> redirect 302
-        $resPatients = $this->actingAs($this->patientUserA)->get(route('patients'));
+        $resPatients = $this->actingAs($this->patientUserA)->get(route('patients.index'));
         $resPatients->assertStatus(302);
 
         // Patient attempting to access legacy /pkm -> redirect 302
-        $resPkm = $this->actingAs($this->patientUserA)->get(route('pkm'));
+        $resPkm = $this->actingAs($this->patientUserA)->get(route('puskesmas.index'));
         $resPkm->assertStatus(302);
 
         // Patient attempting to access legacy /user/1/list -> redirect 302
-        $resUserList = $this->actingAs($this->patientUserA)->get(route('user.list', ['id' => base64_encode(2)]));
+        $resUserList = $this->actingAs($this->patientUserA)->get(route('users.index'));
         $resUserList->assertStatus(302);
 
         // 4. IDOR on Treatment Visits
@@ -621,19 +621,19 @@ class RbacDataScopeTest extends TestCase
 
         // 6. Report User Scoping (Admin only)
         // PJTB attempting to view User Report -> 403
-        $resReportUser = $this->actingAs($this->pjtbUser)->get('/admin/reports?type=user');
+        $resReportUser = $this->actingAs($this->pjtbUser)->get('/reports?type=user');
         $resReportUser->assertStatus(403);
 
         // PJTB attempting to print User Report -> 403
-        $resPrintUser = $this->actingAs($this->pjtbUser)->get('/admin/reports/print?type=user');
+        $resPrintUser = $this->actingAs($this->pjtbUser)->get('/reports/print?type=user');
         $resPrintUser->assertStatus(403);
 
         // PJTB attempting to export CSV User Report -> 403
-        $resExportUser = $this->actingAs($this->pjtbUser)->get(route('admin.reports.export', ['type' => 'user']));
+        $resExportUser = $this->actingAs($this->pjtbUser)->get(route('reports.export', ['type' => 'user']));
         $resExportUser->assertStatus(403);
 
         // Admin attempting to view User Report -> 200
-        $resAdminReport = $this->actingAs($this->adminUser)->get('/admin/reports?type=user');
+        $resAdminReport = $this->actingAs($this->adminUser)->get('/reports?type=user');
         $resAdminReport->assertStatus(200);
     }
 }

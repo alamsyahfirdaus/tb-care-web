@@ -214,6 +214,6 @@ class TreatmentController extends Controller
 
         ActivityLog::log('Hapus Pengobatan', 'Pengobatan', "Menghapus data riwayat pengobatan untuk {$patientName}.");
 
-        return redirect()->route('admin.treatments.index')->with('success', "Data pengobatan {$patientName} berhasil dihapus.");
+        return redirect()->route('treatments.index')->with('success', "Data pengobatan {$patientName} berhasil dihapus.");
     }
 }

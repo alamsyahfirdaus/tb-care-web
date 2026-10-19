@@ -15,7 +15,7 @@
                     <span>Responden teridentifikasi memiliki gejala klinis TB batuk >= 2 minggu atau batuk darah yang membutuhkan pemeriksaan dahak TCM di Puskesmas.</span>
                 </div>
                 <div class="ml-auto">
-                    <a href="{{ route('admin.screenings.action_needed') }}" class="btn btn-sm btn-light font-weight-bold text-danger text-nowrap">
+                    <a href="{{ route('screenings.action_needed') }}" class="btn btn-sm btn-light font-weight-bold text-danger text-nowrap">
                         <i class="fas fa-arrow-right mr-1"></i> Tindak Lanjuti Sekarang
                     </a>
                 </div>
@@ -32,7 +32,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Total Pengguna</span>
                     <span class="info-box-number text-xl font-weight-bold text-dark">{{ number_format($totalPengguna) }}</span>
-                    <a href="{{ route('admin.users.index') }}" class="text-xs text-primary font-weight-bold">Lihat Semua Pengguna <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('users.index') }}" class="text-xs text-primary font-weight-bold">Lihat Semua Pengguna <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Total Pasien TB</span>
                     <span class="info-box-number text-xl font-weight-bold text-dark">{{ number_format($totalPasien) }}</span>
-                    <a href="{{ route('admin.patients.index') }}" class="text-xs text-danger font-weight-bold">Lihat Rekam Pasien <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('patients.index') }}" class="text-xs text-danger font-weight-bold">Lihat Rekam Pasien <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -56,7 +56,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Total Skrining</span>
                     <span class="info-box-number text-xl font-weight-bold text-dark">{{ number_format($totalSkrining) }}</span>
-                    <a href="{{ route('admin.screenings.index') }}" class="text-xs text-info font-weight-bold">Lihat Riwayat Skrining <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('screenings.index') }}" class="text-xs text-info font-weight-bold">Lihat Riwayat Skrining <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Risiko Rendah</span>
                     <span class="info-box-number text-xl font-weight-bold text-success">{{ number_format($risikoRendah) }}</span>
-                    <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Rendah']) }}" class="text-xs text-success font-weight-bold">Filter Rendah <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Rendah']) }}" class="text-xs text-success font-weight-bold">Filter Rendah <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -80,7 +80,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Risiko Sedang</span>
                     <span class="info-box-number text-xl font-weight-bold text-warning">{{ number_format($risikoSedang) }}</span>
-                    <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Sedang']) }}" class="text-xs text-warning font-weight-bold">Filter Sedang <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Sedang']) }}" class="text-xs text-warning font-weight-bold">Filter Sedang <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -92,7 +92,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Risiko Tinggi</span>
                     <span class="info-box-number text-xl font-weight-bold text-danger">{{ number_format($risikoTinggi) }}</span>
-                    <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Tinggi']) }}" class="text-xs text-danger font-weight-bold">Filter Risiko Tinggi <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Tinggi']) }}" class="text-xs text-danger font-weight-bold">Filter Risiko Tinggi <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -104,7 +104,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Total Puskesmas</span>
                     <span class="info-box-number text-xl font-weight-bold text-dark">{{ number_format($totalPuskesmas) }}</span>
-                    <a href="{{ route('admin.puskesmas.index') }}" class="text-xs text-teal font-weight-bold">Daftar Faskes <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('puskesmas.index') }}" class="text-xs text-teal font-weight-bold">Daftar Faskes <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -116,7 +116,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted text-uppercase font-weight-bold" style="font-size: 0.75rem;">Konten Edukasi</span>
                     <span class="info-box-number text-xl font-weight-bold text-dark">{{ number_format($totalEdukasi) }}</span>
-                    <a href="{{ route('admin.education.index') }}" class="text-xs text-indigo font-weight-bold">Kelola Materi <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{{ route('education.index') }}" class="text-xs text-indigo font-weight-bold">Kelola Materi <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
         </div>
@@ -134,7 +134,7 @@
                 <div class="icon">
                     <i class="fas fa-pills"></i>
                 </div>
-                <a href="{{ route('admin.treatments.index', ['status' => 'Berjalan']) }}" class="small-box-footer">
+                <a href="{{ route('treatments.index', ['status' => 'Berjalan']) }}" class="small-box-footer">
                     Lihat Pasien Pengobatan <i class="fas fa-arrow-circle-right"></i>
                 </a>
             </div>
@@ -149,7 +149,7 @@
                 <div class="icon">
                     <i class="fas fa-check-double"></i>
                 </div>
-                <a href="{{ route('admin.treatments.monitoring') }}" class="small-box-footer">
+                <a href="{{ route('treatments.monitoring') }}" class="small-box-footer">
                     Buka Monitoring Pengobatan <i class="fas fa-arrow-circle-right"></i>
                 </a>
             </div>
@@ -164,7 +164,7 @@
                 <div class="icon">
                     <i class="fas fa-award"></i>
                 </div>
-                <a href="{{ route('admin.treatments.index', ['status' => 'Selesai']) }}" class="small-box-footer">
+                <a href="{{ route('treatments.index', ['status' => 'Selesai']) }}" class="small-box-footer">
                     Daftar Pasien Tuntas <i class="fas fa-arrow-circle-right"></i>
                 </a>
             </div>
@@ -233,7 +233,7 @@
                     <h3 class="card-title font-weight-bold">
                         <i class="fas fa-map-marker-alt mr-1 text-warning"></i> Grafik 3 — Distribusi Kasus & Skrining per Wilayah (Top Kecamatan)
                     </h3>
-                    <a href="{{ route('admin.regions.index') }}" class="text-sm font-weight-bold">Detail Wilayah &rarr;</a>
+                    <a href="{{ route('regions.index') }}" class="text-sm font-weight-bold">Detail Wilayah &rarr;</a>
                 </div>
                 <div class="card-body">
                     <div class="position-relative">
@@ -279,7 +279,7 @@
                 <div class="card-header border-transparent d-flex justify-content-between align-items-center">
                     <h3 class="card-title font-weight-bold"><i class="fas fa-clock mr-1 text-primary"></i> 5 Skrining Terbaru</h3>
                     <div class="card-tools">
-                        <a href="{{ route('admin.screenings.index') }}" class="btn btn-tool text-primary font-weight-bold">Lihat Semua</a>
+                        <a href="{{ route('screenings.index') }}" class="btn btn-tool text-primary font-weight-bold">Lihat Semua</a>
                     </div>
                 </div>
                 <div class="card-body">
@@ -302,7 +302,7 @@
                                     <tr>
                                         <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                         <td>
-                                            <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="font-weight-bold text-primary">
+                                            <a href="{{ route('screenings.show', $scr->encrypted_id) }}" class="font-weight-bold text-primary">
                                                 {{ $scr->code }}
                                             </a>
                                         </td>
@@ -336,7 +336,7 @@
                                             {{ $scr->screened_at ? $scr->screened_at->format('d/m/Y H:i') : $scr->created_at->format('d/m/Y') }}
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('admin.screenings.show', $scr->encrypted_id) }}" class="btn btn-xs btn-primary font-weight-bold">
+                                            <a href="{{ route('screenings.show', $scr->encrypted_id) }}" class="btn btn-xs btn-primary font-weight-bold">
                                                 <i class="fas fa-eye"></i> Detail
                                             </a>
                                         </td>
@@ -354,7 +354,7 @@
             <div class="card">
                 <div class="card-header border-transparent d-flex justify-content-between align-items-center">
                     <h3 class="card-title font-weight-bold"><i class="fas fa-history mr-1 text-secondary"></i> Log Aktivitas Sistem</h3>
-                    <a href="{{ route('admin.activity_logs.index') }}" class="btn btn-tool text-primary font-weight-bold">Semua Log</a>
+                    <a href="{{ route('activity_logs.index') }}" class="btn btn-tool text-primary font-weight-bold">Semua Log</a>
                 </div>
                 <div class="card-body p-0">
                     <ul class="products-list product-list-in-card pl-3 pr-3">

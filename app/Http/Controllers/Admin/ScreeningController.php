@@ -168,6 +168,6 @@ class ScreeningController extends Controller
 
         ActivityLog::log('Hapus Skrining TB', 'Skrining TB', "Menghapus data skrining {$code}.");
 
-        return redirect()->route('admin.screenings.index')->with('success', "Data skrining {$code} berhasil dihapus.");
+        return redirect()->route('screenings.index')->with('success', "Data skrining {$code} berhasil dihapus.");
     }
 }

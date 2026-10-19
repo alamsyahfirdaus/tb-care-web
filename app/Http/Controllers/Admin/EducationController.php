@@ -168,7 +168,7 @@ class EducationController extends Controller
                 $message = 'Materi edukasi berhasil diperbarui.';
             }
 
-            return redirect()->route('admin.education.show', $material)->with('success', $message);
+            return redirect()->route('education.show', $material)->with('success', $message);
         });
     }
 
@@ -197,7 +197,7 @@ class EducationController extends Controller
 
         ActivityLog::log('Hapus Edukasi', 'Edukasi', "Menghapus materi edukasi {$title}.");
 
-        return redirect()->route('admin.education.index')->with('success', "Materi '{$title}' berhasil dihapus.");
+        return redirect()->route('education.index')->with('success', "Materi '{$title}' berhasil dihapus.");
     }
 
     public function togglePublish($id)

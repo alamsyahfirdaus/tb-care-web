@@ -227,15 +227,15 @@
                             class="fas fa-bars"></i></a>
                 </li>
                 <li class="nav-item d-none d-sm-inline-block">
-                    <a href="{{ route('admin.dashboard') }}" class="nav-link"><i
+                    <a href="{{ route('dashboard') }}" class="nav-link"><i
                             class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
                 </li>
                 <li class="nav-item d-none d-sm-inline-block">
-                    <a href="{{ route('admin.screenings.index') }}" class="nav-link"><i
+                    <a href="{{ route('screenings.index') }}" class="nav-link"><i
                             class="fas fa-stethoscope mr-1"></i> Skrining TB</a>
                 </li>
                 <li class="nav-item d-none d-sm-inline-block">
-                    <a href="{{ route('admin.patients.index') }}" class="nav-link"><i
+                    <a href="{{ route('patients.index') }}" class="nav-link"><i
                             class="fas fa-user-injured mr-1"></i> Data Pasien</a>
                 </li>
             </ul>
@@ -265,13 +265,13 @@
                         <span class="dropdown-item dropdown-header font-weight-bold">{{ $notifCount }} Peringatan
                             Tindak Lanjut</span>
                         <div class="dropdown-divider"></div>
-                        <a href="{{ route('admin.screenings.action_needed') }}" class="dropdown-item">
+                        <a href="{{ route('screenings.action_needed') }}" class="dropdown-item">
                             <i class="fas fa-exclamation-circle text-danger mr-2"></i> {{ $notifCount }} Skrining
                             Perlu Tindak Lanjut
                             <span class="float-right text-muted text-sm">Segera</span>
                         </a>
                         <div class="dropdown-divider"></div>
-                        <a href="{{ route('admin.notifications.index') }}" class="dropdown-item dropdown-footer">Lihat
+                        <a href="{{ route('notifications.index') }}" class="dropdown-item dropdown-footer">Lihat
                             Semua Notifikasi</a>
                     </div>
                 </li>
@@ -296,7 +296,7 @@
                         </li>
                         <!-- Menu Footer-->
                         <li class="user-footer d-flex ">
-                            <a href="{{ route('admin.settings.profile') }}" class="btn btn-default btn-flat"><i
+                            <a href="{{ route('settings.profile') }}" class="btn btn-default btn-flat"><i
                                     class="fas fa-user mr-1"></i> Profil</a>
                             <a href="{{ route('logout') }}" class="btn btn-danger btn-flat"><i
                                     class="fas fa-sign-out-alt mr-1"></i> Keluar</a>
@@ -310,7 +310,7 @@
         <!-- Main Sidebar Container -->
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
             <!-- Brand Logo -->
-            <a href="{{ route('admin.dashboard') }}" class="brand-link">
+            <a href="{{ route('dashboard') }}" class="brand-link">
                 <span class="brand-text font-weight-bold">TB CARE</span>
             </a>
 
@@ -323,7 +323,7 @@
                             class="img-circle elevation-1" style="width: 36px; height: 36px;" alt="User Image">
                     </div>
                     <div class="info">
-                        <a href="{{ route('admin.settings.profile') }}"
+                        <a href="{{ route('settings.profile') }}"
                             class="d-block font-weight-bold text-white text-truncate" style="max-width: 170px;">
                             {{ Auth::user() ? Auth::user()->name : 'Administrator' }}
                         </a>
@@ -338,8 +338,8 @@
 
                         <!-- 1. DASHBOARD -->
                         <li class="nav-item">
-                            <a href="{{ route('admin.dashboard') }}"
-                                class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                            <a href="{{ route('dashboard') }}"
+                                class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-home"></i>
                                 <p>Beranda</p>
                             </a>
@@ -348,8 +348,8 @@
                         <li class="nav-header">MANAJEMEN UTAMA</li>
 
                         <!-- 2. PENGGUNA -->
-                        <li class="nav-item {{ request()->is('admin/users*') ? 'menu-open' : '' }}">
-                            <a href="#" class="nav-link {{ request()->is('admin/users*') ? 'active' : '' }}">
+                        <li class="nav-item {{ request()->is('users*') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->is('users*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-users text-primary"></i>
                                 <p>
                                     Pengguna
@@ -358,28 +358,28 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.users.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.users.index') && !request('role') ? 'active' : '' }}">
+                                    <a href="{{ route('users.index') }}"
+                                        class="nav-link {{ request()->routeIs('users.index') && !request('role') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Pengguna</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.users.index', ['role' => 2]) }}"
+                                    <a href="{{ route('users.index', ['role' => 2]) }}"
                                         class="nav-link {{ request('role') == '2' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Masyarakat / Pasien</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.users.index', ['role' => 3]) }}"
+                                    <a href="{{ route('users.index', ['role' => 3]) }}"
                                         class="nav-link {{ request('role') == '3' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Petugas / Nakes</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.users.index', ['role' => 1]) }}"
+                                    <a href="{{ route('users.index', ['role' => 1]) }}"
                                         class="nav-link {{ request('role') == '1' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Administrator</p>
@@ -389,9 +389,9 @@
                         </li>
 
                         <!-- 3. DATA PASIEN -->
-                        <li class="nav-item {{ request()->is('admin/patients*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('patients*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/patients*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('patients*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-user-injured text-danger"></i>
                                 <p>
                                     Data Pasien
@@ -400,15 +400,15 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.patients.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.patients.index') ? 'active' : '' }}">
+                                    <a href="{{ route('patients.index') }}"
+                                        class="nav-link {{ request()->routeIs('patients.index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Pasien</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.patients.create') }}"
-                                        class="nav-link {{ request()->routeIs('admin.patients.create') ? 'active' : '' }}">
+                                    <a href="{{ route('patients.create') }}"
+                                        class="nav-link {{ request()->routeIs('patients.create') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Tambah Pasien Baru</p>
                                     </a>
@@ -417,9 +417,9 @@
                         </li>
 
                         <!-- 4. SKRINING TB -->
-                        <li class="nav-item {{ request()->is('admin/screenings*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('screenings*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/screenings*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('screenings*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-stethoscope text-warning"></i>
                                 <p>
                                     Skrining TB
@@ -428,36 +428,36 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.screenings.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.screenings.index') && !request('risk') ? 'active' : '' }}">
+                                    <a href="{{ route('screenings.index') }}"
+                                        class="nav-link {{ request()->routeIs('screenings.index') && !request('risk') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Skrining</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Rendah']) }}"
+                                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Rendah']) }}"
                                         class="nav-link {{ request('risk') == 'Risiko Rendah' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon text-success"></i>
                                         <p>Risiko Rendah</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Sedang']) }}"
+                                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Sedang']) }}"
                                         class="nav-link {{ request('risk') == 'Risiko Sedang' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon text-warning"></i>
                                         <p>Risiko Sedang</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.screenings.index', ['risk' => 'Risiko Tinggi']) }}"
+                                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Tinggi']) }}"
                                         class="nav-link {{ request('risk') == 'Risiko Tinggi' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon text-danger"></i>
                                         <p>Risiko Tinggi</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.screenings.action_needed') }}"
-                                        class="nav-link {{ request()->routeIs('admin.screenings.action_needed') ? 'active' : '' }}">
+                                    <a href="{{ route('screenings.action_needed') }}"
+                                        class="nav-link {{ request()->routeIs('screenings.action_needed') ? 'active' : '' }}">
                                         <i class="fas fa-exclamation-triangle nav-icon text-danger"></i>
                                         <p>Perlu Tindak Lanjut</p>
                                     </a>
@@ -466,9 +466,9 @@
                         </li>
 
                         <!-- 5. PEMERIKSAAN -->
-                        <li class="nav-item {{ request()->is('admin/examinations*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('examinations*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/examinations*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('examinations*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-microscope text-cyan"></i>
                                 <p>
                                     Pemeriksaan
@@ -477,21 +477,21 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.examinations.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.examinations.index') ? 'active' : '' }}">
+                                    <a href="{{ route('examinations.index') }}"
+                                        class="nav-link {{ request()->routeIs('examinations.index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Pemeriksaan</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.examinations.index', ['view' => 'results']) }}"
+                                    <a href="{{ route('examinations.index', ['view' => 'results']) }}"
                                         class="nav-link {{ request('view') == 'results' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Hasil Pemeriksaan</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.examinations.index', ['view' => 'diagnosis']) }}"
+                                    <a href="{{ route('examinations.index', ['view' => 'diagnosis']) }}"
                                         class="nav-link {{ request('view') == 'diagnosis' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Diagnosis Pasien</p>
@@ -501,9 +501,9 @@
                         </li>
 
                         <!-- 6. PENGOBATAN -->
-                        <li class="nav-item {{ request()->is('admin/treatments*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('treatments*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/treatments*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('treatments*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-pills text-success"></i>
                                 <p>
                                     Pengobatan
@@ -512,21 +512,21 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.treatments.index', ['status' => 'Berjalan']) }}"
-                                        class="nav-link {{ request('status') == 'Berjalan' || (request()->routeIs('admin.treatments.index') && !request('status')) ? 'active' : '' }}">
+                                    <a href="{{ route('treatments.index', ['status' => 'Berjalan']) }}"
+                                        class="nav-link {{ request('status') == 'Berjalan' || (request()->routeIs('treatments.index') && !request('status')) ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon text-primary"></i>
                                         <p>Dalam Pengobatan</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.treatments.monitoring') }}"
-                                        class="nav-link {{ request()->routeIs('admin.treatments.monitoring') ? 'active' : '' }}">
+                                    <a href="{{ route('treatments.monitoring') }}"
+                                        class="nav-link {{ request()->routeIs('treatments.monitoring') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon text-info"></i>
                                         <p>Monitoring Pengobatan</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.treatments.index', ['status' => 'Selesai']) }}"
+                                    <a href="{{ route('treatments.index', ['status' => 'Selesai']) }}"
                                         class="nav-link {{ request('status') == 'Selesai' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon text-success"></i>
                                         <p>Hasil Pengobatan</p>
@@ -536,9 +536,9 @@
                         </li>
 
                         <!-- 7. KONTAK ERAT -->
-                        <li class="nav-item {{ request()->is('admin/contacts*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('contacts*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/contacts*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('contacts*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-people-arrows text-teal"></i>
                                 <p>
                                     Kontak Erat
@@ -547,21 +547,21 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.contacts.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.contacts.index') && !request('filter') ? 'active' : '' }}">
+                                    <a href="{{ route('contacts.index') }}"
+                                        class="nav-link {{ request()->routeIs('contacts.index') && !request('filter') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Kontak</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.contacts.index', ['filter' => 'keluarga']) }}"
+                                    <a href="{{ route('contacts.index', ['filter' => 'keluarga']) }}"
                                         class="nav-link {{ request('filter') == 'keluarga' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Kontak Keluarga</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.contacts.index', ['filter' => 'screening']) }}"
+                                    <a href="{{ route('contacts.index', ['filter' => 'screening']) }}"
                                         class="nav-link {{ request('filter') == 'screening' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Hasil Skrining Kontak</p>
@@ -573,9 +573,9 @@
                         <li class="nav-header">FASKES & WILAYAH</li>
 
                         <!-- 8. FASILITAS KESEHATAN -->
-                        <li class="nav-item {{ request()->is('admin/puskesmas*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('puskesmas*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/puskesmas*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('puskesmas*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-hospital-alt text-info"></i>
                                 <p>
                                     Fasilitas Kesehatan
@@ -584,21 +584,21 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.puskesmas.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.puskesmas.index') ? 'active' : '' }}">
+                                    <a href="{{ route('puskesmas.index') }}"
+                                        class="nav-link {{ request()->routeIs('puskesmas.index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Puskesmas</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.puskesmas.index', ['type' => 'klinik']) }}"
+                                    <a href="{{ route('puskesmas.index', ['type' => 'klinik']) }}"
                                         class="nav-link {{ request('type') == 'klinik' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Klinik</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.puskesmas.index', ['type' => 'rs']) }}"
+                                    <a href="{{ route('puskesmas.index', ['type' => 'rs']) }}"
                                         class="nav-link {{ request('type') == 'rs' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Rumah Sakit</p>
@@ -608,9 +608,9 @@
                         </li>
 
                         <!-- 9. WILAYAH -->
-                        <li class="nav-item {{ request()->is('admin/regions*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('regions*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/regions*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('regions*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-map-marked-alt text-warning"></i>
                                 <p>
                                     Wilayah
@@ -619,28 +619,28 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.regions.index', ['tier' => 'provinces']) }}"
+                                    <a href="{{ route('regions.index', ['tier' => 'provinces']) }}"
                                         class="nav-link {{ request('tier') == 'provinces' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Provinsi</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.regions.index', ['tier' => 'districts']) }}"
+                                    <a href="{{ route('regions.index', ['tier' => 'districts']) }}"
                                         class="nav-link {{ request('tier') == 'districts' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Kabupaten / Kota</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.regions.index', ['tier' => 'subdistricts']) }}"
+                                    <a href="{{ route('regions.index', ['tier' => 'subdistricts']) }}"
                                         class="nav-link {{ request('tier') == 'subdistricts' || !request('tier') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Kecamatan</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.regions.index', ['tier' => 'villages']) }}"
+                                    <a href="{{ route('regions.index', ['tier' => 'villages']) }}"
                                         class="nav-link {{ request('tier') == 'villages' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Desa / Kelurahan</p>
@@ -652,9 +652,9 @@
                         <li class="nav-header">MEDIA & KOMUNIKASI</li>
 
                         <!-- 10. EDUKASI -->
-                        <li class="nav-item {{ request()->is('admin/education*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('education*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/education*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('education*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-book-medical text-primary"></i>
                                 <p>
                                     Edukasi
@@ -663,21 +663,21 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.education.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.education.index') && !request('type') ? 'active' : '' }}">
+                                    <a href="{{ route('education.index') }}"
+                                        class="nav-link {{ request()->routeIs('education.index') && !request('type') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Konten</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.education.index', ['type' => 'image']) }}"
+                                    <a href="{{ route('education.index', ['type' => 'image']) }}"
                                         class="nav-link {{ request('type') == 'image' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Poster & Infografis</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.education.index', ['type' => 'video']) }}"
+                                    <a href="{{ route('education.index', ['type' => 'video']) }}"
                                         class="nav-link {{ request('type') == 'video' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Video Edukasi</p>
@@ -687,9 +687,9 @@
                         </li>
 
                         <!-- 11. NOTIFIKASI -->
-                        <li class="nav-item {{ request()->is('admin/notifications*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('notifications*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/notifications*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('notifications*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-bell text-secondary"></i>
                                 <p>
                                     Notifikasi
@@ -698,15 +698,15 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.notifications.index') }}"
-                                        class="nav-link {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}">
+                                    <a href="{{ route('notifications.index') }}"
+                                        class="nav-link {{ request()->routeIs('notifications.index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Semua Notifikasi</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.notifications.consultations') }}"
-                                        class="nav-link {{ request()->routeIs('admin.notifications.consultations') ? 'active' : '' }}">
+                                    <a href="{{ route('notifications.consultations') }}"
+                                        class="nav-link {{ request()->routeIs('notifications.consultations') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Pesan Konsultasi</p>
                                     </a>
@@ -717,9 +717,9 @@
                         <li class="nav-header">LAPORAN & ANALISIS</li>
 
                         <!-- 12. LAPORAN -->
-                        <li class="nav-item {{ request()->is('admin/reports*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('reports*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/reports*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-file-invoice text-success"></i>
                                 <p>
                                     Laporan
@@ -728,28 +728,28 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.reports.index', ['type' => 'screening']) }}"
+                                    <a href="{{ route('reports.index', ['type' => 'screening']) }}"
                                         class="nav-link {{ request('type') == 'screening' || !request('type') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Skrining</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.reports.index', ['type' => 'patients']) }}"
+                                    <a href="{{ route('reports.index', ['type' => 'patients']) }}"
                                         class="nav-link {{ request('type') == 'patients' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Pasien TB</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.reports.index', ['type' => 'regions']) }}"
+                                    <a href="{{ route('reports.index', ['type' => 'regions']) }}"
                                         class="nav-link {{ request('type') == 'regions' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Wilayah</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.reports.index', ['type' => 'users']) }}"
+                                    <a href="{{ route('reports.index', ['type' => 'users']) }}"
                                         class="nav-link {{ request('type') == 'users' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Pengguna</p>
@@ -760,8 +760,8 @@
 
                         <!-- 13. ANALITIK -->
                         <li class="nav-item">
-                            <a href="{{ route('admin.analytics.index') }}"
-                                class="nav-link {{ request()->routeIs('admin.analytics.index') ? 'active' : '' }}">
+                            <a href="{{ route('analytics.index') }}"
+                                class="nav-link {{ request()->routeIs('analytics.index') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-chart-pie text-purple"></i>
                                 <p>Analitik TB</p>
                             </a>
@@ -770,8 +770,8 @@
                         <li class="nav-header">SISTEM & KONFIGURASI</li>
 
                         <!-- 14. MASTER DATA -->
-                        <li class="nav-item {{ request()->is('admin/master*') ? 'menu-open' : '' }}">
-                            <a href="#" class="nav-link {{ request()->is('admin/master*') ? 'active' : '' }}">
+                        <li class="nav-item {{ request()->is('master*') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->is('master*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-database text-warning"></i>
                                 <p>
                                     Master Data
@@ -780,22 +780,22 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.master.questions') }}"
-                                        class="nav-link {{ request()->routeIs('admin.master.questions') ? 'active' : '' }}">
+                                    <a href="{{ route('master.questions') }}"
+                                        class="nav-link {{ request()->routeIs('master.questions') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Pertanyaan Skrining</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.master.treatment_types') }}"
-                                        class="nav-link {{ request()->routeIs('admin.master.treatment_types') ? 'active' : '' }}">
+                                    <a href="{{ route('master.treatment_types') }}"
+                                        class="nav-link {{ request()->routeIs('master.treatment_types') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Jenis Pengobatan</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.master.categories') }}"
-                                        class="nav-link {{ request()->routeIs('admin.master.categories') ? 'active' : '' }}">
+                                    <a href="{{ route('master.categories') }}"
+                                        class="nav-link {{ request()->routeIs('master.categories') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Kategori Data</p>
                                     </a>
@@ -805,17 +805,17 @@
 
                         <!-- 15. LOG AKTIVITAS -->
                         <li class="nav-item">
-                            <a href="{{ route('admin.activity_logs.index') }}"
-                                class="nav-link {{ request()->routeIs('admin.activity_logs.index') ? 'active' : '' }}">
+                            <a href="{{ route('activity_logs.index') }}"
+                                class="nav-link {{ request()->routeIs('activity_logs.index') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-history text-secondary"></i>
                                 <p>Log Aktivitas</p>
                             </a>
                         </li>
 
                         <!-- 16. PENGATURAN -->
-                        <li class="nav-item {{ request()->is('admin/settings*') ? 'menu-open' : '' }}">
+                        <li class="nav-item {{ request()->is('settings*') ? 'menu-open' : '' }}">
                             <a href="#"
-                                class="nav-link {{ request()->is('admin/settings*') ? 'active' : '' }}">
+                                class="nav-link {{ request()->is('settings*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-cog text-muted"></i>
                                 <p>
                                     Pengaturan
@@ -824,22 +824,22 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.settings.profile') }}"
-                                        class="nav-link {{ request()->routeIs('admin.settings.profile') ? 'active' : '' }}">
+                                    <a href="{{ route('settings.profile') }}"
+                                        class="nav-link {{ request()->routeIs('settings.profile') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Profil Admin</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.settings.roles') }}"
-                                        class="nav-link {{ request()->routeIs('admin.settings.roles') ? 'active' : '' }}">
+                                    <a href="{{ route('settings.roles') }}"
+                                        class="nav-link {{ request()->routeIs('settings.roles') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Role & Hak Akses</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('admin.settings.system') }}"
-                                        class="nav-link {{ request()->routeIs('admin.settings.system') ? 'active' : '' }}">
+                                    <a href="{{ route('settings.system') }}"
+                                        class="nav-link {{ request()->routeIs('settings.system') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Pengaturan Sistem</p>
                                     </a>
@@ -870,7 +870,7 @@
                         </div>
                         <div class="col-sm-6">
                             <ol class="breadcrumb float-sm-right">
-                                <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}"><i
+                                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i
                                             class="fas fa-home"></i> Beranda</a></li>
                                 @yield('breadcrumb')
                             </ol>

@@ -99,7 +99,7 @@
                 </ul>
 
                 <div class="mb-3">
-                    <form action="{{ route('admin.education.toggle-publish', $material->encrypted_id) }}" method="POST">
+                    <form action="{{ route('education.toggle-publish', $material->encrypted_id) }}" method="POST">
                         @csrf
                         @method('PATCH')
                         <button type="submit" class="btn btn-block {{ $material->is_publish ? 'btn-outline-secondary' : 'btn-success' }} mb-2">
@@ -108,15 +108,15 @@
                         </button>
                     </form>
 
-                    <a href="{{ route('admin.education.edit', $material->encrypted_id) }}" class="btn btn-warning btn-block mb-2">
+                    <a href="{{ route('education.edit', $material->encrypted_id) }}" class="btn btn-warning btn-block mb-2">
                         <i class="fas fa-pencil-alt mr-1"></i> Edit Materi
                     </a>
 
-                    <button type="button" class="btn btn-danger btn-block mb-2" onclick="confirmDelete('{{ route('admin.education.destroy', $material->encrypted_id) }}', '{{ addslashes($material->title_material) }}')">
+                    <button type="button" class="btn btn-danger btn-block mb-2" onclick="confirmDelete('{{ route('education.destroy', $material->encrypted_id) }}', '{{ addslashes($material->title_material) }}')">
                         <i class="fas fa-trash mr-1"></i> Hapus Konten
                     </button>
 
-                    <a href="{{ route('admin.education.index') }}" class="btn btn-default btn-block">
+                    <a href="{{ route('education.index') }}" class="btn btn-default btn-block">
                         <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar
                     </a>
                 </div>

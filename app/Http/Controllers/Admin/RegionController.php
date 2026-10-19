@@ -91,7 +91,7 @@ class RegionController extends Controller
 
         ActivityLog::log('Tambah Wilayah', 'Wilayah', "Menambahkan Kecamatan {$sub->name}.");
 
-        return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$sub->name} berhasil ditambahkan.");
+        return redirect()->route('regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$sub->name} berhasil ditambahkan.");
     }
 
     public function storeVillage(Request $request)
@@ -108,7 +108,7 @@ class RegionController extends Controller
 
         ActivityLog::log('Tambah Wilayah', 'Wilayah', "Menambahkan Desa/Kelurahan {$vil->name}.");
 
-        return redirect()->route('admin.regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$vil->name} berhasil ditambahkan.");
+        return redirect()->route('regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$vil->name} berhasil ditambahkan.");
     }
 
     public function updateSubdistrict(Request $request, $id)
@@ -130,7 +130,7 @@ class RegionController extends Controller
 
         ActivityLog::log('Perbarui Wilayah', 'Wilayah', "Memperbarui Kecamatan {$sub->name}.");
 
-        return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$sub->name} berhasil diperbarui.");
+        return redirect()->route('regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$sub->name} berhasil diperbarui.");
     }
 
     public function destroySubdistrict($id)
@@ -144,7 +144,7 @@ class RegionController extends Controller
         $hasPuskesmas = Puskesmas::where('subdistrict_id', $id)->exists();
 
         if ($hasVillages || $hasPatients || $hasPuskesmas) {
-            return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])
+            return redirect()->route('regions.index', ['tab' => 'subdistrict'])
                 ->with('error', "Kecamatan {$name} tidak dapat dihapus karena masih memiliki relasi data desa/kelurahan, faskes, atau pasien.");
         }
 
@@ -154,7 +154,7 @@ class RegionController extends Controller
 
         ActivityLog::log('Hapus Wilayah', 'Wilayah', "Menghapus Kecamatan {$name}.");
 
-        return redirect()->route('admin.regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$name} berhasil dihapus.");
+        return redirect()->route('regions.index', ['tab' => 'subdistrict'])->with('success', "Kecamatan {$name} berhasil dihapus.");
     }
 
     public function updateVillage(Request $request, $id)
@@ -176,7 +176,7 @@ class RegionController extends Controller
 
         ActivityLog::log('Perbarui Wilayah', 'Wilayah', "Memperbarui Desa/Kelurahan {$vil->name}.");
 
-        return redirect()->route('admin.regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$vil->name} berhasil diperbarui.");
+        return redirect()->route('regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$vil->name} berhasil diperbarui.");
     }
 
     public function destroyVillage($id)
@@ -189,7 +189,7 @@ class RegionController extends Controller
         $hasKaderAreas = KaderArea::where('village_id', $id)->exists();
 
         if ($hasPatients || $hasKaderAreas) {
-            return redirect()->route('admin.regions.index', ['tab' => 'village'])
+            return redirect()->route('regions.index', ['tab' => 'village'])
                 ->with('error', "Desa/Kelurahan {$name} tidak dapat dihapus karena masih digunakan pada data pasien atau wilayah tugas kader.");
         }
 
@@ -199,7 +199,7 @@ class RegionController extends Controller
 
         ActivityLog::log('Hapus Wilayah', 'Wilayah', "Menghapus Desa/Kelurahan {$name}.");
 
-        return redirect()->route('admin.regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$name} berhasil dihapus.");
+        return redirect()->route('regions.index', ['tab' => 'village'])->with('success', "Desa/Kelurahan {$name} berhasil dihapus.");
     }
 
     // AJAX API for Dependent Dropdown

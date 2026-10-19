@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.treatments.index') }}">Pengobatan</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('treatments.index') }}">Pengobatan</a></li>
     <li class="breadcrumb-item active">{{ $pageTitle }}</li>
 @endsection
 
@@ -10,16 +10,16 @@
     <div class="row mb-3">
         <div class="col-12 d-flex justify-content-between align-items-center">
             <div class="btn-group btn-group-sm">
-                <a href="{{ route('admin.treatments.index', ['status' => 'Berjalan']) }}" class="btn {{ $statusFilter == 'Berjalan' ? 'btn-success' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('treatments.index', ['status' => 'Berjalan']) }}" class="btn {{ $statusFilter == 'Berjalan' ? 'btn-success' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-pills mr-1"></i> Sedang Berjalan
                 </a>
-                <a href="{{ route('admin.treatments.monitoring') }}" class="btn btn-default font-weight-bold">
+                <a href="{{ route('treatments.monitoring') }}" class="btn btn-default font-weight-bold">
                     <i class="fas fa-camera mr-1 text-info"></i> Monitoring Foto Minum Obat
                 </a>
-                <a href="{{ route('admin.treatments.index', ['status' => 'Selesai']) }}" class="btn {{ $statusFilter == 'Selesai' ? 'btn-success' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('treatments.index', ['status' => 'Selesai']) }}" class="btn {{ $statusFilter == 'Selesai' ? 'btn-success' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-check-circle mr-1"></i> Selesai / Sembuh
                 </a>
-                <a href="{{ route('admin.treatments.index', ['status' => 'all']) }}" class="btn {{ $statusFilter == 'all' ? 'btn-success' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('treatments.index', ['status' => 'all']) }}" class="btn {{ $statusFilter == 'all' ? 'btn-success' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-list mr-1"></i> Semua Program
                 </a>
             </div>
@@ -29,7 +29,7 @@
     <!-- Filter Card -->
     <div class="card card-outline card-success filter-card mb-3 shadow-sm">
         <div class="card-body py-2">
-            <form action="{{ route('admin.treatments.index') }}" method="GET" class="form-row align-items-center">
+            <form action="{{ route('treatments.index') }}" method="GET" class="form-row align-items-center">
                 <input type="hidden" name="status" value="{{ $statusFilter }}">
                 <div class="col-md-4 my-1">
                     <div class="input-group input-group-sm">
@@ -57,7 +57,7 @@
                 </div>
                 <div class="col-md-2 my-1 d-flex">
                     <button type="submit" class="btn btn-sm btn-success font-weight-bold mr-1 flex-grow-1"><i class="fas fa-filter"></i> Filter</button>
-                    <a href="{{ route('admin.treatments.index', ['status' => $statusFilter]) }}" class="btn btn-sm btn-default"><i class="fas fa-undo"></i></a>
+                    <a href="{{ route('treatments.index', ['status' => $statusFilter]) }}" class="btn btn-sm btn-default"><i class="fas fa-undo"></i></a>
                 </div>
             </form>
         </div>
@@ -97,7 +97,7 @@
                                 <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                 <td>
                                     @if($tr->patient)
-                                        <a href="{{ route('admin.patients.show', $tr->patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
+                                        <a href="{{ route('patients.show', $tr->patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                             {{ optional($tr->patient->user)->name ?? 'Pasien #' . $tr->patient->id }}
                                         </a>
                                         <span class="text-xs text-muted">NIK: {{ $tr->patient->nik ?? '-' }}</span>
@@ -137,7 +137,7 @@
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
                                         @if($tr->patient)
-                                            <a href="{{ route('admin.patients.show', $tr->patient->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Lengkap">
+                                            <a href="{{ route('patients.show', $tr->patient->encrypted_id) }}" class="btn btn-info btn-xs" title="Lihat Rekam Lengkap">
                                                 <i class="fas fa-eye"></i> Rekam
                                             </a>
                                         @endif
@@ -145,7 +145,7 @@
                                             <i class="fas fa-edit"></i> Status
                                         </button>
                                         <button type="button" class="btn btn-danger btn-xs" title="Hapus Riwayat Pengobatan" 
-                                                onclick="confirmDelete('{{ route('admin.treatments.destroy', $tr->encrypted_id) }}', 'Pengobatan {{ addslashes(optional(optional($tr->patient)->user)->name ?? 'Pasien') }}')">
+                                                onclick="confirmDelete('{{ route('treatments.destroy', $tr->encrypted_id) }}', 'Pengobatan {{ addslashes(optional(optional($tr->patient)->user)->name ?? 'Pasien') }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -154,7 +154,7 @@
                                     <div class="modal fade text-left" id="modal-status-{{ $tr->encrypted_id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                         <div class="modal-dialog" role="document">
                                             <div class="modal-content">
-                                                <form action="{{ route('admin.treatments.update_status', $tr->encrypted_id) }}" method="POST">
+                                                <form action="{{ route('treatments.update_status', $tr->encrypted_id) }}" method="POST">
                                                     @csrf
                                                     @method('PATCH')
                                                     <div class="modal-header bg-success text-white">

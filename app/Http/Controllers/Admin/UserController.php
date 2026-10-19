@@ -88,7 +88,9 @@ class UserController extends Controller
             }
         ])->findOrFail($id);
 
-        return view('admin.users.show', compact('user'))->with([
+        $subdistricts = Subdistrict::orderBy('name')->get();
+
+        return view('admin.users.show', compact('user', 'subdistricts'))->with([
             'title'        => 'Detail Pengguna',
             'pageTitle'    => 'Detail Pengguna: ' . $user->name,
             'pageSubtitle' => 'Informasi akun, hak akses, dan relasi peran sistem kesehatan.'
@@ -202,7 +204,7 @@ class UserController extends Controller
 
                 ActivityLog::log('Perbarui Pengguna', 'Pengguna', "Memperbarui profil akun {$user->name} ({$user->username}).");
 
-                return redirect()->route('admin.users.show', $user)->with('success', 'Data akun pengguna berhasil diperbarui.');
+                return redirect()->route('users.show', $user)->with('success', 'Data akun pengguna berhasil diperbarui.');
             } else {
                 $user = User::create([
                     'name'           => $request->name,
@@ -228,7 +230,7 @@ class UserController extends Controller
 
                 ActivityLog::log('Tambah Pengguna Baru', 'Pengguna', "Membuat akun {$user->name} ({$user->username}) dengan peran ID {$user->user_type_id}.");
 
-                return redirect()->route('admin.users.show', $user)->with('success', 'Akun pengguna berhasil ditambahkan.');
+                return redirect()->route('users.show', $user)->with('success', 'Akun pengguna berhasil ditambahkan.');
             }
         });
     }
@@ -293,6 +295,6 @@ class UserController extends Controller
 
         ActivityLog::log('Hapus Pengguna', 'Pengguna', "Menghapus akun pengguna {$name}.");
 
-        return redirect()->route('admin.users.index')->with('success', "Akun pengguna {$name} berhasil dihapus.");
+        return redirect()->route('users.index')->with('success', "Akun pengguna {$name} berhasil dihapus.");
     }
 }

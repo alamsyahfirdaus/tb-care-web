@@ -12,7 +12,7 @@
             <div class="icon">
                 <i class="fas fa-bell"></i>
             </div>
-            <a href="{{ route('admin.notifications.index') }}" class="small-box-footer">Semua Notifikasi <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('notifications.index') }}" class="small-box-footer">Semua Notifikasi <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -24,7 +24,7 @@
             <div class="icon">
                 <i class="fas fa-bullhorn"></i>
             </div>
-            <a href="{{ route('admin.notifications.index', ['type' => 'Pengumuman']) }}" class="small-box-footer">Filter Pengumuman <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('notifications.index', ['type' => 'Pengumuman']) }}" class="small-box-footer">Filter Pengumuman <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -36,7 +36,7 @@
             <div class="icon">
                 <i class="fas fa-pills"></i>
             </div>
-            <a href="{{ route('admin.notifications.index', ['type' => 'Pengingat Minum Obat']) }}" class="small-box-footer">Filter Pengingat <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('notifications.index', ['type' => 'Pengingat Minum Obat']) }}" class="small-box-footer">Filter Pengingat <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -48,7 +48,7 @@
             <div class="icon">
                 <i class="fas fa-exclamation-circle"></i>
             </div>
-            <a href="{{ route('admin.notifications.index', ['type' => 'Peringatan Kasus']) }}" class="small-box-footer">Filter Peringatan <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('notifications.index', ['type' => 'Peringatan Kasus']) }}" class="small-box-footer">Filter Peringatan <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
 </div>
@@ -58,13 +58,13 @@
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filter & Buat Notifikasi</h3>
         <div class="card-tools">
-            <a href="{{ route('admin.notifications.create') }}" class="btn btn-sm btn-primary">
+            <a href="{{ route('notifications.create') }}" class="btn btn-sm btn-primary">
                 <i class="fas fa-paper-plane mr-1"></i> Buat / Kirim Notifikasi Baru
             </a>
         </div>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.notifications.index') }}" class="row">
+        <form method="GET" action="{{ route('notifications.index') }}" class="row">
             <div class="col-md-3 mb-2">
                 <label class="small text-muted font-weight-bold">Tipe Notifikasi</label>
                 <select name="type" class="form-control select2">
@@ -90,7 +90,7 @@
             </div>
             <div class="col-md-2 mb-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary mr-1 flex-fill"><i class="fas fa-search"></i> Cari</button>
-                <a href="{{ route('admin.notifications.index') }}" class="btn btn-default"><i class="fas fa-undo"></i></a>
+                <a href="{{ route('notifications.index') }}" class="btn btn-default"><i class="fas fa-undo"></i></a>
             </div>
         </form>
     </div>
@@ -102,7 +102,7 @@
         <h3 class="card-title font-weight-bold mb-0">
             <i class="fas fa-list mr-1 text-navy"></i> Riwayat Pengiriman Notifikasi <span class="badge badge-light border ml-2">Total: {{ $notifications->count() }} Pesan</span>
         </h3>
-        <a href="{{ route('admin.notifications.create') }}" class="btn btn-sm btn-primary font-weight-bold shadow-sm">
+        <a href="{{ route('notifications.create') }}" class="btn btn-sm btn-primary font-weight-bold shadow-sm">
             <i class="fas fa-plus mr-1"></i> Buat Notifikasi
         </a>
     </div>
@@ -163,13 +163,13 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('admin.notifications.show', $notif->encrypted_id) }}" class="btn btn-info" title="Lihat Rincian">
+                                <a href="{{ route('notifications.show', $notif->encrypted_id) }}" class="btn btn-info" title="Lihat Rincian">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('admin.notifications.edit', $notif->encrypted_id) }}" class="btn btn-warning" title="Edit Notifikasi">
+                                <a href="{{ route('notifications.edit', $notif->encrypted_id) }}" class="btn btn-warning" title="Edit Notifikasi">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button type="button" class="btn btn-danger" title="Hapus Notifikasi" onclick="confirmDelete('{{ route('admin.notifications.destroy', $notif->encrypted_id) }}', '{{ addslashes($notif->title) }}')">
+                                <button type="button" class="btn btn-danger" title="Hapus Notifikasi" onclick="confirmDelete('{{ route('notifications.destroy', $notif->encrypted_id) }}', '{{ addslashes($notif->title) }}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>

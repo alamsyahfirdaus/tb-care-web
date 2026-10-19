@@ -12,7 +12,7 @@
             <div class="icon">
                 <i class="fas fa-map"></i>
             </div>
-            <a href="{{ route('admin.regions.index', ['tab' => 'province']) }}" class="small-box-footer">
+            <a href="{{ route('regions.index', ['tab' => 'province']) }}" class="small-box-footer">
                 Lihat Provinsi <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
@@ -26,7 +26,7 @@
             <div class="icon">
                 <i class="fas fa-city"></i>
             </div>
-            <a href="{{ route('admin.regions.index', ['tab' => 'district']) }}" class="small-box-footer">
+            <a href="{{ route('regions.index', ['tab' => 'district']) }}" class="small-box-footer">
                 Lihat Kab/Kota <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
@@ -40,7 +40,7 @@
             <div class="icon">
                 <i class="fas fa-map-signs"></i>
             </div>
-            <a href="{{ route('admin.regions.index', ['tab' => 'subdistrict']) }}" class="small-box-footer">
+            <a href="{{ route('regions.index', ['tab' => 'subdistrict']) }}" class="small-box-footer">
                 Lihat Kecamatan <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
@@ -54,7 +54,7 @@
             <div class="icon">
                 <i class="fas fa-home" style="color: rgba(255,255,255,0.4);"></i>
             </div>
-            <a href="{{ route('admin.regions.index', ['tab' => 'village']) }}" class="small-box-footer" style="color: rgba(255,255,255,0.8);">
+            <a href="{{ route('regions.index', ['tab' => 'village']) }}" class="small-box-footer" style="color: rgba(255,255,255,0.8);">
                 Lihat Desa/Kelurahan <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
@@ -66,22 +66,22 @@
     <div class="card-header p-0 pt-1 border-bottom-0">
         <ul class="nav nav-tabs" id="regionTabs">
             <li class="nav-item">
-                <a class="nav-link font-weight-bold {{ $tab == 'subdistrict' ? 'active' : '' }}" href="{{ route('admin.regions.index', ['tab' => 'subdistrict']) }}">
+                <a class="nav-link font-weight-bold {{ $tab == 'subdistrict' ? 'active' : '' }}" href="{{ route('regions.index', ['tab' => 'subdistrict']) }}">
                     <i class="fas fa-map-signs mr-1 text-warning"></i> Kecamatan ({{ $totalSubdistricts }})
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link font-weight-bold {{ $tab == 'village' ? 'active' : '' }}" href="{{ route('admin.regions.index', ['tab' => 'village']) }}">
+                <a class="nav-link font-weight-bold {{ $tab == 'village' ? 'active' : '' }}" href="{{ route('regions.index', ['tab' => 'village']) }}">
                     <i class="fas fa-home mr-1 text-purple"></i> Desa / Kelurahan ({{ $totalVillages }})
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link font-weight-bold {{ $tab == 'district' ? 'active' : '' }}" href="{{ route('admin.regions.index', ['tab' => 'district']) }}">
+                <a class="nav-link font-weight-bold {{ $tab == 'district' ? 'active' : '' }}" href="{{ route('regions.index', ['tab' => 'district']) }}">
                     <i class="fas fa-city mr-1 text-success"></i> Kabupaten / Kota ({{ $totalDistricts }})
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link font-weight-bold {{ $tab == 'province' ? 'active' : '' }}" href="{{ route('admin.regions.index', ['tab' => 'province']) }}">
+                <a class="nav-link font-weight-bold {{ $tab == 'province' ? 'active' : '' }}" href="{{ route('regions.index', ['tab' => 'province']) }}">
                     <i class="fas fa-map mr-1 text-info"></i> Provinsi ({{ $totalProvinces }})
                 </a>
             </li>
@@ -92,14 +92,14 @@
         <!-- Search and Action Bar -->
         <div class="row mb-3">
             <div class="col-md-8">
-                <form method="GET" action="{{ route('admin.regions.index') }}" class="form-inline">
+                <form method="GET" action="{{ route('regions.index') }}" class="form-inline">
                     <input type="hidden" name="tab" value="{{ $tab }}">
                     <div class="input-group" style="width: 100%; max-width: 450px;">
                         <input type="text" name="q" value="{{ $q }}" class="form-control" placeholder="Cari nama wilayah...">
                         <div class="input-group-append">
                             <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Cari</button>
                             @if($q)
-                                <a href="{{ route('admin.regions.index', ['tab' => $tab]) }}" class="btn btn-default"><i class="fas fa-times"></i></a>
+                                <a href="{{ route('regions.index', ['tab' => $tab]) }}" class="btn btn-default"><i class="fas fa-times"></i></a>
                             @endif
                         </div>
                     </div>
@@ -152,7 +152,7 @@
                             <button type="button" class="btn btn-sm btn-warning mr-1" onclick="openEditSubdistrict('{{ $sub->encrypted_id }}', '{{ addslashes($sub->name) }}', '{{ $sub->district_id }}')">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.subdistricts.destroy', $sub->encrypted_id) }}', 'Kecamatan {{ addslashes($sub->name) }}')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('regions.subdistricts.destroy', $sub->encrypted_id) }}', 'Kecamatan {{ addslashes($sub->name) }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -192,7 +192,7 @@
                             <button type="button" class="btn btn-sm btn-warning mr-1" onclick="openEditVillage('{{ $vil->encrypted_id }}', '{{ addslashes($vil->name) }}', '{{ $vil->subdistrict_id }}')">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.regions.villages.destroy', $vil->encrypted_id) }}', 'Desa {{ addslashes($vil->name) }}')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('regions.villages.destroy', $vil->encrypted_id) }}', 'Desa {{ addslashes($vil->name) }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -256,7 +256,7 @@
 <!-- Modal Tambah Kecamatan -->
 <div class="modal fade" id="modalAddSubdistrict" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('admin.regions.subdistricts.store') }}" method="POST">
+        <form action="{{ route('regions.subdistricts.store') }}" method="POST">
             @csrf
             <div class="modal-content">
                 <div class="modal-header bg-warning">
@@ -289,7 +289,7 @@
 <!-- Modal Tambah Desa -->
 <div class="modal fade" id="modalAddVillage" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('admin.regions.villages.store') }}" method="POST">
+        <form action="{{ route('regions.villages.store') }}" method="POST">
             @csrf
             <div class="modal-content">
                 <div class="modal-header bg-purple text-white" style="background-color: #6f42c1;">
@@ -396,7 +396,7 @@
 @push('scripts')
 <script>
 function openEditSubdistrict(encryptedId, name, districtId) {
-    let url = '{{ url("admin/regions/subdistricts") }}/' + encryptedId;
+    let url = '{{ url("regions/subdistricts") }}/' + encryptedId;
     $('#formEditSubdistrict').attr('action', url);
     $('#edit_subdistrict_name').val(name);
     $('#edit_subdistrict_district_id').val(districtId).trigger('change');
@@ -404,7 +404,7 @@ function openEditSubdistrict(encryptedId, name, districtId) {
 }
 
 function openEditVillage(encryptedId, name, subdistrictId) {
-    let url = '{{ url("admin/regions/villages") }}/' + encryptedId;
+    let url = '{{ url("regions/villages") }}/' + encryptedId;
     $('#formEditVillage').attr('action', url);
     $('#edit_village_name').val(name);
     $('#edit_village_subdistrict_id').val(subdistrictId).trigger('change');

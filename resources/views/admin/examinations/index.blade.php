@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('admin.examinations.index') }}">Pemeriksaan</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('examinations.index') }}">Pemeriksaan</a></li>
     <li class="breadcrumb-item active">{{ $pageTitle }}</li>
 @endsection
 
@@ -10,17 +10,17 @@
     <div class="row mb-3">
         <div class="col-12 d-flex justify-content-between align-items-center">
             <div class="btn-group btn-group-sm">
-                <a href="{{ route('admin.examinations.index') }}" class="btn {{ empty($viewType) ? 'btn-primary' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('examinations.index') }}" class="btn {{ empty($viewType) ? 'btn-primary' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-microscope mr-1"></i> Semua Pemeriksaan
                 </a>
-                <a href="{{ route('admin.examinations.index', ['view' => 'results']) }}" class="btn {{ $viewType == 'results' ? 'btn-primary' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('examinations.index', ['view' => 'results']) }}" class="btn {{ $viewType == 'results' ? 'btn-primary' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-file-medical-alt mr-1"></i> Hasil Laboratorium
                 </a>
-                <a href="{{ route('admin.examinations.index', ['view' => 'diagnosis']) }}" class="btn {{ $viewType == 'diagnosis' ? 'btn-primary' : 'btn-default' }} font-weight-bold">
+                <a href="{{ route('examinations.index', ['view' => 'diagnosis']) }}" class="btn {{ $viewType == 'diagnosis' ? 'btn-primary' : 'btn-default' }} font-weight-bold">
                     <i class="fas fa-stethoscope mr-1"></i> Diagnosis TB
                 </a>
             </div>
-            <a href="{{ route('admin.examinations.create') }}" class="btn btn-sm btn-info font-weight-bold shadow-sm">
+            <a href="{{ route('examinations.create') }}" class="btn btn-sm btn-info font-weight-bold shadow-sm">
                 <i class="fas fa-plus-circle mr-1"></i> Catat Pemeriksaan Baru
             </a>
         </div>
@@ -29,7 +29,7 @@
     <!-- Filter Card -->
     <div class="card card-outline card-info filter-card mb-3 shadow-sm">
         <div class="card-body py-2">
-            <form action="{{ route('admin.examinations.index') }}" method="GET" class="form-row align-items-center">
+            <form action="{{ route('examinations.index') }}" method="GET" class="form-row align-items-center">
                 @if($viewType)
                     <input type="hidden" name="view" value="{{ $viewType }}">
                 @endif
@@ -70,7 +70,7 @@
                 </div>
                 <div class="col-md-1 my-1 d-flex">
                     <button type="submit" class="btn btn-sm btn-primary font-weight-bold mr-1 flex-grow-1"><i class="fas fa-filter"></i></button>
-                    <a href="{{ route('admin.examinations.index') }}" class="btn btn-sm btn-default"><i class="fas fa-undo"></i></a>
+                    <a href="{{ route('examinations.index') }}" class="btn btn-sm btn-default"><i class="fas fa-undo"></i></a>
                 </div>
             </form>
         </div>
@@ -82,7 +82,7 @@
             <h3 class="card-title font-weight-bold mb-0">
                 <i class="fas fa-list mr-1 text-info"></i> {{ $pageTitle }} <span class="badge badge-light border ml-2">Total: {{ $examinations->count() }} data</span>
             </h3>
-            <a href="{{ route('admin.examinations.create') }}" class="btn btn-sm btn-info font-weight-bold shadow-sm">
+            <a href="{{ route('examinations.create') }}" class="btn btn-sm btn-info font-weight-bold shadow-sm">
                 <i class="fas fa-plus mr-1"></i> Catat Pemeriksaan
             </a>
         </div>
@@ -109,7 +109,7 @@
                                 <td class="font-weight-bold text-primary">{{ $exam->examination_code }}</td>
                                 <td>
                                     @if($exam->patient)
-                                        <a href="{{ route('admin.patients.show', $exam->patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
+                                        <a href="{{ route('patients.show', $exam->patient->encrypted_id) }}" class="font-weight-bold text-dark d-block">
                                             {{ optional($exam->patient->user)->name ?? 'Pasien #' . $exam->patient->id }}
                                         </a>
                                         <span class="text-xs text-muted">NIK: {{ $exam->patient->nik ?? '-' }}</span>
@@ -132,11 +132,11 @@
                                 <td>{{ optional($exam->puskesmas)->name ?? '-' }}</td>
                                 <td class="text-center">
                                     <div class="btn-group btn-action-group">
-                                        <a href="{{ route('admin.examinations.edit', $exam->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
+                                        <a href="{{ route('examinations.edit', $exam->encrypted_id) }}" class="btn btn-warning btn-xs" title="Edit Data">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <button type="button" class="btn btn-danger btn-xs" title="Hapus Data" 
-                                                onclick="confirmDelete('{{ route('admin.examinations.destroy', $exam->encrypted_id) }}', 'Pemeriksaan {{ addslashes($exam->examination_code) }}')">
+                                                onclick="confirmDelete('{{ route('examinations.destroy', $exam->encrypted_id) }}', 'Pemeriksaan {{ addslashes($exam->examination_code) }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>

@@ -161,7 +161,7 @@ class CloseContactController extends Controller
                 $message = 'Data kontak erat berhasil diperbarui.';
             }
 
-            return redirect()->route('admin.contacts.index')->with('success', $message);
+            return redirect()->route('contacts.index')->with('success', $message);
         });
     }
 
@@ -182,7 +182,7 @@ class CloseContactController extends Controller
         if (!$contact->isAccessibleBy(auth()->user())) {
             abort(403, 'Anda tidak memiliki hak akses ke data kontak erat ini.');
         }
-        return redirect()->route('admin.contacts.edit', $contact);
+        return redirect()->route('contacts.edit', $contact);
     }
 
     public function destroy($id)
@@ -202,6 +202,6 @@ class CloseContactController extends Controller
 
         ActivityLog::log('Hapus Kontak Erat', 'Kontak Erat', "Menghapus data kontak erat {$name}.");
 
-        return redirect()->route('admin.contacts.index')->with('success', "Kontak erat {$name} berhasil dihapus.");
+        return redirect()->route('contacts.index')->with('success', "Kontak erat {$name} berhasil dihapus.");
     }
 }

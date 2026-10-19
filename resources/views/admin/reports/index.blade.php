@@ -5,16 +5,16 @@
 <div class="row mb-3">
     <div class="col-12">
         <div class="btn-group btn-group-toggle d-flex" data-toggle="buttons">
-            <a href="{{ route('admin.reports.index', ['type' => 'screening']) }}" class="btn {{ $type == 'screening' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
+            <a href="{{ route('reports.index', ['type' => 'screening']) }}" class="btn {{ $type == 'screening' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
                 <i class="fas fa-clipboard-check mr-1"></i> Laporan Skrining TB
             </a>
-            <a href="{{ route('admin.reports.index', ['type' => 'patient']) }}" class="btn {{ $type == 'patient' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
+            <a href="{{ route('reports.index', ['type' => 'patient']) }}" class="btn {{ $type == 'patient' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
                 <i class="fas fa-procedures mr-1"></i> Laporan Register Pasien
             </a>
-            <a href="{{ route('admin.reports.index', ['type' => 'regional']) }}" class="btn {{ $type == 'regional' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
+            <a href="{{ route('reports.index', ['type' => 'regional']) }}" class="btn {{ $type == 'regional' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
                 <i class="fas fa-map-marked-alt mr-1"></i> Laporan Agregat Wilayah
             </a>
-            <a href="{{ route('admin.reports.index', ['type' => 'user']) }}" class="btn {{ $type == 'user' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
+            <a href="{{ route('reports.index', ['type' => 'user']) }}" class="btn {{ $type == 'user' ? 'btn-primary active' : 'btn-outline-primary' }} flex-fill font-weight-bold">
                 <i class="fas fa-users mr-1"></i> Laporan Pengguna Terdaftar
             </a>
         </div>
@@ -28,16 +28,16 @@
             <i class="fas fa-filter mr-1 text-primary"></i> Parameter Filter Laporan
         </h3>
         <div class="card-tools">
-            <a href="{{ route('admin.reports.print', request()->all()) }}" target="_blank" class="btn btn-sm btn-info mr-1">
+            <a href="{{ route('reports.print', request()->all()) }}" target="_blank" class="btn btn-sm btn-info mr-1">
                 <i class="fas fa-print mr-1"></i> Cetak / Simpan PDF
             </a>
-            <a href="{{ route('admin.reports.export', request()->all()) }}" class="btn btn-sm btn-success">
+            <a href="{{ route('reports.export', request()->all()) }}" class="btn btn-sm btn-success">
                 <i class="fas fa-file-excel mr-1"></i> Ekspor CSV / Excel
             </a>
         </div>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.reports.index') }}" class="row">
+        <form method="GET" action="{{ route('reports.index') }}" class="row">
             <input type="hidden" name="type" value="{{ $type }}">
             
             <div class="col-md-3 mb-2">
@@ -78,7 +78,7 @@
                 <button type="submit" class="btn btn-primary mr-2 px-4">
                     <i class="fas fa-search mr-1"></i> Terapkan Filter
                 </button>
-                <a href="{{ route('admin.reports.index', ['type' => $type]) }}" class="btn btn-default">
+                <a href="{{ route('reports.index', ['type' => $type]) }}" class="btn btn-default">
                     <i class="fas fa-undo mr-1"></i> Reset
                 </a>
             </div>

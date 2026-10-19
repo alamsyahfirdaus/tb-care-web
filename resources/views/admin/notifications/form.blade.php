@@ -10,7 +10,7 @@
                     {{ $isEdit ? 'Edit Notifikasi Broadcast' : 'Buat Notifikasi / Broadcast Baru' }}
                 </h3>
             </div>
-            <form action="{{ $isEdit ? route('admin.notifications.update', $notification->encrypted_id) : route('admin.notifications.store') }}" method="POST">
+            <form action="{{ $isEdit ? route('notifications.update', $notification->encrypted_id) : route('notifications.store') }}" method="POST">
                 @csrf
                 @if($isEdit)
                     @method('PUT')
@@ -114,7 +114,7 @@
                 </div>
 
                 <div class="card-footer bg-light d-flex justify-content-between">
-                    <a href="{{ route('admin.notifications.index') }}" class="btn btn-secondary font-weight-bold">
+                    <a href="{{ route('notifications.index') }}" class="btn btn-secondary font-weight-bold">
                         <i class="fas fa-arrow-left mr-1"></i> Batal / Kembali
                     </a>
                     <button type="submit" class="btn btn-primary px-4 font-weight-bold">

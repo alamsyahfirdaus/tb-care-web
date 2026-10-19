@@ -161,7 +161,7 @@ class NotificationController extends Controller
                 $message = 'Notifikasi berhasil diperbarui.';
             }
 
-            return redirect()->route('admin.notifications.index')->with('success', $message);
+            return redirect()->route('notifications.index')->with('success', $message);
         });
     }
 
@@ -199,6 +199,6 @@ class NotificationController extends Controller
 
         ActivityLog::log('Hapus Notifikasi', 'Notifikasi', "Menghapus riwayat notifikasi {$title}.");
 
-        return redirect()->route('admin.notifications.index')->with('success', "Notifikasi '{$title}' berhasil dihapus.");
+        return redirect()->route('notifications.index')->with('success', "Notifikasi '{$title}' berhasil dihapus.");
     }
 }

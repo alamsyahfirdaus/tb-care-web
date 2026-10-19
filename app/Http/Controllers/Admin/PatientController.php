@@ -298,7 +298,7 @@ class PatientController extends Controller
 
                 ActivityLog::log('Perbarui Data Pasien', 'Pasien', "Memperbarui data rekam medis pasien {$request->name} (NIK: {$request->nik}).");
 
-                return redirect()->route('admin.patients.show', $patient->encrypted_id)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
+                return redirect()->route('patients.show', $patient->encrypted_id)->with('success', 'Data rekam medis pasien berhasil diperbarui.');
             } else {
                 // 1. Create User
                 $user = User::create([
@@ -354,7 +354,7 @@ class PatientController extends Controller
 
                 ActivityLog::log('Tambah Pasien TB', 'Pasien', "Mendaftarkan pasien baru {$user->name} NIK {$patient->nik} di Puskesmas ID {$patient->puskesmas_id}.");
 
-                return redirect()->route('admin.patients.show', $patient->encrypted_id)->with('success', 'Data pasien TB berhasil didaftarkan.');
+                return redirect()->route('patients.show', $patient->encrypted_id)->with('success', 'Data pasien TB berhasil didaftarkan.');
             }
         });
     }
@@ -422,6 +422,6 @@ class PatientController extends Controller
 
         ActivityLog::log('Hapus Pasien', 'Pasien', "Menghapus data pasien {$name}.");
 
-        return redirect()->route('admin.patients.index')->with('success', "Data pasien {$name} berhasil dihapus.");
+        return redirect()->route('patients.index')->with('success', "Data pasien {$name} berhasil dihapus.");
     }
 }

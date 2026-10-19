@@ -105,7 +105,7 @@
                 contentType: false,
                 processData: false,
                 success: function(response) {
-                    window.location.href = '{{ route('home') }}';
+                    window.location.href = '{{ route('dashboard') }}';
                 },
                 error: function(xhr, status, error) {
                     if (xhr.responseJSON.error) {

@@ -12,7 +12,7 @@
             <div class="icon">
                 <i class="fas fa-book-reader"></i>
             </div>
-            <a href="{{ route('admin.education.index') }}" class="small-box-footer">Semua Konten <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('education.index') }}" class="small-box-footer">Semua Konten <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -24,7 +24,7 @@
             <div class="icon">
                 <i class="fab fa-youtube"></i>
             </div>
-            <a href="{{ route('admin.education.index', ['type' => 'video']) }}" class="small-box-footer">Filter Video <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('education.index', ['type' => 'video']) }}" class="small-box-footer">Filter Video <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -36,7 +36,7 @@
             <div class="icon">
                 <i class="fas fa-images"></i>
             </div>
-            <a href="{{ route('admin.education.index', ['type' => 'image']) }}" class="small-box-footer">Filter Poster <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('education.index', ['type' => 'image']) }}" class="small-box-footer">Filter Poster <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -48,7 +48,7 @@
             <div class="icon">
                 <i class="fas fa-check-circle"></i>
             </div>
-            <a href="{{ route('admin.education.index', ['status' => '1']) }}" class="small-box-footer">Filter Terbit <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('education.index', ['status' => '1']) }}" class="small-box-footer">Filter Terbit <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
 </div>
@@ -58,13 +58,13 @@
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filter & Manajemen Konten</h3>
         <div class="card-tools">
-            <a href="{{ route('admin.education.create') }}" class="btn btn-sm btn-primary">
+            <a href="{{ route('education.create') }}" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus-circle mr-1"></i> Buat Konten Edukasi Baru
             </a>
         </div>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.education.index') }}" class="row">
+        <form method="GET" action="{{ route('education.index') }}" class="row">
             <div class="col-md-3 mb-2">
                 <label class="small text-muted font-weight-bold">Tipe Konten</label>
                 <select name="type" class="form-control select2">
@@ -87,7 +87,7 @@
             </div>
             <div class="col-md-2 mb-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary mr-1 flex-fill"><i class="fas fa-search"></i> Cari</button>
-                <a href="{{ route('admin.education.index') }}" class="btn btn-default"><i class="fas fa-undo"></i></a>
+                <a href="{{ route('education.index') }}" class="btn btn-default"><i class="fas fa-undo"></i></a>
             </div>
         </form>
     </div>
@@ -107,7 +107,7 @@
                 </a>
             </li>
         </ul>
-        <a href="{{ route('admin.education.create') }}" class="btn btn-sm btn-primary font-weight-bold shadow-sm mb-1">
+        <a href="{{ route('education.create') }}" class="btn btn-sm btn-primary font-weight-bold shadow-sm mb-1">
             <i class="fas fa-plus mr-1"></i> Tambah Materi
         </a>
     </div>
@@ -144,7 +144,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="font-weight-bold text-dark">
+                                    <a href="{{ route('education.show', $item->encrypted_id) }}" class="font-weight-bold text-dark">
                                         {{ $item->title_material }}
                                     </a>
                                     <div class="text-xs text-muted" style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">
@@ -171,13 +171,13 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
+                                        <a href="{{ route('education.show', $item->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('admin.education.edit', $item->encrypted_id) }}" class="btn btn-warning" title="Edit Konten">
+                                        <a href="{{ route('education.edit', $item->encrypted_id) }}" class="btn btn-warning" title="Edit Konten">
                                             <i class="fas fa-pencil-alt"></i>
                                         </a>
-                                        <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('admin.education.destroy', $item->encrypted_id) }}', '{{ addslashes($item->title_material) }}')">
+                                        <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('education.destroy', $item->encrypted_id) }}', '{{ addslashes($item->title_material) }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -234,7 +234,7 @@
                             <!-- Card Body Content -->
                             <div class="card-body d-flex flex-column">
                                 <h5 class="card-title font-weight-bold text-dark mb-2" style="font-size: 1.05rem;">
-                                    <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="text-dark text-decoration-none">
+                                    <a href="{{ route('education.show', $item->encrypted_id) }}" class="text-dark text-decoration-none">
                                         {{ $item->title_material }}
                                     </a>
                                 </h5>
@@ -249,7 +249,7 @@
 
                             <!-- Card Actions Footer -->
                             <div class="card-footer bg-light p-2 d-flex justify-content-between align-items-center">
-                                <form action="{{ route('admin.education.toggle-publish', $item->encrypted_id) }}" method="POST" class="d-inline">
+                                <form action="{{ route('education.toggle-publish', $item->encrypted_id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" class="btn btn-xs {{ $item->is_publish ? 'btn-outline-secondary' : 'btn-outline-success' }}" title="Ubah status publikasi">
@@ -258,13 +258,13 @@
                                 </form>
 
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ route('admin.education.show', $item->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
+                                    <a href="{{ route('education.show', $item->encrypted_id) }}" class="btn btn-info" title="Lihat Detail">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('admin.education.edit', $item->encrypted_id) }}" class="btn btn-warning" title="Edit Konten">
+                                    <a href="{{ route('education.edit', $item->encrypted_id) }}" class="btn btn-warning" title="Edit Konten">
                                         <i class="fas fa-pencil-alt"></i>
                                     </a>
-                                    <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('admin.education.destroy', $item->encrypted_id) }}', '{{ addslashes($item->title_material) }}')">
+                                    <button type="button" class="btn btn-danger" title="Hapus Konten" onclick="confirmDelete('{{ route('education.destroy', $item->encrypted_id) }}', '{{ addslashes($item->title_material) }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -275,7 +275,7 @@
                     <div class="col-12 py-5 text-center text-muted">
                         <i class="fas fa-book-open fa-3x mb-3 text-secondary"></i>
                         <p class="font-weight-bold">Tidak ada konten materi edukasi yang cocok dengan kriteria filter.</p>
-                        <a href="{{ route('admin.education.create') }}" class="btn btn-primary mt-2">
+                        <a href="{{ route('education.create') }}" class="btn btn-primary mt-2">
                             <i class="fas fa-plus-circle mr-1"></i> Buat Konten Sekarang
                         </a>
                     </div>
