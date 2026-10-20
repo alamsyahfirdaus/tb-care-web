@@ -26,7 +26,29 @@ class EnsureWebAdminRole
         if (Auth::check()) {
             $user = Auth::user();
 
-            // 1. Tolak role Pasien (user_type_id == 2)
+            // 1. Tolak akun nonaktif
+            if (isset($user->is_active) && !$user->is_active) {
+                if (Auth::guard('web') instanceof SessionGuard) {
+                    Auth::guard('web')->logout();
+                } elseif (method_exists(Auth::guard(), 'logout')) {
+                    Auth::guard()->logout();
+                }
+
+                if ($request->hasSession()) {
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                }
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'error' => 'Akun Anda sedang dinonaktifkan. Silakan hubungi administrator.'
+                    ], 403);
+                }
+
+                return redirect()->route('login')->with('error', 'Akun Anda sedang dinonaktifkan. Silakan hubungi administrator.');
+            }
+
+            // 2. Tolak role Pasien (user_type_id == 2)
             if ($user->user_type_id == 2) {
                 if (Auth::guard('web') instanceof SessionGuard) {
                     Auth::guard('web')->logout();
@@ -48,7 +70,29 @@ class EnsureWebAdminRole
                 return redirect()->route('login')->with('error', 'Akun pasien tidak dapat digunakan untuk login melalui Web Admin. Silakan gunakan aplikasi TB Care mobile.');
             }
 
-            // 2. Tolak role lain selain Administrator (1) dan Petugas (3)
+            // 3. Tolak role Kader (officer_type_id == 4)
+            if ($user->user_type_id == 3 && $user->officer && $user->officer->isKader()) {
+                if (Auth::guard('web') instanceof SessionGuard) {
+                    Auth::guard('web')->logout();
+                } elseif (method_exists(Auth::guard(), 'logout')) {
+                    Auth::guard()->logout();
+                }
+
+                if ($request->hasSession()) {
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                }
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'error' => 'Akun kader hanya dapat digunakan melalui aplikasi TB Care mobile. Akses Web Admin dibatasi untuk Administrator, Dinkes, dan PJTB Puskesmas.'
+                    ], 403);
+                }
+
+                return redirect()->route('login')->with('error', 'Akun kader hanya dapat digunakan melalui aplikasi TB Care mobile. Akses Web Admin dibatasi untuk Administrator, Dinkes, dan PJTB Puskesmas.');
+            }
+
+            // 4. Tolak role lain selain Administrator (1) dan Petugas (3)
             if (!in_array($user->user_type_id, [1, 3])) {
                 if (Auth::guard('web') instanceof SessionGuard) {
                     Auth::guard('web')->logout();

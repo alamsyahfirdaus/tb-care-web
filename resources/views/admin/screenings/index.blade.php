@@ -118,6 +118,11 @@
                                 </td>
                                 <td>
                                     <span class="font-weight-bold text-dark">{{ $scr->person_name }}</span>
+                                    @if($scr->tb_classification == 'TB Ekstraparu')
+                                        <span class="badge badge-warning text-xs text-dark ml-1 font-weight-bold" title="{{ $scr->extrapulmonary_organ ?? 'TB Ekstraparu' }}">
+                                            <i class="fas fa-lungs-virus mr-1"></i> Ekstraparu
+                                        </span>
+                                    @endif
                                     @if($scr->patient_id)
                                         <span class="badge badge-danger text-xs ml-1"><i class="fas fa-user-injured mr-1"></i> Pasien TB</span>
                                     @endif

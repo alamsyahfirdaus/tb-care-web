@@ -84,6 +84,7 @@ class ProfileController extends Controller
             $userData['rt'] = $p->rt;
             $userData['rw'] = $p->rw;
             $userData['address'] = $p->address;
+            $userData['comorbidities'] = $p->comorbidities;
         }
 
         // Kembalikan data profil dalam format JSON
@@ -262,6 +263,9 @@ class ProfileController extends Controller
             if ($request->has('address')) {
                 $patientUpdate['address'] = $request->input('address') !== null ? trim((string)$request->input('address')) : null;
             }
+            if ($request->has('comorbidities')) {
+                $patientUpdate['comorbidities'] = $request->input('comorbidities') !== null ? trim((string)$request->input('comorbidities')) : null;
+            }
 
             if ($patient) {
                 $patient->update($patientUpdate);
@@ -316,6 +320,7 @@ class ProfileController extends Controller
             $userData['rt'] = $p->rt;
             $userData['rw'] = $p->rw;
             $userData['address'] = $p->address;
+            $userData['comorbidities'] = $p->comorbidities;
         }
 
         return response()->json([

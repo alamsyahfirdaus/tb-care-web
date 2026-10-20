@@ -202,6 +202,16 @@
                         </div>
 
                         <div class="form-row">
+                            <div class="form-group col-12">
+                                <label for="comorbidities"><i class="fas fa-notes-medical text-danger mr-1"></i> Penyakit Penyerta (Komorbiditas)</label>
+                                <input type="text" name="comorbidities" id="comorbidities" class="form-control" 
+                                       value="{{ old('comorbidities', $patient->comorbidities) }}" 
+                                       placeholder="Contoh: Diabetes Melitus, Hipertensi, HIV, Asma, Penyakit Ginjal, dll.">
+                                <small class="form-text text-muted">Catat kondisi kesehatan atau komorbiditas lain yang menyertai pasien TB.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group col-md-4">
                                 <label for="diagnosis_date">Tanggal Diagnosis TB</label>
                                 <input type="date" name="diagnosis_date" id="diagnosis_date" class="form-control" 

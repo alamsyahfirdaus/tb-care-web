@@ -106,6 +106,7 @@ class PatientController extends Controller
                 'height'         => $patient->height,
                 'weight'         => $patient->weight,
                 'blood_type'     => $patient->blood_type,
+                'comorbidities'  => $patient->comorbidities,
                 'diagnosis_date' => $patient->diagnosis_date,
                 'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
                 'medication_schedule' => $this->resolveMedicationSchedule($patient),
@@ -210,6 +211,7 @@ class PatientController extends Controller
             'height'           => 'nullable|integer',
             'weight'           => 'nullable|integer',
             'blood_type'       => 'nullable|string|max:3',
+            'comorbidities'    => 'nullable|string|max:1000',
             'diagnosis_date'   => 'nullable|date',
             'treatment_start_date' => 'nullable|date|before_or_equal:today',
         ], [
@@ -322,6 +324,7 @@ class PatientController extends Controller
                 'height'          => $validated['height'] ?? null,
                 'weight'          => $validated['weight'] ?? null,
                 'blood_type'      => $validated['blood_type'] ?? null,
+                'comorbidities'   => $validated['comorbidities'] ?? ($existingPatient?->comorbidities ?? null),
                 'diagnosis_date'  => $validated['diagnosis_date'] ?? null,
                 'treatment_start_date' => array_key_exists('treatment_start_date', $validated) ? $validated['treatment_start_date'] : ($existingPatient?->treatment_start_date ?? null),
                 'puskesmas_id'    => $validated['puskesmas_id'],
@@ -394,6 +397,7 @@ class PatientController extends Controller
             'height'         => $patient->height,
             'weight'         => $patient->weight,
             'blood_type'     => $patient->blood_type,
+            'comorbidities'  => $patient->comorbidities,
             'diagnosis_date' => $patient->diagnosis_date,
             'treatment_start_date' => $patient->treatment_start_date ? \Carbon\Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
             'medication_schedule' => $this->resolveMedicationSchedule($patient),
@@ -548,10 +552,6 @@ class PatientController extends Controller
 
             $treatment = PatientTreatment::where('patient_id', $patient->id)
                 ->with('treatmentType')
-                ->withCount([
-                    'medicationRecords as verified_count' => fn($q) =>
-                    $q->where('is_verified', true)
-                ])
                 ->orderByDesc('id')
                 ->first();
 
@@ -559,25 +559,31 @@ class PatientController extends Controller
                 return response()->json([
                     'message' => 'Belum ada data pengobatan.',
                     'data' => [
-                        'total_treatment'     => 0,
-                        'total_expected_days' => 0,
-                        'total_verified_days' => 0,
-                        'adherence_average'   => '0%',
+                        'total_treatment'      => 0,
+                        'total_expected_days'  => 0,
+                        'total_verified_days'  => 0,
+                        'due_doses'            => 0,
+                        'taken_doses'          => 0,
+                        'adherence_percentage' => 0.0,
+                        'adherence_average'    => '0%',
+                        'status'               => 'Belum ada pengobatan',
                     ]
                 ]);
             }
 
-            $expected = $treatment->treatment_days ?? 0;
-            $verified = $treatment->verified_count;
-            $percentage = $expected > 0 ? round(($verified / $expected) * 100, 2) : 0;
+            $metrics = $treatment->calculateAdherence();
 
             return response()->json([
-                'message' => 'Tingkat kepatuhan pasien berhasil dihitung.',
+                'message' => 'Tingkat kepatuhan pasien berhasil dihitung berbasis dosis jatuh tempo aktual.',
                 'data' => [
-                    'total_treatment'     => 1,
-                    'total_expected_days' => $expected,
-                    'total_verified_days' => $verified,
-                    'adherence_average'   => $percentage . '%',
+                    'total_treatment'      => 1,
+                    'total_expected_days'  => $metrics['due_doses'],
+                    'total_verified_days'  => $metrics['taken_doses'],
+                    'due_doses'            => $metrics['due_doses'],
+                    'taken_doses'          => $metrics['taken_doses'],
+                    'adherence_percentage' => $metrics['percentage'],
+                    'adherence_average'    => $metrics['percentage_str'],
+                    'status'               => $metrics['status'],
                 ]
             ]);
         }
@@ -591,10 +597,6 @@ class PatientController extends Controller
         foreach ($patientIds as $pid) {
             $treatment = PatientTreatment::where('patient_id', $pid)
                 ->orderByDesc('id')
-                ->withCount([
-                    'medicationRecords as verified_count' => fn($q) =>
-                    $q->where('is_verified', true)
-                ])
                 ->first();
 
             if ($treatment) {
@@ -604,27 +606,32 @@ class PatientController extends Controller
 
         if ($latestTreatments->isEmpty()) {
             return response()->json([
-                'message' => 'Belum ada data pengobatan terakhir yang tersedia.',
+                'message' => 'Belum ada data pengobatan yang tersedia.',
                 'data' => [
-                    'total_treatment'     => 0,
-                    'total_expected_days' => 0,
-                    'total_verified_days' => 0,
-                    'adherence_average'   => '0%',
+                    'total_treatment'      => 0,
+                    'total_expected_days'  => 0,
+                    'total_verified_days'  => 0,
+                    'due_doses'            => 0,
+                    'taken_doses'          => 0,
+                    'adherence_percentage' => 0.0,
+                    'adherence_average'    => '0%',
                 ]
             ]);
         }
 
-        $totalExpected = $latestTreatments->sum('treatment_days');
-        $totalVerified = $latestTreatments->sum('verified_count');
-        $percentage = $totalExpected > 0 ? round(($totalVerified / $totalExpected) * 100, 2) : 0;
+        $cohort = PatientTreatment::calculateCohortAdherence($latestTreatments);
 
         return response()->json([
-            'message' => 'Rata-rata tingkat kepatuhan dari pengobatan terakhir pasien berhasil dihitung.',
+            'message' => 'Rata-rata tingkat kepatuhan kohort pasien berhasil dihitung berbasis dosis jatuh tempo aktual.',
             'data' => [
-                'total_treatment'     => $latestTreatments->count(),
-                'total_expected_days' => $totalExpected,
-                'total_verified_days' => $totalVerified,
-                'adherence_average'   => $percentage . '%',
+                'total_treatment'      => $cohort['total_treatments'],
+                'active_monitored'     => $cohort['active_monitored'],
+                'total_expected_days'  => $cohort['total_due_doses'],
+                'total_verified_days'  => $cohort['total_taken_doses'],
+                'due_doses'            => $cohort['total_due_doses'],
+                'taken_doses'          => $cohort['total_taken_doses'],
+                'adherence_percentage' => $cohort['percentage'],
+                'adherence_average'    => $cohort['percentage_str'],
             ]
         ]);
     }

@@ -84,6 +84,19 @@
                             <td class="text-muted">Formulir Kategori:</td>
                             <td><span class="badge badge-light border">{{ optional($screening->category)->name ?? ($screening->age >= 15 ? 'Usia >= 15 Tahun' : 'Usia < 15 Tahun') }}</span></td>
                         </tr>
+                        <tr>
+                            <td class="text-muted">Klasifikasi TB:</td>
+                            <td>
+                                @if($screening->tb_classification == 'TB Ekstraparu')
+                                    <span class="badge badge-warning text-dark font-weight-bold px-2 py-1"><i class="fas fa-lungs-virus mr-1"></i> TB Ekstraparu</span>
+                                    @if(!empty($screening->extrapulmonary_organ))
+                                        <div class="text-xs text-muted mt-1 font-weight-bold">Organ: {{ $screening->extrapulmonary_organ }}</div>
+                                    @endif
+                                @else
+                                    <span class="badge badge-info px-2 py-1"><i class="fas fa-lungs mr-1"></i> TB Paru</span>
+                                @endif
+                            </td>
+                        </tr>
                     </table>
                 </div>
             </div>

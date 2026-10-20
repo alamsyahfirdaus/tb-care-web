@@ -167,6 +167,17 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         @if($u->id != 1 && $u->id != auth()->id())
+                                            @if($u->is_active)
+                                                <button type="button" class="btn btn-secondary btn-xs" title="Nonaktifkan Akun"
+                                                        onclick="confirmToggleStatus('{{ route('users.toggle_status', $u->encrypted_id) }}', '{{ addslashes($u->name) }}', true)">
+                                                    <i class="fas fa-user-slash text-warning"></i>
+                                                </button>
+                                            @else
+                                                <button type="button" class="btn btn-success btn-xs" title="Aktifkan Akun"
+                                                        onclick="confirmToggleStatus('{{ route('users.toggle_status', $u->encrypted_id) }}', '{{ addslashes($u->name) }}', false)">
+                                                    <i class="fas fa-user-check"></i>
+                                                </button>
+                                            @endif
                                             <button type="button" class="btn btn-danger btn-xs" title="Hapus Akun" 
                                                     onclick="confirmDelete('{{ route('users.destroy', $u->encrypted_id) }}', '{{ addslashes($u->name) }}')">
                                                 <i class="fas fa-trash"></i>
@@ -181,4 +192,59 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        function confirmToggleStatus(actionUrl, userName, willDeactivate) {
+            var title = willDeactivate ? 'Nonaktifkan Akun Pengguna' : 'Aktifkan Akun Pengguna';
+            var text = willDeactivate 
+                ? 'Apakah Anda yakin ingin menonaktifkan akun "' + userName + '"? Pengguna tidak akan dapat login ke aplikasi, namun data pasien dan riwayat pengobatan tetap aman.'
+                : 'Apakah Anda yakin ingin mengaktifkan kembali akun "' + userName + '"?';
+            var confirmText = willDeactivate ? '<i class="fas fa-ban mr-1"></i> Ya, Nonaktifkan' : '<i class="fas fa-check mr-1"></i> Ya, Aktifkan';
+            var confirmColor = willDeactivate ? '#e0a800' : '#28a745';
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: title,
+                    text: text,
+                    icon: willDeactivate ? 'warning' : 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: confirmColor,
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: confirmText,
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        submitToggleForm(actionUrl);
+                    }
+                });
+            } else {
+                if (confirm(text)) {
+                    submitToggleForm(actionUrl);
+                }
+            }
+        }
+
+        function submitToggleForm(actionUrl) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = actionUrl;
+
+            var csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = '{{ csrf_token() }}';
+            form.appendChild(csrfInput);
+
+            var methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'PATCH';
+            form.appendChild(methodInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+    @endpush
 @endsection

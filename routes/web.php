@@ -177,6 +177,7 @@ Route::middleware(['auth', 'web.admin', 'checkrole:1-3'])->group(function () {
 */
 Route::middleware(['auth', 'web.admin', 'checkrole:1'])->group(function () {
     // Manajemen Pengguna
+    Route::patch('users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle_status');
     Route::resource('users', UserController::class);
 
     // Master Data

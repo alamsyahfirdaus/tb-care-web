@@ -245,6 +245,32 @@ class UserController extends Controller
         return $this->save($request, $id);
     }
 
+    public function toggleStatus($id)
+    {
+        $id = decrypt_id($id);
+        $user = User::findOrFail($id);
+
+        if ($user->id == 1 || $user->id == auth()->id()) {
+            return redirect()->back()->with('error', 'Anda tidak dapat menonaktifkan akun Administrator Anda sendiri.');
+        }
+
+        $newStatus = !$user->is_active;
+        $user->is_active = $newStatus;
+        $user->save();
+
+        if (!$newStatus) {
+            // Cabut seluruh token Sanctum agar akses mobile langsung terputus
+            if (method_exists($user, 'tokens')) {
+                $user->tokens()->delete();
+            }
+            ActivityLog::log('Nonaktifkan Akun', 'Pengguna', "Menonaktifkan akun {$user->name} ({$user->username}). Data pasien dan riwayat pengobatan tetap aman.");
+            return redirect()->back()->with('success', "Akun {$user->name} berhasil dinonaktifkan. Sesi dan token telah dicabut.");
+        } else {
+            ActivityLog::log('Aktifkan Akun', 'Pengguna', "Mengaktifkan kembali akun {$user->name} ({$user->username}).");
+            return redirect()->back()->with('success', "Akun {$user->name} berhasil diaktifkan kembali.");
+        }
+    }
+
     public function destroy($id)
     {
         $id = decrypt_id($id);

@@ -40,15 +40,10 @@ Route::middleware('auth:sanctum')->get('/image-bytes/{filename}', function ($fil
 // Autentikasi Awal
 Route::post('/login', [AuthController::class, 'login']);
 
-// Registrasi User Baru (Pasien & Petugas)
-/*Route::prefix('register')->group(function () {
-    Route::post('/patient', [AuthController::class, 'registerPatient']);   // Registrasi pasien TB
-    Route::post('/officer', [AuthController::class, 'registerOfficer']);   // Registrasi petugas (PJTB / Kader)
-    Route::get('/roles', [AuthController::class, 'getOfficerRoles']);      // Ambil daftar peran untuk petugas
-});*/
-
+// Registrasi User Baru (Pasien)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/register/roles', [AuthController::class, 'getOfficerRoles']);
+
 // Referensi Wilayah (tanpa login)
 Route::get('/puskesmas', [PuskesmasController::class, 'index']);
 Route::get('/provinces', [RegionController::class, 'provinces']);
@@ -72,8 +67,8 @@ Route::prefix('screening')->group(function () {
     Route::get('/{id}', [ScreeningController::class, 'show']);
 });
 
-// Route yang membutuhkan autentikasi (sanctum)
-Route::middleware('auth:sanctum')->group(function () {
+// Route yang membutuhkan autentikasi (sanctum & akun aktif)
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // CEK TOKEN / AUTO LOGIN
     Route::get('/me', [AuthController::class, 'me']);
@@ -132,6 +127,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('visits')->group(function () {
         Route::get('/{id}', [TreatmentVisitController::class, 'show']);                      // Detail kunjungan
         Route::match(['post', 'put'], '/store', [TreatmentVisitController::class, 'store']); // Simpan / update kunjungan
+        Route::match(['post', 'patch'], '/{id}/cancel', [TreatmentVisitController::class, 'cancelVisit']); // Batalkan jadwal kunjungan
         Route::delete('/{id}/delete', [TreatmentVisitController::class, 'destroy']);         // Hapus kunjungan
     });
 

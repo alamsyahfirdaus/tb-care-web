@@ -210,6 +210,16 @@
                                                     <td class="font-weight-bold text-danger">{{ $patient->blood_type ?? '-' }}</td>
                                                 </tr>
                                                 <tr>
+                                                    <td class="text-muted">Penyakit Penyerta:</td>
+                                                    <td class="font-weight-bold">
+                                                        @if(!empty($patient->comorbidities))
+                                                            <span class="badge badge-info px-2 py-1"><i class="fas fa-notes-medical mr-1"></i> {{ $patient->comorbidities }}</span>
+                                                        @else
+                                                            <span class="text-muted font-italic">Tidak ada penyakit penyerta tercatat</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                                <tr>
                                                     <td class="text-muted">Pekerjaan:</td>
                                                     <td class="font-weight-bold">{{ $patient->occupation ?? '-' }}</td>
                                                 </tr>

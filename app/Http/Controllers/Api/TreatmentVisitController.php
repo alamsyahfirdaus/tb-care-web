@@ -19,7 +19,7 @@ class TreatmentVisitController extends Controller
             'patient_treatment_id' => 'required|exists:patient_treatments,id',
             'visit_date'           => 'required|date|after_or_equal:today',
             'visit_time'           => 'nullable|date_format:H:i',
-            'visit_status'         => 'in:Terjadwal,Hadir,Tidak Hadir',
+            'visit_status'         => 'nullable|in:Terjadwal,Selesai,Hadir,Tidak Hadir,Dibatalkan',
             'notes'                => 'nullable|string',
         ], [
             'id.exists'                     => 'Data kunjungan tidak ditemukan.',
@@ -29,7 +29,7 @@ class TreatmentVisitController extends Controller
             'visit_date.after_or_equal'     => 'Tanggal kunjungan tidak boleh sebelum hari ini.',
             'visit_date.date'               => 'Tanggal kunjungan harus berupa format tanggal yang valid.',
             'visit_time.date_format'        => 'Format waktu kunjungan harus dalam format HH:ii (contoh: 08:30).',
-            'visit_status.in'               => 'Status kunjungan harus salah satu dari: Terjadwal, Hadir, atau Tidak Hadir.',
+            'visit_status.in'               => 'Status kunjungan harus salah satu dari: Terjadwal, Selesai, Hadir, Tidak Hadir, atau Dibatalkan.',
             'notes.string'                  => 'Catatan harus berupa teks.',
         ]);
 
@@ -114,6 +114,36 @@ class TreatmentVisitController extends Controller
 
         return response()->json([
             'message' => 'Kunjungan berhasil dihapus.'
+        ]);
+    }
+
+    public function cancelVisit(Request $request, $id)
+    {
+        $visit = TreatmentVisit::with('patientTreatment.patient')->find($id);
+
+        if (!$visit) {
+            return response()->json([
+                'message' => 'Data kunjungan tidak ditemukan.'
+            ], 404);
+        }
+
+        $user = Auth::user();
+        if (!$visit->isAccessibleBy($user)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki wewenang membatalkan jadwal kunjungan pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
+
+        $visit->visit_status = 'Dibatalkan';
+        if ($request->filled('notes')) {
+            $existingNotes = $visit->notes ? $visit->notes . ' | ' : '';
+            $visit->notes = $existingNotes . 'Dibatalkan: ' . $request->input('notes');
+        }
+        $visit->save();
+
+        return response()->json([
+            'message' => 'Jadwal kunjungan berhasil dibatalkan.',
+            'data'    => $visit
         ]);
     }
 

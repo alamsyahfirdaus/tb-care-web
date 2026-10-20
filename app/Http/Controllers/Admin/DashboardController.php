@@ -37,10 +37,13 @@ class DashboardController extends Controller
 
         // Additional clinical metrics
         $pasienAktif = PatientTreatment::accessibleBy($user)->where('treatment_status', 'Berjalan')->count();
-        $pasienSelesai = PatientTreatment::accessibleBy($user)->where('treatment_status', 'Selesai')->count();
+        $pasienSelesai = PatientTreatment::accessibleBy($user)->whereIn('treatment_status', ['Selesai', 'Sembuh', 'Pengobatan Lengkap'])->count();
         $totalMinumObat = MedicationRecord::accessibleBy($user)->count();
-        $minumTepatWaktu = MedicationRecord::accessibleBy($user)->where('late', 0)->count();
-        $tingkatKepatuhan = $totalMinumObat > 0 ? round(($minumTepatWaktu / $totalMinumObat) * 100, 1) : 0;
+        
+        // Kepatuhan kohort berbasis dosis jatuh tempo aktual
+        $accessibleTreatments = PatientTreatment::accessibleBy($user)->get();
+        $adherenceCohort = PatientTreatment::calculateCohortAdherence($accessibleTreatments);
+        $tingkatKepatuhan = $adherenceCohort['percentage'];
         $perluTindakLanjut = Screening::accessibleBy($user)->where('status', 'Perlu Tindak Lanjut')->count();
 
         // 2. Chart 1: Status / Risiko Skrining (Doughnut / Pie Chart)

@@ -65,27 +65,7 @@ class LoginController extends Controller
 
         $user = Auth::user();
 
-        // 2. Tolak akun Pasien (user_type_id == 2) dari Web Admin
-        if ($user->user_type_id == 2) {
-            if (Auth::guard('web') instanceof SessionGuard) {
-                Auth::guard('web')->logout();
-            } elseif (method_exists(Auth::guard(), 'logout')) {
-                Auth::guard()->logout();
-            }
-
-            if ($request->hasSession()) {
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-            }
-
-            $errorMsg = 'Akun pasien tidak dapat digunakan untuk login melalui Web Admin. Silakan gunakan aplikasi TB Care mobile.';
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json(['error' => $errorMsg], 422);
-            }
-            return back()->with('error', $errorMsg);
-        }
-
-        // 3. Pastikan akun dalam status aktif (jika terdapat kolom is_active)
+        // 2. Pastikan akun dalam status aktif (jika terdapat kolom is_active)
         if (isset($user->is_active) && !$user->is_active) {
             if (Auth::guard('web') instanceof SessionGuard) {
                 Auth::guard('web')->logout();
@@ -105,7 +85,47 @@ class LoginController extends Controller
             return back()->with('error', $errorMsg);
         }
 
-        // 4. Pastikan hanya Administrator (1) dan Petugas (3) yang diizinkan
+        // 3. Tolak akun Pasien (user_type_id == 2) dari Web Admin
+        if ($user->user_type_id == 2) {
+            if (Auth::guard('web') instanceof SessionGuard) {
+                Auth::guard('web')->logout();
+            } elseif (method_exists(Auth::guard(), 'logout')) {
+                Auth::guard()->logout();
+            }
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+
+            $errorMsg = 'Akun pasien tidak dapat digunakan untuk login melalui Web Admin. Silakan gunakan aplikasi TB Care mobile.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => $errorMsg], 422);
+            }
+            return back()->with('error', $errorMsg);
+        }
+
+        // 4. Tolak akun Kader (officer_type_id == 4) dari Web Admin
+        if ($user->user_type_id == 3 && $user->officer && $user->officer->isKader()) {
+            if (Auth::guard('web') instanceof SessionGuard) {
+                Auth::guard('web')->logout();
+            } elseif (method_exists(Auth::guard(), 'logout')) {
+                Auth::guard()->logout();
+            }
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+
+            $errorMsg = 'Akun kader tidak dapat digunakan untuk login melalui Web Admin. Silakan gunakan aplikasi TB Care mobile.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => $errorMsg], 422);
+            }
+            return back()->with('error', $errorMsg);
+        }
+
+        // 5. Pastikan hanya Administrator (1) dan Petugas Berwenang (3: Dinkes & PJTB) yang diizinkan
         if (!in_array($user->user_type_id, [1, 3])) {
             if (Auth::guard('web') instanceof SessionGuard) {
                 Auth::guard('web')->logout();
