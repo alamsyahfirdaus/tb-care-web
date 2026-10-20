@@ -51,7 +51,16 @@ class PatientController extends Controller
             'subdistrict.district.province',
             'treatments' => function ($query) use ($treatmentStatus) {
                 $query->when($treatmentStatus, function ($q) use ($treatmentStatus) {
-                    $q->where('treatment_status', $treatmentStatus);
+                    $lower = strtolower(trim($treatmentStatus));
+                    if ($lower === 'pengobatan lengkap') {
+                        $q->whereIn('treatment_status', ['Pengobatan Lengkap', 'Selesai']);
+                    } elseif ($lower === 'putus berobat') {
+                        $q->whereIn('treatment_status', ['Putus Berobat', 'Lost to Follow Up', 'Putus Obat']);
+                    } elseif ($lower === 'tidak dievaluasi') {
+                        $q->whereIn('treatment_status', ['Tidak Dievaluasi', 'Pindah']);
+                    } else {
+                        $q->where('treatment_status', $treatmentStatus);
+                    }
                 })
                     ->orderByDesc('start_date')
                     ->with([
@@ -119,6 +128,7 @@ class PatientController extends Controller
                         'id'                => $treatment->id,
                         'treatment_type_id' => $treatment->treatment_type_id,
                         'treatment_status'  => $treatment->treatment_status,
+                        'treatment_outcome' => in_array($treatment->treatment_status, ['Sembuh', 'Pengobatan Lengkap', 'Gagal', 'Meninggal', 'Putus Berobat', 'Tidak Dievaluasi', 'Pindah']) ? $treatment->treatment_status : ($treatment->treatment_status == 'Selesai' ? 'Pengobatan Lengkap' : null),
                         'diagnosis_date'    => $treatment->diagnosis_date,
                         'start_date'        => $treatment->start_date,
                         'end_date'          => $treatment->end_date,
@@ -407,6 +417,7 @@ class PatientController extends Controller
                     'id'                => $treatment->id,
                     'treatment_type_id' => $treatment->treatment_type_id,
                     'treatment_status'  => $treatment->treatment_status,
+                    'treatment_outcome' => in_array($treatment->treatment_status, ['Sembuh', 'Pengobatan Lengkap', 'Gagal', 'Meninggal', 'Putus Berobat', 'Tidak Dievaluasi', 'Pindah']) ? $treatment->treatment_status : ($treatment->treatment_status == 'Selesai' ? 'Pengobatan Lengkap' : null),
                     'diagnosis_date'    => $treatment->diagnosis_date,
                     'start_date'        => $treatment->start_date,
                     'end_date'          => $treatment->end_date,
@@ -509,6 +520,7 @@ class PatientController extends Controller
                 'treatment_days'   => $treatment->treatment_days,
                 'medication_time'  => $treatment->medication_time,
                 'treatment_status' => $treatment->treatment_status,
+                'treatment_outcome' => in_array($treatment->treatment_status, ['Sembuh', 'Pengobatan Lengkap', 'Gagal', 'Meninggal', 'Putus Berobat', 'Tidak Dievaluasi', 'Pindah']) ? $treatment->treatment_status : ($treatment->treatment_status == 'Selesai' ? 'Pengobatan Lengkap' : null),
                 'prescription'     => $normalizedNames,
                 'medications'      => $normalizedMedications,
             ];

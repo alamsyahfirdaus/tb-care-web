@@ -166,9 +166,12 @@
                                                             <label>Status Evaluasi Pengobatan <span class="text-danger">*</span></label>
                                                             <select name="treatment_status" class="form-control" required>
                                                                 <option value="Berjalan" {{ $tr->treatment_status == 'Berjalan' ? 'selected' : '' }}>Berjalan (Sedang Minum Obat)</option>
-                                                                <option value="Selesai" {{ $tr->treatment_status == 'Selesai' ? 'selected' : '' }}>Selesai / Sembuh (Tuntas)</option>
-                                                                <option value="Gagal" {{ $tr->treatment_status == 'Gagal' ? 'selected' : '' }}>Gagal / Drop Out / Pindah</option>
+                                                                <option value="Sembuh" {{ $tr->treatment_status == 'Sembuh' ? 'selected' : '' }}>Sembuh (BTA/TCM Negatif)</option>
+                                                                <option value="Pengobatan Lengkap" {{ in_array($tr->treatment_status, ['Pengobatan Lengkap', 'Selesai']) ? 'selected' : '' }}>Pengobatan Lengkap</option>
+                                                                <option value="Gagal" {{ $tr->treatment_status == 'Gagal' ? 'selected' : '' }}>Gagal Terapi</option>
                                                                 <option value="Meninggal" {{ $tr->treatment_status == 'Meninggal' ? 'selected' : '' }}>Meninggal Dunia</option>
+                                                                <option value="Putus Berobat" {{ in_array($tr->treatment_status, ['Putus Berobat', 'Lost to Follow Up']) ? 'selected' : '' }}>Putus Berobat (Lost to Follow Up)</option>
+                                                                <option value="Tidak Dievaluasi" {{ in_array($tr->treatment_status, ['Tidak Dievaluasi', 'Pindah']) ? 'selected' : '' }}>Tidak Dievaluasi / Pindah</option>
                                                             </select>
                                                         </div>
                                                         <div class="form-group">

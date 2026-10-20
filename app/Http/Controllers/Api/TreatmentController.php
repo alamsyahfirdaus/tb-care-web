@@ -28,7 +28,7 @@ class TreatmentController extends Controller
             'start_date'        => 'nullable|date|after_or_equal:diagnosis_date',
             'medication_time'   => 'required|date_format:H:i',
             'prescription'      => 'nullable|array',
-            'treatment_status'  => 'required|in:Berjalan,Selesai,Gagal,Meninggal',
+            'treatment_status'  => 'required|in:Berjalan,Selesai,Sembuh,Pengobatan Lengkap,Gagal,Meninggal,Putus Berobat,Tidak Dievaluasi,Pindah',
         ], [
             'id.exists'                   => 'Data pengobatan tidak ditemukan.',
             'patient_id.required'         => 'Pasien wajib dipilih.',
@@ -42,7 +42,7 @@ class TreatmentController extends Controller
             'medication_time.date_format' => 'Format waktu minum obat harus dalam format HH:ii (contoh: 07:00).',
             'prescription.array'          => 'Resep harus dalam format array.',
             'treatment_status.required'   => 'Status pengobatan wajib diisi.',
-            'treatment_status.in'         => 'Status pengobatan harus salah satu dari: Berjalan, Selesai, Gagal, Meninggal.',
+            'treatment_status.in'         => 'Status pengobatan harus salah satu dari: Berjalan, Sembuh, Pengobatan Lengkap, Selesai, Gagal, Meninggal, Putus Berobat, Tidak Dievaluasi.',
         ]);
 
         if ($validator->fails()) {
@@ -182,12 +182,12 @@ class TreatmentController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'id'               => 'required|exists:patient_treatments,id',
-            'treatment_status' => 'required|in:Berjalan,Selesai,Gagal,Meninggal',
+            'treatment_status' => 'required|in:Berjalan,Selesai,Sembuh,Pengobatan Lengkap,Gagal,Meninggal,Putus Berobat,Tidak Dievaluasi,Pindah',
         ], [
             'id.required'               => 'ID pengobatan wajib diisi.',
             'id.exists'                 => 'Data pengobatan tidak ditemukan.',
             'treatment_status.required' => 'Status pengobatan wajib diisi.',
-            'treatment_status.in'       => 'Status pengobatan harus salah satu dari: Berjalan, Selesai, Gagal, Meninggal.',
+            'treatment_status.in'       => 'Status pengobatan harus salah satu dari: Berjalan, Sembuh, Pengobatan Lengkap, Selesai, Gagal, Meninggal, Putus Berobat, Tidak Dievaluasi.',
         ]);
 
         if ($validator->fails()) {
