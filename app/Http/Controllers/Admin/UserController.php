@@ -191,6 +191,10 @@ class UserController extends Controller
 
                 $user->update($updateData);
 
+                if (!$request->is_active && method_exists($user, 'tokens')) {
+                    $user->tokens()->delete();
+                }
+
                 if ($user->user_type_id == 3) {
                     Officer::updateOrCreate(
                         ['user_id' => $user->id],

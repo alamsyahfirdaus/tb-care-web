@@ -28,7 +28,7 @@ use App\Http\Controllers\Api\AppVersionApiController;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/image-bytes/{filename}', function ($filename) {
+Route::middleware(['auth:sanctum', 'active'])->get('/image-bytes/{filename}', function ($filename) {
     $path = public_path('images/' . $filename);
 
     if (!file_exists($path)) {

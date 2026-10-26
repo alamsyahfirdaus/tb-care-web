@@ -43,8 +43,12 @@ class PatientController extends Controller
             ], 403);
         }
 
-        // Siapkan query dengan centralized scope accessibleBy
-        $patientsQuery = Patient::accessibleBy($user)->with([
+        // Siapkan query dengan centralized scope accessibleBy dan pastikan hanya akun user aktif
+        $patientsQuery = Patient::accessibleBy($user)
+            ->whereHas('user', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->with([
             'user',
             'puskesmas',
             'village',
@@ -121,6 +125,7 @@ class PatientController extends Controller
                 'gender'         => optional($patient->user)->gender,
                 'place_of_birth' => optional($patient->user)->place_of_birth,
                 'date_of_birth'  => optional($patient->user)->date_of_birth,
+                'is_active'      => (bool) optional($patient->user)->is_active,
 
                 'puskesmas'      => optional($patient->puskesmas)->name,
 
@@ -588,8 +593,10 @@ class PatientController extends Controller
             ]);
         }
 
-        // 2. Admin & Petugas (Scoped to accessible patients)
-        $patientsQuery = Patient::accessibleBy($user);
+        // 2. Admin & Petugas (Scoped to accessible patients with active accounts)
+        $patientsQuery = Patient::accessibleBy($user)->whereHas('user', function ($q) {
+            $q->where('is_active', true);
+        });
         $patientIds = $patientsQuery->pluck('id');
 
         $latestTreatments = collect();

@@ -280,9 +280,12 @@ class ConsultationController extends Controller
                 return response()->json(['message' => 'Data pasien tidak ditemukan.'], 404);
             }
 
-            // Cari petugas (PJTB/Kader) di Puskesmas yang sama
+            // Cari petugas (PJTB/Kader) di Puskesmas yang sama yang akunnya aktif
             $officers = Officer::with('user')
                 ->where('puskesmas_id', $patient->puskesmas_id)
+                ->whereHas('user', function ($q) {
+                    $q->where('is_active', true);
+                })
                 ->get()
                 ->map(function ($officer) {
                     return [
@@ -307,15 +310,21 @@ class ConsultationController extends Controller
                 return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
             }
 
-            // Centralized scoping menggunakan Patient::accessibleBy
-            $patients = Patient::accessibleBy($user)->with('user')->get()->map(function ($patient) {
-                return [
-                    'id'    => $patient->user->id,
-                    'name'  => $patient->user->name,
-                    'email' => $patient->user->email,
-                    'role'  => 'Pasien',
-                ];
-            });
+            // Centralized scoping menggunakan Patient::accessibleBy dengan filter user aktif
+            $patients = Patient::accessibleBy($user)
+                ->whereHas('user', function ($q) {
+                    $q->where('is_active', true);
+                })
+                ->with('user')
+                ->get()
+                ->map(function ($patient) {
+                    return [
+                        'id'    => $patient->user->id,
+                        'name'  => $patient->user->name,
+                        'email' => $patient->user->email,
+                        'role'  => 'Pasien',
+                    ];
+                });
 
             return response()->json([
                 'message' => 'Daftar pasien berhasil diambil.',
@@ -323,9 +332,12 @@ class ConsultationController extends Controller
             ]);
         }
 
-        // Admin atau selainnya bisa memilih semua user
+        // Admin atau selainnya bisa memilih semua user yang aktif
         else {
-            $users = User::where('id', '!=', $user->id)->get()->map(function ($u) {
+            $users = User::where('id', '!=', $user->id)
+                ->where('is_active', true)
+                ->get()
+                ->map(function ($u) {
                 return [
                     'id'    => $u->id,
                     'name'  => $u->name,

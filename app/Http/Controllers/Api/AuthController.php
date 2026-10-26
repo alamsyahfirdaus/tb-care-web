@@ -48,8 +48,14 @@ class AuthController extends Controller
 
         // Cek apakah akun aktif
         if (!$user->is_active) {
+            if (method_exists($user, 'tokens')) {
+                $user->tokens()->delete();
+            }
+
             return response()->json([
-                'message' => 'Akun Anda belum aktif. Silakan hubungi administrator.'
+                'success' => false,
+                'code'    => 'ACCOUNT_DEACTIVATED',
+                'message' => 'Akun Anda telah dinonaktifkan. Silakan hubungi petugas TB Care untuk informasi lebih lanjut.'
             ], 403); // Forbidden
         }
 
