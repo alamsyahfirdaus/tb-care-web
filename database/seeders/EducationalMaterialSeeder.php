@@ -14,7 +14,10 @@ class EducationalMaterialSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('educational_materials')->insert([
+        $adminId = DB::table('users')->where('username', 'alamsyahfirdaus')->value('id') 
+            ?? DB::table('users')->where('user_type_id', 1)->value('id');
+
+        $materials = [
             [
                 'title_material'  => 'Cara Cuci Tangan yang Benar',
                 'description'     => 'Panduan langkah-langkah mencuci tangan untuk mencegah penyebaran penyakit.',
@@ -22,7 +25,7 @@ class EducationalMaterialSeeder extends Seeder
                 'video_url'       => 'https://www.youtube.com/watch?v=video_cuci_tangan',
                 'image_path'      => null,
                 'is_publish'      => true,
-                'created_by'      => 1,
+                'created_by'      => $adminId,
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ],
@@ -33,10 +36,17 @@ class EducationalMaterialSeeder extends Seeder
                 'image_path'      => 'pola_makan_sehat.jpg',
                 'video_url'       => null,
                 'is_publish'      => true,
-                'created_by'      => 1,
+                'created_by'      => $adminId,
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ],
-        ]);
+        ];
+
+        foreach ($materials as $m) {
+            DB::table('educational_materials')->updateOrInsert(
+                ['title_material' => $m['title_material']],
+                $m
+            );
+        }
     }
 }

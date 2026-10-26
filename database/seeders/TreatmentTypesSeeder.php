@@ -14,7 +14,7 @@ class TreatmentTypesSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('treatment_types')->insert([
+        $types = [
             [
                 'treatment_type'     => 'Kategori 1 (Pasien Baru)',
                 'treatment_duration' => 6,
@@ -39,6 +39,10 @@ class TreatmentTypesSeeder extends Seeder
                 'duration_unit'      => 'month',
                 'description'        => 'Terapi pencegahan TBC untuk orang yang memiliki risiko tinggi, misalnya kontak serumah.',
             ],
-        ]);
+        ];
+
+        foreach ($types as $t) {
+            DB::table('treatment_types')->updateOrInsert(['treatment_type' => $t['treatment_type']], $t);
+        }
     }
 }

@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\KaderAreaController;
+use App\Http\Controllers\Admin\AppVersionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -115,6 +116,7 @@ Route::middleware(['auth', 'web.admin', 'checkrole:1-3'])->group(function () {
     Route::get('treatments', [TreatmentController::class, 'index'])->name('treatments.index');
     Route::get('treatments/monitoring', [TreatmentController::class, 'monitoring'])->name('treatments.monitoring');
     Route::patch('treatments/{id}/status', [TreatmentController::class, 'updateStatus'])->name('treatments.update_status');
+    Route::post('treatments/visits', [TreatmentController::class, 'storeVisit'])->name('treatments.store_visit');
     Route::match(['post', 'patch'], 'treatments/verify-medication/{id}', [TreatmentController::class, 'verifyMedication'])->name('treatments.verify_medication');
     Route::delete('treatments/{id}', [TreatmentController::class, 'destroy'])->name('treatments.destroy');
 
@@ -208,6 +210,10 @@ Route::middleware(['auth', 'web.admin', 'checkrole:1'])->group(function () {
     Route::post('regions/villages', [RegionController::class, 'storeVillage'])->name('regions.villages.store');
     Route::put('regions/villages/{id}', [RegionController::class, 'updateVillage'])->name('regions.villages.update');
     Route::delete('regions/villages/{id}', [RegionController::class, 'destroyVillage'])->name('regions.villages.destroy');
+
+    // Manajemen Versi Aplikasi Mobile
+    Route::post('app-versions/{id}/toggle-active', [AppVersionController::class, 'toggleActive'])->name('app-versions.toggle_active');
+    Route::resource('app-versions', AppVersionController::class);
 });
 
 /*

@@ -76,13 +76,16 @@ class MedicationScheduleTest extends TestCase
             'is_active'    => true,
         ]);
 
+        $diffVillage = Village::where('id', '!=', $this->village->id)->first() 
+            ?? Village::create(['name' => 'Desa Beda ' . uniqid(), 'subdistrict_id' => $this->subdistrict->id]);
+
         $this->patientB = Patient::create([
             'user_id'              => $this->patientUserB->id,
             'nik'                  => '3202' . rand(100000000000, 999999999999),
             'address'              => 'Jl Pasien B',
             'puskesmas_id'         => $this->puskesmas->id,
             'subdistrict_id'       => $this->subdistrict->id,
-            'village_id'           => $this->village->id,
+            'village_id'           => $diffVillage->id,
             'rw'                   => '09',
             'rt'                   => '02',
             'treatment_start_date' => '2026-09-10',

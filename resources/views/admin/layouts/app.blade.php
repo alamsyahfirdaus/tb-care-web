@@ -291,7 +291,10 @@
                                 class="img-circle elevation-2" alt="User Image">
                             <p>
                                 {{ Auth::user() ? Auth::user()->name : 'Administrator' }}
-                                <small>{{ Auth::user() && Auth::user()->userType ? Auth::user()->userType->name : 'Admin Sistem' }}</small>
+                                <small class="d-block">{{ Auth::user() ? Auth::user()->role_display_name : 'Petugas TB Care' }}</small>
+                                @if(Auth::user() && Auth::user()->officer && Auth::user()->officer->scope_description)
+                                    <small class="text-xs text-light font-italic">{{ Auth::user()->officer->scope_description }}</small>
+                                @endif
                             </p>
                         </li>
                         <!-- Menu Footer-->
@@ -319,7 +322,7 @@
                 <!-- Sidebar user panel -->
                 {{-- <div class="user-panel mt-3 pb-3 mb-3 d-flex align-items-center">
                     <div class="image">
-                        <img src="{{ Auth::user() && Auth::user()->photo ? asset('upload_images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
+                        <img src="{{ Auth::user() && Auth::user()->photo ? asset('images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
                             class="img-circle elevation-1" style="width: 36px; height: 36px;" alt="User Image">
                     </div>
                     <div class="info">
@@ -347,7 +350,8 @@
 
                         <li class="nav-header">MANAJEMEN UTAMA</li>
 
-                        <!-- 2. PENGGUNA -->
+                        @if(Auth::user()->isSuperAdmin())
+                        <!-- 2. PENGGUNA (Khusus Super Administrator) -->
                         <li class="nav-item {{ request()->is('users*') ? 'menu-open' : '' }}">
                             <a href="#" class="nav-link {{ request()->is('users*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-users text-primary"></i>
@@ -387,6 +391,7 @@
                                 </li>
                             </ul>
                         </li>
+                        @endif
 
                         <!-- 3. DATA PASIEN -->
                         <li class="nav-item {{ request()->is('patients*') ? 'menu-open' : '' }}">
@@ -607,7 +612,8 @@
                             </ul>
                         </li>
 
-                        <!-- 9. WILAYAH -->
+                        @if(Auth::user()->isSuperAdmin())
+                        <!-- 9. WILAYAH (Khusus Super Administrator) -->
                         <li class="nav-item {{ request()->is('regions*') ? 'menu-open' : '' }}">
                             <a href="#"
                                 class="nav-link {{ request()->is('regions*') ? 'active' : '' }}">
@@ -648,6 +654,7 @@
                                 </li>
                             </ul>
                         </li>
+                        @endif
 
                         <li class="nav-header">MEDIA & KOMUNIKASI</li>
 
@@ -735,26 +742,28 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('reports.index', ['type' => 'patients']) }}"
-                                        class="nav-link {{ request('type') == 'patients' ? 'active' : '' }}">
+                                    <a href="{{ route('reports.index', ['type' => 'patient']) }}"
+                                        class="nav-link {{ in_array(request('type'), ['patient', 'patients']) ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Pasien TB</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('reports.index', ['type' => 'regions']) }}"
-                                        class="nav-link {{ request('type') == 'regions' ? 'active' : '' }}">
+                                    <a href="{{ route('reports.index', ['type' => 'regional']) }}"
+                                        class="nav-link {{ in_array(request('type'), ['regional', 'regions']) ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Wilayah</p>
                                     </a>
                                 </li>
+                                @if(Auth::user()->isSuperAdmin())
                                 <li class="nav-item">
-                                    <a href="{{ route('reports.index', ['type' => 'users']) }}"
-                                        class="nav-link {{ request('type') == 'users' ? 'active' : '' }}">
+                                    <a href="{{ route('reports.index', ['type' => 'user']) }}"
+                                        class="nav-link {{ in_array(request('type'), ['user', 'users']) ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Laporan Pengguna</p>
                                     </a>
                                 </li>
+                                @endif
                             </ul>
                         </li>
 
@@ -769,7 +778,8 @@
 
                         <li class="nav-header">SISTEM & KONFIGURASI</li>
 
-                        <!-- 14. MASTER DATA -->
+                        @if(Auth::user()->isSuperAdmin())
+                        <!-- 14. MASTER DATA (Khusus Super Administrator) -->
                         <li class="nav-item {{ request()->is('master*') ? 'menu-open' : '' }}">
                             <a href="#" class="nav-link {{ request()->is('master*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-database text-warning"></i>
@@ -803,7 +813,7 @@
                             </ul>
                         </li>
 
-                        <!-- 15. LOG AKTIVITAS -->
+                        <!-- 15. LOG AKTIVITAS (Khusus Super Administrator) -->
                         <li class="nav-item">
                             <a href="{{ route('activity_logs.index') }}"
                                 class="nav-link {{ request()->routeIs('activity_logs.index') ? 'active' : '' }}">
@@ -811,6 +821,16 @@
                                 <p>Log Aktivitas</p>
                             </a>
                         </li>
+
+                        <!-- 15B. VERSI APLIKASI MOBILE (Khusus Super Administrator) -->
+                        <li class="nav-item">
+                            <a href="{{ route('app-versions.index') }}"
+                                class="nav-link {{ request()->is('app-versions*') ? 'active' : '' }}">
+                                <i class="nav-icon fab fa-android text-success"></i>
+                                <p>Versi TB Care Mobile</p>
+                            </a>
+                        </li>
+                        @endif
 
                         <!-- 16. PENGATURAN -->
                         <li class="nav-item {{ request()->is('settings*') ? 'menu-open' : '' }}">
@@ -827,9 +847,10 @@
                                     <a href="{{ route('settings.profile') }}"
                                         class="nav-link {{ request()->routeIs('settings.profile') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
-                                        <p>Profil Admin</p>
+                                        <p>Profil Pengguna</p>
                                     </a>
                                 </li>
+                                @if(Auth::user()->isSuperAdmin())
                                 <li class="nav-item">
                                     <a href="{{ route('settings.roles') }}"
                                         class="nav-link {{ request()->routeIs('settings.roles') ? 'active' : '' }}">
@@ -844,6 +865,7 @@
                                         <p>Pengaturan Sistem</p>
                                     </a>
                                 </li>
+                                @endif
                             </ul>
                         </li>
 

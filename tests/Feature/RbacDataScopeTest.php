@@ -222,8 +222,7 @@ class RbacDataScopeTest extends TestCase
             'nik'                  => '3272' . rand(100000000000, 999999999999),
             'puskesmas_id'         => $this->puskesmasA->id,
             'subdistrict_id'       => $this->subdistrictA->id,
-            'village_id'           => $this->villageA1->id,
-            'rw'                   => '02',
+            'village_id'           => $this->villageA2->id,
             'rt'                   => '01',
             'address'              => 'Jl. Sukajadi No. 2',
             'treatment_start_date' => now()->toDateString(),
@@ -506,17 +505,9 @@ class RbacDataScopeTest extends TestCase
      */
     public function test_audit_vulnerability_fixes_regression()
     {
-        // 1. Password Batch Reset privilege escalation prevention
-        // Guest -> 401
-        $this->postJson('/api/password/batch-reset')->assertStatus(401);
-
-        // Patient -> 403
-        Sanctum::actingAs($this->patientUserA);
-        $this->postJson('/api/password/batch-reset')->assertStatus(403);
-
-        // Kader -> 403
-        Sanctum::actingAs($this->kaderUser);
-        $this->postJson('/api/password/batch-reset')->assertStatus(403);
+        // 1. Password Batch Reset permanently removed from routes/api.php in Phase 1 P0
+        $this->postJson('/api/password/batch-reset')->assertStatus(404);
+        $this->postJson('/api/run-migration')->assertStatus(404);
 
         // 2. Screening detail data leakage protection
         $screeningB = Screening::create([

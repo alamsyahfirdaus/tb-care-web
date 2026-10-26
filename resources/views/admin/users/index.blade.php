@@ -103,7 +103,7 @@
                                 <td class="text-center text-muted font-weight-bold">{{ $loop->iteration }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <img src="{{ $u->photo ? asset('upload_images/' . $u->photo) : asset('assets/img/profile.png') }}" 
+                                        <img src="{{ $u->photo ? asset('images/' . $u->photo) : asset('assets/img/profile.png') }}" 
                                              class="img-circle mr-2 elevation-1" style="width: 38px; height: 38px; object-fit: cover;" alt="">
                                         <div>
                                             <a href="{{ route('users.show', $u->encrypted_id) }}" class="font-weight-bold text-dark d-block">

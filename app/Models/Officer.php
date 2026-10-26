@@ -83,15 +83,9 @@ class Officer extends Model
         if ($this->officer_type_id == 4) {
             $areas = $this->kaderAreas()->with('village')->get();
             if ($areas->isNotEmpty()) {
-                $areaStrs = $areas->map(function ($a) {
-                    $vil = optional($a->village)->name ?? '';
-                    $rw = $a->rw ? ' RW ' . $a->rw : '';
-                    $rt = $a->rt ? ' RT ' . $a->rt : '';
-                    return trim("{$vil}{$rw}{$rt}");
-                })->filter()->values()->all();
-
-                if (!empty($areaStrs)) {
-                    return 'Wilayah: ' . implode(', ', $areaStrs);
+                $villages = $areas->map(fn($a) => optional($a->village)->name)->filter()->unique()->values()->all();
+                if (!empty($villages)) {
+                    return 'Wilayah: ' . implode(', ', $villages);
                 }
             }
             return $this->puskesmas ? 'Kader Puskesmas ' . $this->puskesmas->name : 'Kader';

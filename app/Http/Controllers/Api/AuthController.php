@@ -164,20 +164,6 @@ class AuthController extends Controller
             'village_id.exists'             => 'Desa/Kelurahan tidak valid.',
         ]);
 
-        // Pastikan kolom diagnosis_date di database mengizinkan NULL (antisipasi jika migration belum dijalankan di server)
-        // Dilakukan SEBELUM DB::transaction karena perintah DDL (ALTER TABLE) di MySQL memicu implicit commit
-        static $ensuredDiagnosisDateNullable = false;
-        if (!$ensuredDiagnosisDateNullable) {
-            try {
-                if (DB::getDriverName() !== 'sqlite') {
-                    DB::statement('ALTER TABLE patient_treatments MODIFY diagnosis_date DATE NULL');
-                }
-            } catch (\Throwable $e) {
-                // Abaikan jika sudah di-alter atau user database tidak memiliki hak akses DDL ALTER
-            }
-            $ensuredDiagnosisDateNullable = true;
-        }
-
         return DB::transaction(function () use ($validatedData) {
             // 1. Buat username otomatis unik
             $username = $this->generateUsername($validatedData['name']);
@@ -225,7 +211,8 @@ class AuthController extends Controller
 
             // 6. Buat inisialisasi riwayat pengobatan awal (PatientTreatment) secara otomatis
             $startDate = $validatedData['treatment_start_date'];
-            $treatmentType = TreatmentType::find(1);
+            $treatmentType = TreatmentType::find(1) ?? TreatmentType::first();
+            $treatmentTypeId = $treatmentType ? $treatmentType->id : null;
             $endDate = null;
             $treatmentDays = null;
             if ($treatmentType && $treatmentType->treatment_duration && $treatmentType->duration_unit) {
@@ -237,7 +224,7 @@ class AuthController extends Controller
             try {
                 $treatment = PatientTreatment::create([
                     'patient_id'        => $patient->id,
-                    'treatment_type_id' => 1,
+                    'treatment_type_id' => $treatmentTypeId,
                     'diagnosis_date'    => null,
                     'start_date'        => $startDate,
                     'end_date'          => $endDate,
@@ -252,7 +239,7 @@ class AuthController extends Controller
                 if (str_contains($qe->getMessage(), 'diagnosis_date') && (str_contains($qe->getMessage(), 'cannot be null') || str_contains($qe->getMessage(), 'Column \'diagnosis_date\''))) {
                     $treatment = PatientTreatment::create([
                         'patient_id'        => $patient->id,
-                        'treatment_type_id' => 1,
+                        'treatment_type_id' => $treatmentTypeId,
                         'diagnosis_date'    => $startDate,
                         'start_date'        => $startDate,
                         'end_date'          => $endDate,
@@ -403,26 +390,6 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Token valid',
             'user' => $user
-        ]);
-    }
-
-    public function updatePassword(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user || $user->user_type_id != 1) {
-            return response()->json([
-                'message' => 'Hanya Administrator yang memiliki akses untuk fitur ini.'
-            ], 403);
-        }
-
-        User::whereBetween('id', [139, 289])
-        ->update([
-            'password' => Hash::make('123456'),
-            'updated_at' => now()
-        ]);
-
-        return response()->json([
-            'message' => 'Password berhasil diperbarui.'
         ]);
     }
 }

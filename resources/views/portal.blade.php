@@ -19,7 +19,7 @@
             </div>
             <div class="card-body">
                 <div class="social-auth-links text-center mb-3">
-                    <a href="#" class="btn btn-block btn-primary mb-3">
+                    <a href="{{ url('/api/mobile/app-version/download') }}" target="_blank" class="btn btn-block btn-primary mb-3">
                         <i class="fab fa-google-play mr-2"></i>
                         Unduh Aplikasi Android
                     </a>

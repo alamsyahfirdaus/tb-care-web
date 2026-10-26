@@ -229,35 +229,39 @@ class KaderDataScopingTest extends TestCase
     }
 
     /**
-     * TC-03: Kader + RT di luar assignment -> DENIED
+     * TC-03: Kader + seluruh RT dalam Desa yang sama -> PASS
+     * Wilayah kerja berbasis Desa/Kelurahan: Seluruh RT di Desa binaan dapat diakses
      */
-    public function test_tc03_kader_access_unassigned_rt_denied()
+    public function test_tc03_kader_access_any_rt_in_same_village_pass()
     {
-        $this->assertFalse($this->patientDiffRt->isAccessibleBy($this->kaderUser));
+        $this->assertTrue($this->patientDiffRt->isAccessibleBy($this->kaderUser));
 
         Sanctum::actingAs($this->kaderUser, ['*']);
         $response = $this->getJson('/api/patients/' . $this->patientDiffRt->id . '/show');
-        $response->assertStatus(403);
+        $response->assertStatus(200);
 
         $indexResponse = $this->getJson('/api/patients');
+        $indexResponse->assertStatus(200);
         $patientIds = collect($indexResponse->json('data'))->pluck('id')->all();
-        $this->assertNotContains($this->patientDiffRt->id, $patientIds);
+        $this->assertContains($this->patientDiffRt->id, $patientIds);
     }
 
     /**
-     * TC-04: Kader + RW berbeda -> DENIED
+     * TC-04: Kader + RW berbeda dalam Desa yang sama -> PASS
+     * Wilayah kerja berbasis Desa/Kelurahan: Seluruh RW di Desa binaan dapat diakses
      */
-    public function test_tc04_kader_access_different_rw_denied()
+    public function test_tc04_kader_access_different_rw_in_same_village_pass()
     {
-        $this->assertFalse($this->patientDiffRw->isAccessibleBy($this->kaderUser));
+        $this->assertTrue($this->patientDiffRw->isAccessibleBy($this->kaderUser));
 
         Sanctum::actingAs($this->kaderUser, ['*']);
         $response = $this->getJson('/api/patients/' . $this->patientDiffRw->id . '/show');
-        $response->assertStatus(403);
+        $response->assertStatus(200);
 
         $indexResponse = $this->getJson('/api/patients');
+        $indexResponse->assertStatus(200);
         $patientIds = collect($indexResponse->json('data'))->pluck('id')->all();
-        $this->assertNotContains($this->patientDiffRw->id, $patientIds);
+        $this->assertContains($this->patientDiffRw->id, $patientIds);
     }
 
     /**
@@ -277,15 +281,13 @@ class KaderDataScopingTest extends TestCase
     }
 
     /**
-     * TC-06: Detail pasien luar scope -> DENIED
+     * TC-06: Detail pasien luar scope (Beda Desa / Beda Puskesmas) -> DENIED
      */
     public function test_tc06_detail_patient_outside_scope_denied()
     {
         Sanctum::actingAs($this->kaderUser, ['*']);
 
-        // IDOR attempt on each out-of-scope patient
-        $this->getJson('/api/patients/' . $this->patientDiffRt->id . '/show')->assertStatus(403);
-        $this->getJson('/api/patients/' . $this->patientDiffRw->id . '/show')->assertStatus(403);
+        // IDOR attempt on out-of-scope patients (Desa B dan Puskesmas B)
         $this->getJson('/api/patients/' . $this->patientDiffVillage->id . '/show')->assertStatus(403);
         $this->getJson('/api/patients/' . $this->patientDiffPuskesmas->id . '/show')->assertStatus(403);
     }
@@ -296,32 +298,33 @@ class KaderDataScopingTest extends TestCase
     public function test_tc07_delete_patient_outside_scope_denied()
     {
         Sanctum::actingAs($this->kaderUser, ['*']);
-        $response = $this->deleteJson('/api/patients/' . $this->patientDiffRt->id . '/delete');
+        $response = $this->deleteJson('/api/patients/' . $this->patientDiffVillage->id . '/delete');
         $response->assertStatus(403);
 
-        $this->assertDatabaseHas('patients', ['id' => $this->patientDiffRt->id]);
+        $this->assertDatabaseHas('patients', ['id' => $this->patientDiffVillage->id]);
     }
 
     /**
-     * TC-08: Create pasien luar scope -> DENIED
+     * TC-08: Create pasien luar Desa -> DENIED
      */
-    public function test_tc08_create_patient_outside_scope_denied()
+    public function test_tc08_create_patient_outside_village_scope_denied()
     {
         Sanctum::actingAs($this->kaderUser, ['*']);
 
         $payload = [
-            'name'           => 'Pasien Luar Wilayah',
-            'phone'          => '0898' . rand(10000000, 99999999),
-            'nik'            => '3201999988887777',
-            'gender'         => 'L',
-            'place_of_birth' => 'Bandung',
-            'date_of_birth'  => '1995-01-01',
-            'address'        => 'Jl. Uji No. 9',
-            'subdistrict_id' => $this->subdistrict->id,
-            'village_id'     => $this->villageA->id,
-            'rw'             => '05',
-            'rt'             => '03', // Outside Kader's assigned RT 01 and 02
-            'puskesmas_id'   => $this->puskesmasA->id,
+            'name'                 => 'Pasien Luar Desa',
+            'phone'                => '0898' . rand(10000000, 99999999),
+            'nik'                  => '3201999988887777',
+            'gender'               => 'L',
+            'place_of_birth'       => 'Bandung',
+            'date_of_birth'        => '1995-01-01',
+            'treatment_start_date' => date('Y-m-d'),
+            'address'              => 'Jl. Uji No. 9',
+            'subdistrict_id'       => $this->subdistrict->id,
+            'village_id'           => $this->villageB->id, // Beda Desa!
+            'rw'                   => '05',
+            'rt'                   => '03',
+            'puskesmas_id'         => $this->puskesmasA->id,
         ];
 
         $response = $this->postJson('/api/patients/store', $payload);
@@ -329,27 +332,55 @@ class KaderDataScopingTest extends TestCase
     }
 
     /**
-     * TC-09: Update pasien keluar scope -> DENIED
+     * TC-08b: Create pasien se-Desa beda RW -> PASS
      */
-    public function test_tc09_update_patient_outside_scope_denied()
+    public function test_tc08b_create_patient_in_same_village_any_rw_pass()
     {
         Sanctum::actingAs($this->kaderUser, ['*']);
 
-        // Attempt to move in-scope patient to out-of-scope RW 07
         $payload = [
-            'patient_id'     => $this->patientInScope1->id,
-            'name'           => $this->patientInScope1->user->name,
-            'phone'          => $this->patientInScope1->user->phone,
-            'gender'         => 'P',
-            'place_of_birth' => 'Bandung',
-            'date_of_birth'  => '1995-01-01',
-            'nik'            => $this->patientInScope1->nik,
-            'address'        => 'Jl. Berubah Wilayah',
-            'subdistrict_id' => $this->subdistrict->id,
-            'village_id'     => $this->villageA->id,
-            'rw'             => '07', // Outside Kader's assigned territory
-            'rt'             => '01',
-            'puskesmas_id'   => $this->puskesmasA->id,
+            'name'                 => 'Pasien RW Bebas Se-Desa',
+            'phone'                => '0898' . rand(10000000, 99999999),
+            'nik'                  => '3201999988887788',
+            'gender'               => 'L',
+            'place_of_birth'       => 'Bandung',
+            'date_of_birth'        => '1995-01-01',
+            'treatment_start_date' => date('Y-m-d'),
+            'address'              => 'Jl. Uji RW Lain',
+            'subdistrict_id'       => $this->subdistrict->id,
+            'village_id'           => $this->villageA->id, // Desa sama!
+            'rw'                   => '99', // RW mana saja
+            'rt'                   => '99',
+            'puskesmas_id'         => $this->puskesmasA->id,
+        ];
+
+        $response = $this->postJson('/api/patients/store', $payload);
+        $response->assertStatus(201);
+    }
+
+    /**
+     * TC-09: Update pasien keluar Desa scope -> DENIED
+     */
+    public function test_tc09_update_patient_outside_village_scope_denied()
+    {
+        Sanctum::actingAs($this->kaderUser, ['*']);
+
+        // Attempt to move in-scope patient to out-of-scope Village B
+        $payload = [
+            'patient_id'           => $this->patientInScope1->id,
+            'name'                 => $this->patientInScope1->user->name,
+            'phone'                => $this->patientInScope1->user->phone,
+            'gender'               => 'P',
+            'place_of_birth'       => 'Bandung',
+            'date_of_birth'        => '1995-01-01',
+            'treatment_start_date' => date('Y-m-d'),
+            'nik'                  => $this->patientInScope1->nik,
+            'address'              => 'Jl. Berubah Desa',
+            'subdistrict_id'       => $this->subdistrict->id,
+            'village_id'           => $this->villageB->id, // Beda Desa!
+            'rw'                   => '07',
+            'rt'                   => '01',
+            'puskesmas_id'         => $this->puskesmasA->id,
         ];
 
         $response = $this->postJson('/api/patients/store', $payload);
@@ -373,9 +404,9 @@ class KaderDataScopingTest extends TestCase
             'end_date'          => '2026-07-01',
         ]);
 
-        // Treatment out of scope
+        // Treatment out of scope (Desa B)
         $treatmentOutOfScope = PatientTreatment::create([
-            'patient_id'        => $this->patientDiffRt->id,
+            'patient_id'        => $this->patientDiffVillage->id,
             'treatment_type_id' => $treatmentType->id,
             'treatment_status'  => 'Berjalan',
             'diagnosis_date'    => '2026-01-01',
@@ -393,7 +424,7 @@ class KaderDataScopingTest extends TestCase
 
         // Store treatment for out-of-scope patient -> 403
         $payload = [
-            'patient_id'        => $this->patientDiffRt->id,
+            'patient_id'        => $this->patientDiffVillage->id,
             'treatment_type_id' => $treatmentType->id,
             'treatment_status'  => 'Berjalan',
             'diagnosis_date'    => '2026-01-01',
@@ -412,7 +443,7 @@ class KaderDataScopingTest extends TestCase
         $treatmentType = TreatmentType::first();
 
         $treatmentOutOfScope = PatientTreatment::create([
-            'patient_id'        => $this->patientDiffRt->id,
+            'patient_id'        => $this->patientDiffVillage->id,
             'treatment_type_id' => $treatmentType->id,
             'treatment_status'  => 'Berjalan',
             'diagnosis_date'    => '2026-01-01',
@@ -445,13 +476,13 @@ class KaderDataScopingTest extends TestCase
 
         $recipientUserIds = collect($response->json('data'))->pluck('id')->all();
 
-        // In scope patients must be present
+        // In scope patients must be present (all patients in Desa A, regardless of RW/RT)
         $this->assertContains($this->patientInScope1->user_id, $recipientUserIds);
         $this->assertContains($this->patientInScope2->user_id, $recipientUserIds);
+        $this->assertContains($this->patientDiffRt->user_id, $recipientUserIds);
+        $this->assertContains($this->patientDiffRw->user_id, $recipientUserIds);
 
-        // Out of scope patients must NOT be present
-        $this->assertNotContains($this->patientDiffRt->user_id, $recipientUserIds);
-        $this->assertNotContains($this->patientDiffRw->user_id, $recipientUserIds);
+        // Out of scope patients must NOT be present (Desa B or Puskesmas B)
         $this->assertNotContains($this->patientDiffVillage->user_id, $recipientUserIds);
         $this->assertNotContains($this->patientDiffPuskesmas->user_id, $recipientUserIds);
     }
@@ -473,9 +504,9 @@ class KaderDataScopingTest extends TestCase
             'end_date'          => '2026-07-01',
         ]);
 
-        // Out-of-scope patient active treatment
+        // Out-of-scope patient active treatment (Desa B)
         PatientTreatment::create([
-            'patient_id'        => $this->patientDiffRt->id,
+            'patient_id'        => $this->patientDiffVillage->id,
             'treatment_type_id' => $treatmentType->id,
             'treatment_status'  => 'Berjalan',
             'diagnosis_date'    => '2026-01-01',
@@ -488,8 +519,11 @@ class KaderDataScopingTest extends TestCase
         $response = $this->getJson('/api/patients/adherence');
         $response->assertStatus(200);
 
-        // Kader only has 1 active treatment in scope (patientInScope1), not 2
-        $this->assertEquals(1, $response->json('data.total_treatment'));
+        // Kader scoped to assigned Desa/Kelurahan active treatments
+        $expectedCount = Patient::accessibleBy($this->kaderUser)->whereHas('treatments', function($q) {
+            $q->where('treatment_status', 'Berjalan');
+        })->count();
+        $this->assertEquals($expectedCount, $response->json('data.total_treatment'));
     }
 
     /**

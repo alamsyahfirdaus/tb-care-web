@@ -324,10 +324,13 @@ class TreatmentStartDateTest extends TestCase
             'is_active'    => true,
         ]);
 
+        $diffVillage = Village::where('id', '!=', $this->kaderVillage->id)->first() 
+            ?? Village::create(['name' => 'Desa Luar ' . uniqid(), 'subdistrict_id' => $this->subdistrict->id]);
+
         $outsidePatient = Patient::create([
             'user_id'              => $outsideUser->id,
             'puskesmas_id'         => $this->puskesmas->id,
-            'village_id'           => $this->kaderVillage->id,
+            'village_id'           => $diffVillage->id,
             'rw'                   => '99',
             'rt'                   => '99',
             'treatment_start_date' => '2026-01-10',

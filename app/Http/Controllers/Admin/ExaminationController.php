@@ -167,21 +167,44 @@ class ExaminationController extends Controller
 
                 return redirect()->route('examinations.index')->with('success', 'Data pemeriksaan berhasil diperbarui.');
             } else {
-                $code = 'EXAM-' . Carbon::parse($request->examination_date)->format('Ym') . '-' . str_pad(ClinicalExamination::count() + 1, 4, '0', STR_PAD_LEFT);
+                $maxAttempts = 5;
+                $attempt = 0;
+                $exam = null;
+                $prefix = 'EXAM-' . Carbon::parse($request->examination_date)->format('Ym') . '-';
 
-                $exam = ClinicalExamination::create([
-                    'examination_code'  => $code,
-                    'patient_id'        => $request->patient_id,
-                    'puskesmas_id'      => $request->puskesmas_id,
-                    'examination_date'  => $request->examination_date,
-                    'examination_type'  => $request->examination_type,
-                    'result'            => $request->result,
-                    'diagnosis'         => $request->diagnosis,
-                    'status'            => $request->status,
-                    'laboratory_notes'  => $request->laboratory_notes,
-                ]);
+                while ($attempt < $maxAttempts) {
+                    $attempt++;
+                    $lastExam = ClinicalExamination::where('examination_code', 'like', $prefix . '%')->orderByDesc('id')->first();
+                    $nextSeq = 1;
+                    if ($lastExam && preg_match('/EXAM-\d+-(\d+)/', $lastExam->examination_code, $matches)) {
+                        $nextSeq = intval($matches[1]) + $attempt;
+                    } else {
+                        $nextSeq = $attempt;
+                    }
+                    $code = $prefix . str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
 
-                ActivityLog::log('Tambah Pemeriksaan TB', 'Pemeriksaan', "Mencatat hasil pemeriksaan {$exam->examination_type} kode {$code}.");
+                    try {
+                        $exam = ClinicalExamination::create([
+                            'examination_code'  => $code,
+                            'patient_id'        => $request->patient_id,
+                            'puskesmas_id'      => $request->puskesmas_id,
+                            'examination_date'  => $request->examination_date,
+                            'examination_type'  => $request->examination_type,
+                            'result'            => $request->result,
+                            'diagnosis'         => $request->diagnosis,
+                            'status'            => $request->status,
+                            'laboratory_notes'  => $request->laboratory_notes,
+                        ]);
+                        break;
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        if ($e->getCode() == 23000 && $attempt < $maxAttempts) {
+                            continue;
+                        }
+                        throw $e;
+                    }
+                }
+
+                ActivityLog::log('Tambah Pemeriksaan TB', 'Pemeriksaan', "Mencatat hasil pemeriksaan {$exam->examination_type} kode {$exam->examination_code}.");
 
                 return redirect()->route('examinations.index')->with('success', 'Hasil pemeriksaan laboratorium berhasil disimpan.');
             }

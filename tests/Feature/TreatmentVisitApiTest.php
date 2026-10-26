@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Patient;
 use App\Models\PatientTreatment;
 use App\Models\TreatmentVisit;
+use App\Models\TreatmentType;
 use App\Models\User;
 use App\Models\Puskesmas;
 use Carbon\Carbon;
@@ -37,9 +38,11 @@ class TreatmentVisitApiTest extends TestCase
             'treatment_start_date' => Carbon::today()->format('Y-m-d'),
         ]);
 
+        $treatmentTypeId = TreatmentType::value('id') ?? 1;
+
         $treatment = PatientTreatment::create([
             'patient_id'         => $patient->id,
-            'treatment_type_id'  => 1,
+            'treatment_type_id'  => $treatmentTypeId,
             'diagnosis_date'     => null,
             'start_date'         => Carbon::today()->format('Y-m-d'),
             'medication_time'    => '07:00:00',

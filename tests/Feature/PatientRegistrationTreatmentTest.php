@@ -5,6 +5,12 @@ namespace Tests\Feature;
 use App\Models\Patient;
 use App\Models\PatientTreatment;
 use App\Models\User;
+use App\Models\Village;
+use App\Models\Subdistrict;
+use App\Models\District;
+use App\Models\Province;
+use App\Models\Puskesmas;
+use App\Models\TreatmentType;
 use Carbon\Carbon;
 use Tests\TestCase;
 
@@ -18,16 +24,22 @@ class PatientRegistrationTreatmentTest extends TestCase
         $uniqueNik = '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT);
         $uniquePhone = '0812' . str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
 
+        $village = Village::first();
+        $subdistrict = $village ? Subdistrict::find($village->subdistrict_id) : Subdistrict::first();
+        $district = $subdistrict ? District::find($subdistrict->district_id) : District::first();
+        $province = $district ? Province::find($district->province_id) : Province::first();
+        $puskesmas = Puskesmas::first();
+
         return array_merge([
             'name'                 => 'Budi Santoso',
             'nik'                  => $uniqueNik,
             'phone'                => $uniquePhone,
-            'puskesmas_id'         => 1,
+            'puskesmas_id'         => $puskesmas ? $puskesmas->id : 1,
             'treatment_start_date' => Carbon::today()->format('Y-m-d'),
-            'province_id'          => 1,
-            'district_id'          => 27,
-            'subdistrict_id'       => 41,
-            'village_id'           => 9,
+            'province_id'          => $province ? $province->id : 1,
+            'district_id'          => $district ? $district->id : 1,
+            'subdistrict_id'       => $subdistrict ? $subdistrict->id : 1,
+            'village_id'           => $village ? $village->id : 1,
         ], $overrides);
     }
 
@@ -116,8 +128,9 @@ class PatientRegistrationTreatmentTest extends TestCase
         // Test 4: medication_time = 07:00:00
         $this->assertStringStartsWith('07:00', $treatment->medication_time);
 
-        // Test 5: treatment_type_id = 1 (Pasien Baru)
-        $this->assertEquals(1, $treatment->treatment_type_id);
+        // Test 5: treatment_type_id matches default TreatmentType
+        $expectedTypeId = TreatmentType::find(1)?->id ?? TreatmentType::first()?->id;
+        $this->assertEquals($expectedTypeId, $treatment->treatment_type_id);
 
         // Test 6: diagnosis_date IS NULL
         $this->assertNull($treatment->diagnosis_date);
@@ -244,17 +257,7 @@ class PatientRegistrationTreatmentTest extends TestCase
         $uniquePhone = '0812' . str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
         $treatmentDate = Carbon::today()->subDays(3)->format('Y-m-d');
 
-        $payload = [
-            'name'                 => 'Budi Santoso',
-            'nik'                  => $uniqueNik,
-            'phone'                => $uniquePhone,
-            'puskesmas_id'         => 1,
-            'treatment_start_date' => $treatmentDate,
-            'province_id'          => 1,
-            'district_id'          => 27,
-            'subdistrict_id'       => 41,
-            'village_id'           => 9,
-        ];
+        $payload = $this->generatePayload(['treatment_start_date' => $treatmentDate]);
 
         // 1. POST /api/register
         $response = $this->postJson('/api/register', $payload);
@@ -279,14 +282,15 @@ class PatientRegistrationTreatmentTest extends TestCase
         $patient = Patient::with('treatments')->find($patientId);
         $this->assertNotNull($patient);
         $this->assertEquals($user->id, $patient->user_id);
-        $this->assertEquals($uniqueNik, $patient->nik);
+        $this->assertEquals($payload['nik'], $patient->nik);
         $this->assertEquals($treatmentDate, Carbon::parse($patient->treatment_start_date)->format('Y-m-d'));
 
         // 4. Cek Database PATIENT TREATMENT
         $treatment = PatientTreatment::where('patient_id', $patient->id)->first();
         $this->assertNotNull($treatment);
         $this->assertEquals($patient->id, $treatment->patient_id);
-        $this->assertEquals(1, $treatment->treatment_type_id); // Kategori 1 (Pasien Baru)
+        $expectedTypeId = TreatmentType::find(1)?->id ?? TreatmentType::first()?->id;
+        $this->assertEquals($expectedTypeId, $treatment->treatment_type_id); // Kategori 1 (Pasien Baru)
         $this->assertNull($treatment->diagnosis_date);
         $this->assertEquals($treatmentDate, $treatment->start_date);
         $this->assertStringStartsWith('07:00', $treatment->medication_time);

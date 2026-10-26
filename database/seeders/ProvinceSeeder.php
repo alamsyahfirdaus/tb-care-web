@@ -14,7 +14,7 @@ class ProvinceSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('provinces')->insert([
+        $provinces = [
             [
                 'code' => '32',
                 'name' => 'Jawa Barat',
@@ -40,6 +40,10 @@ class ProvinceSeeder extends Seeder
                 'name' => 'Jawa Timur',
                 'description' => 'Provinsi di bagian timur Pulau Jawa',
             ],
-        ]);
+        ];
+
+        foreach ($provinces as $p) {
+            DB::table('provinces')->updateOrInsert(['code' => $p['code']], $p);
+        }
     }
 }

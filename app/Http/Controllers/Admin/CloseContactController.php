@@ -8,7 +8,6 @@ use App\Models\Patient;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-
 use Illuminate\Support\Facades\DB;
 
 class CloseContactController extends Controller
@@ -148,9 +147,32 @@ class CloseContactController extends Controller
             ];
 
             if (!$isEdit) {
-                $code = 'KONT-' . Carbon::now()->format('Ym') . '-' . str_pad(CloseContact::count() + 1, 4, '0', STR_PAD_LEFT);
-                $data['contact_code'] = $code;
-                $contact->fill($data)->save();
+                $prefix = 'KONT-' . Carbon::now()->format('Ym') . '-';
+                $maxAttempts = 5;
+                $attempt = 0;
+
+                while ($attempt < $maxAttempts) {
+                    $attempt++;
+                    $lastContact = CloseContact::where('contact_code', 'like', $prefix . '%')->orderByDesc('id')->first();
+                    $nextSeq = 1;
+                    if ($lastContact && preg_match('/KONT-\d+-(\d+)/', $lastContact->contact_code, $matches)) {
+                        $nextSeq = intval($matches[1]) + $attempt;
+                    } else {
+                        $nextSeq = $attempt;
+                    }
+                    $code = $prefix . str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
+                    $data['contact_code'] = $code;
+
+                    try {
+                        $contact->fill($data)->save();
+                        break;
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        if ($e->getCode() == 23000 && $attempt < $maxAttempts) {
+                            continue;
+                        }
+                        throw $e;
+                    }
+                }
 
                 ActivityLog::log('Tambah Kontak Erat', 'Kontak Erat', "Mencatat kontak erat {$contact->name} untuk Pasien ID {$contact->patient_id}.");
                 $message = 'Data kontak erat berhasil dicatat.';

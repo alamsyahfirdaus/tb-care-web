@@ -277,42 +277,59 @@ class CloseContactController extends Controller
         $dob = $request->filled('date_of_birth') ? Carbon::parse($request->date_of_birth) : null;
         $age = $dob ? $dob->age : ($request->filled('age') ? (int) $request->age : 0);
 
-        // Generate kode kontak unik format KONT-YYYYMM-XXXX
-        $code = 'KONT-' . Carbon::now()->format('Ym') . '-' . str_pad(CloseContact::count() + 1, 4, '0', STR_PAD_LEFT);
-        $counter = 1;
-        while (CloseContact::where('contact_code', $code)->exists()) {
-            $code = 'KONT-' . Carbon::now()->format('Ym') . '-' . str_pad(CloseContact::count() + 1 + $counter, 4, '0', STR_PAD_LEFT);
-            $counter++;
-        }
+        $maxAttempts = 5;
+        $attempt = 0;
+        $contact = null;
+        $prefix = 'KONT-' . Carbon::now()->format('Ym') . '-';
 
-        $contact = DB::transaction(function () use ($request, $patient, $code, $dob, $age) {
-            $contact = new CloseContact();
-            $contact->contact_code     = $code;
-            $contact->patient_id       = $patient->id;
-            $contact->name             = trim($request->name);
-            $contact->relationship     = trim($request->relationship);
-            $contact->gender           = $request->gender;
-            $contact->date_of_birth    = $dob ? $dob->format('Y-m-d') : null;
-            $contact->age              = $age;
-            $contact->nik              = $request->filled('nik') ? trim($request->nik) : null;
-            $contact->phone            = $request->filled('phone') ? trim($request->phone) : null;
-            $contact->address          = $request->filled('address') ? trim($request->address) : null;
-            $contact->screening_date   = $request->filled('screening_date') ? $request->screening_date : null;
-            $contact->screening_result = $request->filled('screening_result') ? trim($request->screening_result) : 'Belum Skrining';
-            $contact->tpt_status       = $request->filled('tpt_status') ? trim($request->tpt_status) : 'Tidak Perlu';
-            $contact->notes            = $request->filled('notes') ? trim($request->notes) : null;
-            $contact->save();
-
-            if (class_exists(ActivityLog::class)) {
-                ActivityLog::log(
-                    'Tambah Anggota Serumah',
-                    'Kontak Erat',
-                    "Menambahkan anggota serumah {$contact->name} ({$contact->relationship}) untuk Pasien ID {$patient->id}."
-                );
+        while ($attempt < $maxAttempts) {
+            $attempt++;
+            $lastContact = CloseContact::where('contact_code', 'like', $prefix . '%')->orderByDesc('id')->first();
+            $nextSeq = 1;
+            if ($lastContact && preg_match('/KONT-\d+-(\d+)/', $lastContact->contact_code, $matches)) {
+                $nextSeq = intval($matches[1]) + $attempt;
+            } else {
+                $nextSeq = $attempt;
             }
+            $code = $prefix . str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
 
-            return $contact;
-        });
+            try {
+                $contact = DB::transaction(function () use ($request, $patient, $code, $dob, $age) {
+                    $c = new CloseContact();
+                    $c->contact_code     = $code;
+                    $c->patient_id       = $patient->id;
+                    $c->name             = trim($request->name);
+                    $c->relationship     = trim($request->relationship);
+                    $c->gender           = $request->gender;
+                    $c->date_of_birth    = $dob ? $dob->format('Y-m-d') : null;
+                    $c->age              = $age;
+                    $c->nik              = $request->filled('nik') ? trim($request->nik) : null;
+                    $c->phone            = $request->filled('phone') ? trim($request->phone) : null;
+                    $c->address          = $request->filled('address') ? trim($request->address) : null;
+                    $c->screening_date   = $request->filled('screening_date') ? $request->screening_date : null;
+                    $c->screening_result = $request->filled('screening_result') ? trim($request->screening_result) : 'Belum Skrining';
+                    $c->tpt_status       = $request->filled('tpt_status') ? trim($request->tpt_status) : 'Tidak Perlu';
+                    $c->notes            = $request->filled('notes') ? trim($request->notes) : null;
+                    $c->save();
+
+                    if (class_exists(ActivityLog::class)) {
+                        ActivityLog::log(
+                            'Tambah Anggota Serumah',
+                            'Kontak Erat',
+                            "Menambahkan anggota serumah {$c->name} ({$c->relationship}) untuk Pasien ID {$patient->id}."
+                        );
+                    }
+
+                    return $c;
+                });
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->getCode() == 23000 && $attempt < $maxAttempts) {
+                    continue;
+                }
+                throw $e;
+            }
+        }
 
         return response()->json([
             'success' => true,

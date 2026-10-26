@@ -13,7 +13,7 @@
                 <div class="card-body p-3">
                     <div class="d-flex flex-wrap align-items-center">
                         <img class="img-circle elevation-2 mr-3" 
-                             src="{{ optional($patient->user)->photo ? asset('upload_images/' . $patient->user->photo) : asset('assets/img/profile.png') }}"
+                             src="{{ optional($patient->user)->photo ? asset('images/' . $patient->user->photo) : asset('assets/img/profile.png') }}"
                              style="width: 75px; height: 75px; object-fit: cover;" alt="Avatar">
                         <div class="mr-auto my-1">
                             <h4 class="font-weight-bold text-dark mb-0">{{ optional($patient->user)->name ?? 'Pasien #' . $patient->id }}</h4>
@@ -365,7 +365,7 @@
                                                     </td>
                                                     <td>
                                                         @if($rec->photo)
-                                                            <a href="{{ asset('upload_images/' . $rec->photo) }}" target="_blank" class="btn btn-xs btn-outline-info font-weight-bold">
+                                                            <a href="{{ asset('images/' . $rec->photo) }}" target="_blank" class="btn btn-xs btn-outline-info font-weight-bold">
                                                                 <i class="fas fa-image mr-1"></i> Lihat Foto Bukti
                                                             </a>
                                                         @else

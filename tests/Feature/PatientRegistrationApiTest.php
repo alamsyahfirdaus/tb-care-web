@@ -75,16 +75,22 @@ class PatientRegistrationApiTest extends TestCase
         $uniqueNik = '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT);
         $uniquePhone = '0877' . str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
 
+        $village = \App\Models\Village::first();
+        $subdistrict = $village ? \App\Models\Subdistrict::find($village->subdistrict_id) : \App\Models\Subdistrict::first();
+        $district = $subdistrict ? \App\Models\District::find($subdistrict->district_id) : \App\Models\District::first();
+        $province = $district ? \App\Models\Province::find($district->province_id) : \App\Models\Province::first();
+        $puskesmas = \App\Models\Puskesmas::first();
+
         $payload = [
             'name'                 => 'Testing Pasien Otomatis',
             'nik'                  => $uniqueNik,
             'phone'                => $uniquePhone,
-            'puskesmas_id'         => 1,
+            'puskesmas_id'         => $puskesmas ? $puskesmas->id : 1,
             'treatment_start_date' => now()->subDays(5)->format('Y-m-d'),
-            'province_id'          => 1,
-            'district_id'          => 27,
-            'subdistrict_id'       => 41,
-            'village_id'           => 9,
+            'province_id'          => $province ? $province->id : 1,
+            'district_id'          => $district ? $district->id : 1,
+            'subdistrict_id'       => $subdistrict ? $subdistrict->id : 1,
+            'village_id'           => $village ? $village->id : 1,
         ];
 
         // 1. Submit Registration
@@ -121,8 +127,8 @@ class PatientRegistrationApiTest extends TestCase
         $patient = Patient::where('user_id', $user->id)->first();
         $this->assertNotNull($patient);
         $this->assertEquals($uniqueNik, $patient->nik);
-        $this->assertEquals(41, $patient->subdistrict_id);
-        $this->assertEquals(9, $patient->village_id);
+        $this->assertEquals($payload['subdistrict_id'], $patient->subdistrict_id);
+        $this->assertEquals($payload['village_id'], $patient->village_id);
 
         // 2. Test Duplicate NIK
         $dupNikPayload = $payload;

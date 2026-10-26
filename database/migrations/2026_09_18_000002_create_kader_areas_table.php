@@ -28,8 +28,8 @@ class CreateKaderAreasTable extends Migration
                     ->constrained('villages')
                     ->onUpdate('cascade')
                     ->onDelete('cascade');
-                $table->string('rw', 5);
-                $table->string('rt', 5)->nullable()->comment('NULL means all RTs in this RW');
+                $table->string('rw', 5)->nullable();
+                $table->string('rt', 5)->nullable();
                 $table->timestamps();
 
                 $table->index(['officer_id', 'village_id', 'rw', 'rt']);

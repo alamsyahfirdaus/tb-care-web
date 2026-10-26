@@ -99,7 +99,7 @@ class PatientPolicy
                 return is_null($puskesmasId) || $puskesmasId == $officer->puskesmas_id;
             }
 
-            // Kader Puskesmas (4): Puskesmas must match AND territory must match an assigned area
+            // Kader Puskesmas (4): Puskesmas must match AND territory village must match assigned areas
             if ($officer->officer_type_id == 4) {
                 if (!is_null($puskesmasId) && $puskesmasId != $officer->puskesmas_id) {
                     return false;
@@ -109,25 +109,9 @@ class PatientPolicy
                     return false;
                 }
 
-                $rwStr = !is_null($rw) ? (string)$rw : '';
-                $rwVariants = array_unique([$rwStr, ltrim($rwStr, '0'), sprintf('%02d', (int)$rwStr), sprintf('%03d', (int)$rwStr)]);
+                $assignedVillageIds = $officer->kaderAreas()->pluck('village_id')->filter()->unique()->all();
 
-                $query = $officer->kaderAreas()->where('village_id', $villageId);
-                if (!empty($rwStr)) {
-                    $query->where(function ($q) use ($rwVariants) {
-                        $q->whereNull('rw')->orWhereIn('rw', $rwVariants);
-                    });
-                }
-
-                if (!is_null($rt) && $rt !== '') {
-                    $rtStr = (string)$rt;
-                    $rtVariants = array_unique([$rtStr, ltrim($rtStr, '0'), sprintf('%02d', (int)$rtStr), sprintf('%03d', (int)$rtStr)]);
-                    $query->where(function ($q) use ($rtVariants) {
-                        $q->whereNull('rt')->orWhereIn('rt', $rtVariants);
-                    });
-                }
-
-                return $query->exists();
+                return in_array($villageId, $assignedVillageIds);
             }
 
             // Dinkes Kab/Kota (2): Puskesmas must belong to officer's district

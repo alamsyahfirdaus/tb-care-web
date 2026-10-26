@@ -40,8 +40,8 @@ class DashboardController extends Controller
         $pasienSelesai = PatientTreatment::accessibleBy($user)->whereIn('treatment_status', ['Selesai', 'Sembuh', 'Pengobatan Lengkap'])->count();
         $totalMinumObat = MedicationRecord::accessibleBy($user)->count();
         
-        // Kepatuhan kohort berbasis dosis jatuh tempo aktual
-        $accessibleTreatments = PatientTreatment::accessibleBy($user)->get();
+        // Kepatuhan kohort berbasis dosis jatuh tempo aktual (Eager loaded to eliminate N+1 queries)
+        $accessibleTreatments = PatientTreatment::accessibleBy($user)->with(['medicationRecords'])->get();
         $adherenceCohort = PatientTreatment::calculateCohortAdherence($accessibleTreatments);
         $tingkatKepatuhan = $adherenceCohort['percentage'];
         $perluTindakLanjut = Screening::accessibleBy($user)->where('status', 'Perlu Tindak Lanjut')->count();
@@ -53,22 +53,38 @@ class DashboardController extends Controller
             'colors' => ['#28a745', '#ffc107', '#dc3545'],
         ];
 
-        // 3. Chart 2: Tren Skrining (Harian 7 hari terakhir, Bulanan 6 bulan)
-        $monthlyTrend = Screening::accessibleBy($user)->select(
-                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month_year'),
-                DB::raw('DATE_FORMAT(created_at, "%b %Y") as month_label'),
-                DB::raw('count(*) as total'),
-                DB::raw('sum(case when risk_level = "Risiko Tinggi" then 1 else 0 end) as high_risk')
-            )
-            ->where('created_at', '>=', Carbon::now()->subMonths(6)->startOfMonth())
-            ->groupBy('month_year', 'month_label')
-            ->orderBy('month_year', 'asc')
+        // 3. Chart 2: Tren Skrining Bulanan (6 bulan kalender kontinu dengan zero-fill untuk bulan tanpa data)
+        $trendLabels   = [];
+        $trendTotals   = [];
+        $trendHighRisk = [];
+
+        // Agregasi skrining 6 bulan terakhir
+        $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
+        $monthlyTrendData = Screening::accessibleBy($user)
+            ->where(function ($q) use ($sixMonthsAgo) {
+                $q->where('screened_at', '>=', $sixMonthsAgo)
+                  ->orWhere('created_at', '>=', $sixMonthsAgo);
+            })
             ->get();
 
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = Carbon::now()->subMonths($i);
+            $monthKey = $monthDate->format('Y-m');
+            $trendLabels[] = $monthDate->translatedFormat('M Y');
+
+            $monthScreenings = $monthlyTrendData->filter(function ($s) use ($monthKey) {
+                $dateStr = $s->screened_at ? Carbon::parse($s->screened_at)->format('Y-m') : Carbon::parse($s->created_at)->format('Y-m');
+                return $dateStr === $monthKey;
+            });
+
+            $trendTotals[] = $monthScreenings->count();
+            $trendHighRisk[] = $monthScreenings->filter(fn($s) => in_array($s->risk_level, ['Risiko Tinggi', 'tinggi']))->count();
+        }
+
         $chartTrend = [
-            'labels'   => $monthlyTrend->pluck('month_label')->toArray(),
-            'total'    => $monthlyTrend->pluck('total')->toArray(),
-            'highRisk' => $monthlyTrend->pluck('high_risk')->toArray(),
+            'labels'   => $trendLabels,
+            'total'    => $trendTotals,
+            'highRisk' => $trendHighRisk,
         ];
 
         // 4. Chart 3: Distribusi Wilayah (Pasien dan Skrining per Kecamatan)
@@ -102,7 +118,15 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        $recentActivities = ActivityLog::orderByDesc('id')->limit(6)->get();
+        // 6. Recent Screenings & Activities (Petugas hanya melihat log aktivitasnya sendiri)
+        $recentActivities = $user->isSuperAdmin()
+            ? ActivityLog::orderByDesc('id')->limit(6)->get()
+            : ActivityLog::where('user_id', $user->id)->orderByDesc('id')->limit(6)->get();
+
+        $pageTitle = 'Dashboard ' . $user->role_display_name;
+        $pageSubtitle = $user->officer && $user->officer->scope_description
+            ? 'Cakupan Wilayah Tugas: ' . $user->officer->scope_description
+            : 'Ringkasan data klinis, tren skrining, dan kepatuhan pengobatan pasien secara real-time.';
 
         return view('admin.dashboard.index', compact(
             'totalPengguna',
@@ -124,9 +148,9 @@ class DashboardController extends Controller
             'latestScreenings',
             'recentActivities'
         ))->with([
-            'title'        => 'Dashboard Utama',
-            'pageTitle'    => 'Dashboard Pengawasan TB Care',
-            'pageSubtitle' => 'Ringkasan data klinis, tren skrining, dan kepatuhan pengobatan pasien secara real-time.'
+            'title'        => $pageTitle,
+            'pageTitle'    => $pageTitle,
+            'pageSubtitle' => $pageSubtitle
         ]);
     }
 }

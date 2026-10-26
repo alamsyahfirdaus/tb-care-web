@@ -12,7 +12,6 @@ class Patient extends Model
 
     protected $table = 'patients';
     protected $primaryKey = 'id';
-    public $timestamps = false;
 
     protected $guarded = [];
 
@@ -43,6 +42,25 @@ class Patient extends Model
     public function treatments()
     {
         return $this->hasMany(PatientTreatment::class, 'patient_id');
+    }
+
+    /**
+     * Pengobatan aktif yang sedang dijalankan pasien (status: Berjalan)
+     */
+    public function activeTreatment()
+    {
+        return $this->hasOne(PatientTreatment::class, 'patient_id')
+            ->where('treatment_status', 'Berjalan')
+            ->latest('id');
+    }
+
+    /**
+     * Riwayat pengobatan terbaru (apapun statusnya)
+     */
+    public function latestTreatment()
+    {
+        return $this->hasOne(PatientTreatment::class, 'patient_id')
+            ->latest('id');
     }
 
     public function medicationSchedule()
@@ -149,50 +167,18 @@ class Patient extends Model
                 return $query->where('puskesmas_id', $officer->puskesmas_id);
             }
 
-            // Kader Puskesmas (officer_type_id = 4): Strictly scoped to assigned kader_areas within Puskesmas
+            // Kader Puskesmas (officer_type_id = 4): Strictly scoped to assigned Desa/Kelurahan (village_id)
             if ($officer->officer_type_id == 4) {
-                $areas = $officer->kaderAreas;
-                if ($areas->isEmpty()) {
+                $assignedVillageIds = $officer->kaderAreas()->pluck('village_id')->filter()->unique()->values()->all();
+                if (empty($assignedVillageIds)) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where(function ($q) use ($officer, $areas) {
+                return $query->where(function ($q) use ($officer, $assignedVillageIds) {
                     if ($officer->puskesmas_id) {
                         $q->where('puskesmas_id', $officer->puskesmas_id);
                     }
-                    $q->where(function ($aq) use ($areas) {
-                        foreach ($areas as $area) {
-                            $aq->orWhere(function ($sub) use ($area) {
-                                if ($area->village_id) {
-                                    $sub->where('village_id', $area->village_id);
-                                } elseif ($area->subdistrict_id) {
-                                    $sub->where('subdistrict_id', $area->subdistrict_id);
-                                }
-
-                                if (!is_null($area->rw) && $area->rw !== '') {
-                                    $rwStr = (string)$area->rw;
-                                    $rwClean = ltrim($rwStr, '0');
-                                    $sub->where(function ($rwQ) use ($rwStr, $rwClean) {
-                                        $rwQ->where('rw', $rwStr)
-                                            ->orWhere('rw', $rwClean)
-                                            ->orWhere('rw', sprintf('%02d', (int)$rwStr))
-                                            ->orWhere('rw', sprintf('%03d', (int)$rwStr));
-                                    });
-                                }
-
-                                if (!is_null($area->rt) && $area->rt !== '') {
-                                    $rtStr = (string)$area->rt;
-                                    $rtClean = ltrim($rtStr, '0');
-                                    $sub->where(function ($rtQ) use ($rtStr, $rtClean) {
-                                        $rtQ->where('rt', $rtStr)
-                                            ->orWhere('rt', $rtClean)
-                                            ->orWhere('rt', sprintf('%02d', (int)$rtStr))
-                                            ->orWhere('rt', sprintf('%03d', (int)$rtStr));
-                                    });
-                                }
-                            });
-                        }
-                    });
+                    $q->whereIn('village_id', $assignedVillageIds);
                 });
             }
         }

@@ -15,43 +15,68 @@ class OfficerSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('officers')->insert([
+        $officerMappings = [
             // Dinkes Provinsi
             [
-                'user_id'         => 2, // Admin Dinkes Provinsi
+                'username'        => 'admindinkesprov',
                 'officer_type_id' => 1,
-                'district_id'     => 1, // Misalnya ID District Provinsi
+                'district_id'     => 1,
                 'puskesmas_id'    => null,
-                'created_at'      => Carbon::now(),
-                'updated_at'      => Carbon::now(),
             ],
             // Dinkes Kab/Kota
             [
-                'user_id'         => 3, // Admin Dinkes Kab/Kota
+                'username'        => 'admindinkeskota',
                 'officer_type_id' => 2,
-                'district_id'     => 2, // Misalnya ID District Kota Tasikmalaya
+                'district_id'     => 2,
                 'puskesmas_id'    => null,
-                'created_at'      => Carbon::now(),
-                'updated_at'      => Carbon::now(),
             ],
             // PJTB Puskesmas
             [
-                'user_id'         => 4, // PJTB
+                'username'        => 'pjtb001',
                 'officer_type_id' => 3,
                 'district_id'     => null,
-                'puskesmas_id'    => 1, // Misalnya ID Puskesmas Singaparna
-                'created_at'      => Carbon::now(),
-                'updated_at'      => Carbon::now(),
+                'puskesmas_id'    => 1,
             ],
             // Kader Puskesmas
             [
-                'user_id'         => 5, // Kader
+                'username'        => 'kader001',
                 'officer_type_id' => 4,
                 'district_id'     => null,
-                'puskesmas_id'    => 1, // Sama dengan atas (satu puskesmas)
-                'created_at'      => Carbon::now(),
-                'updated_at'      => Carbon::now(),
+                'puskesmas_id'    => 1,
             ],
-        ]);
+        ];
+
+        // Safely verify existence of district & puskesmas foreign keys if table has entries
+        $firstDistrict = DB::table('districts')->value('id');
+        $secondDistrict = DB::table('districts')->skip(1)->value('id') ?? $firstDistrict;
+        $firstPuskesmas = DB::table('puskesmas')->value('id');
+
+        foreach ($officerMappings as $mapping) {
+            $userId = DB::table('users')->where('username', $mapping['username'])->value('id');
+            if (!$userId) {
+                continue;
+            }
+
+            $districtId = null;
+            if ($mapping['district_id'] !== null) {
+                $districtId = ($mapping['district_id'] == 1 ? $firstDistrict : $secondDistrict) ?? $mapping['district_id'];
+            }
+
+            $puskesmasId = null;
+            if ($mapping['puskesmas_id'] !== null) {
+                $puskesmasId = $firstPuskesmas ?? $mapping['puskesmas_id'];
+            }
+
+            DB::table('officers')->updateOrInsert(
+                ['user_id' => $userId],
+                [
+                    'officer_type_id' => $mapping['officer_type_id'],
+                    'district_id'     => $districtId,
+                    'puskesmas_id'    => $puskesmasId,
+                    'updated_at'      => Carbon::now(),
+                    'created_at'      => Carbon::now(),
+                ]
+            );
+        }
     }
 }

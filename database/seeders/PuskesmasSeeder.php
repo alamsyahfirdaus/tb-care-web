@@ -14,7 +14,7 @@ class PuskesmasSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('puskesmas')->insert([
+        $puskesmasList = [
             // Kota Tasikmalaya
             ['name' => 'Kawalu',        'code' => 'P3278010201', 'address' => 'Jl. Perintis Kemerdekaan, Kec. Kawalu'],
             ['name' => 'Karanganyar',   'code' => 'P3278010202', 'address' => 'Kel. Karanganyar, Kec. Kawalu'],
@@ -68,6 +68,10 @@ class PuskesmasSeeder extends Seeder
             ['name' => 'Kadipaten',       'code' => 'P3206261201', 'address' => 'Pos Ciawi 46156, Kec. Kadipaten'],
             ['name' => 'Pagerageung',     'code' => 'P3206270201', 'address' => 'Tanjaknangsi 18, Kec. Pagerageung'],
             ['name' => 'Sukaresik',       'code' => 'P3206271201', 'address' => 'Ds. Sukaresik, Kec. Sukaresik'],
-        ]);
+        ];
+
+        foreach ($puskesmasList as $p) {
+            DB::table('puskesmas')->updateOrInsert(['name' => $p['name']], $p);
+        }
     }
 }

@@ -185,10 +185,12 @@ class PatientTreatment extends Model
             $medTimeStr = $this->medication_time ?: '07:00:00';
             $medTimeToday = \Carbon\Carbon::today()->setTimeFromTimeString($medTimeStr);
 
-            $hasRecordToday = $this->medicationRecords()
-                ->where('is_verified', true)
-                ->whereDate('created_at', $today)
-                ->exists();
+            $hasRecordToday = $this->relationLoaded('medicationRecords')
+                ? $this->medicationRecords->contains(fn($r) => $r->is_verified && $r->created_at && \Carbon\Carbon::parse($r->created_at)->toDateString() === $today->toDateString())
+                : $this->medicationRecords()
+                    ->where('is_verified', true)
+                    ->whereDate('created_at', $today)
+                    ->exists();
 
             // Jika belum jamnya dan belum ada catatan hari ini, dosis hari ini belum jatuh tempo
             if ($now->isBefore($medTimeToday) && !$hasRecordToday && $totalDays > 1) {
@@ -204,14 +206,26 @@ class PatientTreatment extends Model
         }
 
         // Dosis unik yang tercatat diminum (dan terverifikasi) dalam rentang jatuh tempo
-        $takenDoses = $this->medicationRecords()
-            ->where('is_verified', true)
-            ->whereDate('created_at', '>=', $startDate)
-            ->whereDate('created_at', '<=', $cutoffDate)
-            ->selectRaw('DATE(created_at) as intake_date')
-            ->distinct()
-            ->get()
-            ->count();
+        if ($this->relationLoaded('medicationRecords')) {
+            $takenDoses = $this->medicationRecords
+                ->filter(function ($rec) use ($startDate, $cutoffDate) {
+                    if (!$rec->is_verified) return false;
+                    $recDate = $rec->created_at ? \Carbon\Carbon::parse($rec->created_at)->startOfDay() : null;
+                    return $recDate && $recDate->gte($startDate) && $recDate->lte($cutoffDate);
+                })
+                ->map(fn($rec) => \Carbon\Carbon::parse($rec->created_at)->format('Y-m-d'))
+                ->unique()
+                ->count();
+        } else {
+            $takenDoses = $this->medicationRecords()
+                ->where('is_verified', true)
+                ->whereDate('created_at', '>=', $startDate)
+                ->whereDate('created_at', '<=', $cutoffDate)
+                ->selectRaw('DATE(created_at) as intake_date')
+                ->distinct()
+                ->get()
+                ->count();
+        }
 
         // Tidak boleh melebihi dosis yang jatuh tempo (capped at 100%)
         $takenDoses = min($dueDoses, $takenDoses);

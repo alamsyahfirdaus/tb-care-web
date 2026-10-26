@@ -26,7 +26,7 @@ class AdminDeleteCrudTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::find(1);
+        $this->admin = User::where('user_type_id', 1)->first() ?? User::find(1);
     }
 
     /**
@@ -143,12 +143,12 @@ class AdminDeleteCrudTest extends TestCase
      */
     public function test_delete_user_protects_admin_and_deletes_regular()
     {
-        // A. Attempt to delete Admin ID 1
-        $adminEnc = User::find(1)->encrypted_id;
+        // A. Attempt to delete Admin
+        $adminEnc = $this->admin->encrypted_id;
         $responseAdmin = $this->actingAs($this->admin)->delete(route('users.destroy', $adminEnc));
         $responseAdmin->assertStatus(302);
         $responseAdmin->assertSessionHas('error');
-        $this->assertNotNull(User::find(1));
+        $this->assertNotNull(User::find($this->admin->id));
 
         // B. Delete Regular Officer User
         $testUser = User::create([
@@ -403,7 +403,7 @@ class AdminDeleteCrudTest extends TestCase
             'title' => 'Notifikasi Uji Hapus ' . time(),
             'message' => 'Pesan uji coba hapus',
             'type' => 'Broadcast',
-            'sent_by' => 1,
+            'sent_by' => $this->admin->id,
         ]);
         $nId = $notif->id;
 

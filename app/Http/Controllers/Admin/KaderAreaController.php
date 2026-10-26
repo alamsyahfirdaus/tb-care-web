@@ -18,13 +18,12 @@ class KaderAreaController extends Controller
             'officer_id'     => 'required|exists:officers,id',
             'subdistrict_id' => 'required|exists:subdistricts,id',
             'village_id'     => 'required|exists:villages,id',
-            'rw'             => 'required|string|max:5',
+            'rw'             => 'nullable|string|max:5',
             'rt'             => 'nullable|string|max:5',
         ], [
             'officer_id.required'     => 'Petugas Kader wajib valid.',
             'subdistrict_id.required' => 'Kecamatan wajib dipilih.',
             'village_id.required'     => 'Desa/Kelurahan wajib dipilih.',
-            'rw.required'             => 'RW wajib diisi.',
             'rw.max'                  => 'RW maksimal 5 karakter.',
             'rt.max'                  => 'RT maksimal 5 karakter.',
         ]);
@@ -56,12 +55,18 @@ class KaderAreaController extends Controller
         }
 
         $rt = !empty($validated['rt']) ? trim($validated['rt']) : null;
-        $rw = trim($validated['rw']);
+        $rw = !empty($validated['rw']) ? trim($validated['rw']) : null;
 
         // Cek duplikasi wilayah yang identik
         $exists = KaderArea::where('officer_id', $validated['officer_id'])
             ->where('village_id', $validated['village_id'])
-            ->where('rw', $rw)
+            ->where(function ($q) use ($rw) {
+                if (is_null($rw)) {
+                    $q->whereNull('rw');
+                } else {
+                    $q->where('rw', $rw);
+                }
+            })
             ->where(function ($q) use ($rt) {
                 if (is_null($rt)) {
                     $q->whereNull('rt');
@@ -89,9 +94,12 @@ class KaderAreaController extends Controller
             'rt'             => $rt,
         ]);
 
+        $village = Village::find($validated['village_id']);
+        $villageName = $village ? $village->name : 'Desa';
         $kaderName = optional($officer->user)->name ?? 'Kader';
+        $rwText = $rw ? "RW {$rw}" : "Semua RW";
         $rtText = $rt ? "RT {$rt}" : "Semua RT";
-        ActivityLog::log('Tambah Wilayah Kader', 'Pengguna', "Menetapkan wilayah RW {$rw} {$rtText} untuk Kader {$kaderName}.");
+        ActivityLog::log('Tambah Wilayah Kader', 'Pengguna', "Menetapkan wilayah {$villageName} {$rwText} {$rtText} untuk Kader {$kaderName}.");
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -134,12 +142,13 @@ class KaderAreaController extends Controller
         }
 
         $kaderName = optional(optional($area->officer)->user)->name ?? 'Kader';
-        $rw = $area->rw;
+        $villageName = optional($area->village)->name ?? 'Desa';
+        $rwText = $area->rw ? "RW {$area->rw}" : "Semua RW";
         $rtText = $area->rt ? "RT {$area->rt}" : "Semua RT";
 
         $area->delete();
 
-        ActivityLog::log('Hapus Wilayah Kader', 'Pengguna', "Menghapus wilayah RW {$rw} {$rtText} dari penugasan Kader {$kaderName}.");
+        ActivityLog::log('Hapus Wilayah Kader', 'Pengguna', "Menghapus wilayah {$villageName} {$rwText} {$rtText} dari penugasan Kader {$kaderName}.");
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([

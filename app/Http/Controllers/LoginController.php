@@ -14,31 +14,6 @@ class LoginController extends Controller
 {
     public function index()
     {
-        if (UserType::all()->isEmpty()) {
-            UserType::insert([
-                ['name' => 'Super Admin'],
-                ['name' => 'Admin Dinkes'],
-                ['name' => 'Koordinator'],
-                ['name' => 'Pasien']
-            ]);
-
-            if (User::all()->isEmpty()) {
-                User::create([
-                    'name' => 'Alamsyah Firdaus',
-                    'email' => 'alamsyah.firdaus.af31@gmail.com',
-                    'username' => 'alamsyah',
-                    'gender' => 'Laki-laki',
-                    'place_of_birth' => 'Tasikmalaya',
-                    'date_of_birth' => '1998-07-31',
-                    'phone' => '089693839624',
-                    'password' => Hash::make('alamsyah'),
-                    'user_type_id' => 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-        }
-
         return view('login');
     }
 

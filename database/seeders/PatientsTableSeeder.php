@@ -15,21 +15,26 @@ class PatientsTableSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('patients')->insert([
+        $userId = DB::table('users')->where('username', 'firdaus123')->value('id') ?? 2;
+        $subdistrictId = DB::table('subdistricts')->value('id') ?? 41;
+        $puskesmasId = DB::table('puskesmas')->value('id') ?? 1;
+
+        DB::table('patients')->updateOrInsert(
+            ['nik' => '3273053107980001'],
             [
-                'nik' => '3273053107980001',
-                'user_id' => 2, // Sesuaikan dengan ID user yang bertipe Pasien
-                'address' => 'Jalan Sukasari No. 10',
-                'subdistrict_id' => 41, // Sesuaikan dengan ID kecamatan yang sudah ada
-                'occupation' => 'Buruh',
-                'height' => 170,
-                'weight' => 60,
-                'blood_type' => 'O',
-                'diagnosis_date' => '2024-05-20',
-                'puskesmas_id' => 1, // ID puskesmas yang valid
-                'created_at'      => Carbon::now(),
-                'updated_at'      => Carbon::now(),
+                'user_id'              => $userId,
+                'address'              => 'Jalan Sukasari No. 10',
+                'subdistrict_id'       => $subdistrictId,
+                'occupation'           => 'Buruh',
+                'height'               => 170,
+                'weight'               => 60,
+                'blood_type'           => 'O',
+                'diagnosis_date'       => '2024-05-20',
+                'treatment_start_date' => '2024-05-21',
+                'puskesmas_id'         => $puskesmasId,
+                'updated_at'           => Carbon::now(),
+                'created_at'           => Carbon::now(),
             ]
-        ]);
+        );
     }
 }

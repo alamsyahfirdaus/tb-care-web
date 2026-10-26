@@ -36,9 +36,11 @@ class PatientHomeApiTest extends TestCase
             'treatment_start_date' => Carbon::today()->subDays(10)->format('Y-m-d'),
         ]);
 
+        $treatmentTypeId = TreatmentType::value('id') ?? 1;
+
         $treatment = PatientTreatment::create([
             'patient_id'        => $patient->id,
-            'treatment_type_id' => 1,
+            'treatment_type_id' => $treatmentTypeId,
             'treatment_status'  => 'Berjalan',
             'start_date'        => Carbon::today()->subDays(10)->format('Y-m-d'),
             'end_date'          => Carbon::today()->addDays(170)->format('Y-m-d'),

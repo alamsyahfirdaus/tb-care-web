@@ -16,8 +16,7 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('users')->insert([
-
+        $users = [
             // Administrator (Super Admin)
             [
                 'name'              => 'Alamsyah Firdaus',
@@ -125,6 +124,13 @@ class UserSeeder extends Seeder
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ],
-        ]);
+        ];
+
+        foreach ($users as $user) {
+            DB::table('users')->updateOrInsert(
+                ['username' => $user['username']],
+                $user
+            );
+        }
     }
 }

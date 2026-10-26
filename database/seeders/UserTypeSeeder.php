@@ -14,24 +14,26 @@ class UserTypeSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('user_types')->insert(
+        $types = [
             [
-                [
-                    'id' => 1,
-                    'name' => 'Administrator',
-                    'description' => 'Akses penuh terhadap sistem dan pengaturan.'
-                ],
-                [
-                    'id' => 2,
-                    'name' => 'Pasien',
-                    'description' => 'Pengguna yang menjalani pengobatan TB.'
-                ],
-                [
-                    'id' => 3,
-                    'name' => 'Petugas',
-                    'description' => 'Pengguna dari instansi kesehatan (Dinkes, PJTB, Kader) yang membantu penanganan pasien.'
-                ],
-            ]
-        );
+                'id' => 1,
+                'name' => 'Administrator',
+                'description' => 'Akses penuh terhadap sistem dan pengaturan.'
+            ],
+            [
+                'id' => 2,
+                'name' => 'Pasien',
+                'description' => 'Pengguna yang menjalani pengobatan TB.'
+            ],
+            [
+                'id' => 3,
+                'name' => 'Petugas',
+                'description' => 'Pengguna dari instansi kesehatan (Dinkes, PJTB, Kader) yang membantu penanganan pasien.'
+            ],
+        ];
+
+        foreach ($types as $type) {
+            DB::table('user_types')->updateOrInsert(['id' => $type['id']], $type);
+        }
     }
 }

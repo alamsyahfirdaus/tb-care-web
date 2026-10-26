@@ -14,9 +14,24 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
+    /**
+     * Normalisasi tipe laporan dan penanganan alias (patients -> patient, regions -> regional)
+     */
+    private function normalizeType(?string $type): string
+    {
+        $type = strtolower(trim((string)$type));
+        if ($type === 'patients') return 'patient';
+        if ($type === 'regions')  return 'regional';
+        if ($type === 'users')    return 'user';
+        if (in_array($type, ['screening', 'patient', 'regional', 'user'])) {
+            return $type;
+        }
+        return 'screening';
+    }
+
     public function index(Request $request)
     {
-        $type       = $request->query('type', 'screening'); // screening, patient, regional, user
+        $type       = $this->normalizeType($request->query('type', 'screening')); // screening, patient, regional, user
         $startDate  = $request->query('start_date', Carbon::now()->subMonths(1)->format('Y-m-d'));
         $endDate    = $request->query('end_date', Carbon::now()->format('Y-m-d'));
         $puskesmasId= $request->query('puskesmas_id');
@@ -87,7 +102,7 @@ class ReportController extends Controller
 
     public function print(Request $request)
     {
-        $type       = $request->query('type', 'screening');
+        $type       = $this->normalizeType($request->query('type', 'screening'));
         $startDate  = $request->query('start_date', Carbon::now()->subMonths(1)->format('Y-m-d'));
         $endDate    = $request->query('end_date', Carbon::now()->format('Y-m-d'));
         $puskesmasId= $request->query('puskesmas_id');
@@ -150,7 +165,7 @@ class ReportController extends Controller
 
     public function exportCsv(Request $request)
     {
-        $type       = $request->query('type', 'screening');
+        $type       = $this->normalizeType($request->query('type', 'screening'));
         $startDate  = $request->query('start_date', Carbon::now()->subMonths(1)->format('Y-m-d'));
         $endDate    = $request->query('end_date', Carbon::now()->format('Y-m-d'));
         $puskesmasId= $request->query('puskesmas_id');

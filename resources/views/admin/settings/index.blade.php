@@ -196,7 +196,7 @@
                         <div class="form-group row">
                             <label class="col-sm-3 col-form-label font-weight-bold">Hotline WhatsApp Konsultasi</label>
                             <div class="col-sm-9">
-                                <input type="text" class="form-control" value="+62 821-2345-6789">
+                                <input type="text" name="hotline_whatsapp" class="form-control" value="{{ \App\Models\SystemSetting::get('hotline_whatsapp', cache('system_hotline_whatsapp', '+62 821-2345-6789')) }}">
                             </div>
                         </div>
 

@@ -120,7 +120,7 @@
                                 </td>
                                 <td class="text-center">
                                     @if($rec->photo)
-                                        <a href="{{ asset('upload_images/' . $rec->photo) }}" target="_blank" class="btn btn-xs btn-outline-info font-weight-bold" title="Lihat Foto Fullscreen">
+                                        <a href="{{ asset('images/' . $rec->photo) }}" target="_blank" class="btn btn-xs btn-outline-info font-weight-bold" title="Lihat Foto Fullscreen">
                                             <i class="fas fa-image mr-1"></i> Lihat Foto
                                         </a>
                                     @else

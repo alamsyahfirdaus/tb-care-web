@@ -209,6 +209,34 @@ class ScreeningController extends Controller
 
         $categoryId = $request->input('category_id') ?? ($questions->first() ? $questions->first()->screening_category_id : 1);
 
+        // Resolusi wilayah administratif (Provinsi, Kab/Kota, Kecamatan, Desa) untuk scoping teritorial
+        $subdistrictId = $request->input('subdistrict_id');
+        $villageId     = $request->input('village_id');
+        $districtId    = $request->input('district_id');
+        $provinceId    = $request->input('province_id');
+
+        if ($contact && $contact->patient) {
+            $subdistrictId = $subdistrictId ?: $contact->patient->subdistrict_id;
+            $villageId     = $villageId ?: $contact->patient->village_id;
+            $districtId    = $districtId ?: optional($contact->patient->subdistrict)->district_id;
+            $provinceId    = $provinceId ?: optional(optional($contact->patient->subdistrict)->district)->province_id;
+        } elseif ($patient) {
+            $subdistrictId = $subdistrictId ?: $patient->subdistrict_id;
+            $villageId     = $villageId ?: $patient->village_id;
+            $districtId    = $districtId ?: optional($patient->subdistrict)->district_id;
+            $provinceId    = $provinceId ?: optional(optional($patient->subdistrict)->district)->province_id;
+        }
+
+        // Jika masih kosong (skrining mandiri masyarakat umum), turunkan dari Puskesmas yang dipilih
+        if ($puskesmasId && (!$subdistrictId || !$districtId || !$provinceId)) {
+            $pkmRef = Puskesmas::with('subdistrict.district.province')->find($puskesmasId);
+            if ($pkmRef) {
+                $subdistrictId = $subdistrictId ?: $pkmRef->subdistrict_id;
+                $districtId    = $districtId ?: optional($pkmRef->subdistrict)->district_id;
+                $provinceId    = $provinceId ?: optional(optional($pkmRef->subdistrict)->district)->province_id;
+            }
+        }
+
         // Simpan data skrining utama ke database
         $screening = Screening::create([
             'code'                  => $code,
@@ -219,6 +247,10 @@ class ScreeningController extends Controller
             'extrapulmonary_organ'  => $request->input('extrapulmonary_organ'),
             'screening_category_id' => $categoryId,
             'puskesmas_id'          => $puskesmasId,
+            'province_id'           => $provinceId,
+            'district_id'           => $districtId,
+            'subdistrict_id'        => $subdistrictId,
+            'village_id'            => $villageId,
             'person_name'           => $personName,
             'nik'                   => $nik,
             'phone'                 => $phone,

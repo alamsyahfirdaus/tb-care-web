@@ -52,6 +52,7 @@ class CreateTreatmentDocumentsTable extends Migration
      */
     public function down()
     {
+        Schema::dropIfExists('medication_records');
         Schema::dropIfExists('treatment_documents');
     }
 }

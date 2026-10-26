@@ -12,7 +12,7 @@
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-body box-profile text-center">
                     <img class="profile-user-img img-fluid img-circle elevation-2"
-                         src="{{ $user->photo ? asset('upload_images/' . $user->photo) : asset('assets/img/profile.png') }}"
+                         src="{{ $user->photo ? asset('images/' . $user->photo) : asset('assets/img/profile.png') }}"
                          style="width: 110px; height: 110px; object-fit: cover;"
                          alt="Foto Profil">
 
@@ -220,7 +220,7 @@
                                                 <tr>
                                                     <td>{{ optional($area->subdistrict)->name ?? '-' }}</td>
                                                     <td>{{ optional($area->village)->name ?? '-' }}</td>
-                                                    <td>{{ $area->rw }}</td>
+                                                    <td>{{ $area->rw ?? 'Semua RW' }}</td>
                                                     <td>{{ $area->rt ?? 'Semua RT' }}</td>
                                                     @if($canManageKaderArea)
                                                         <td class="text-center">
@@ -323,9 +323,9 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 form-group">
-                                    <label for="area_rw">RW <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="rw" id="area_rw" placeholder="Contoh: 01" maxlength="5" required>
-                                    <small class="text-muted">Nomor RW binaan</small>
+                                    <label for="area_rw">RW <span class="text-muted">(Opsional)</span></label>
+                                    <input type="text" class="form-control" name="rw" id="area_rw" placeholder="Contoh: 01" maxlength="5">
+                                    <small class="text-muted">Kosongkan jika mencakup seluruh Desa/Kelurahan</small>
                                 </div>
                                 <div class="col-md-6 form-group">
                                     <label for="area_rt">RT <span class="text-muted">(Opsional)</span></label>

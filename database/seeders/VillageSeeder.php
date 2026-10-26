@@ -14,26 +14,25 @@ class VillageSeeder extends Seeder
      */
     public function run()
     {
-        $villagesBySubdistrict = [
-            // Cihideung (38)
-            38 => ['Argasari', 'Cilembang', 'Nagarawangi', 'Tugujaya', 'Tuguraja', 'Yudanagara'],
-            // Cipedes (39)
-            39 => ['Cipedes', 'Nagarasari', 'Panglayungan', 'Sukamanah'],
-            // Tawang (40)
-            40 => ['Cikalang', 'Empangsari', 'Kahuripan', 'Lengkongsari', 'Tawangsari'],
-            // Cibeureum (42)
-            42 => ['Ciakar', 'Ciherang', 'Kersanagara', 'Kotabaru', 'Margabakti', 'Setianegara'],
-            // Indihiang (43)
-            43 => ['Indihiang', 'Panyingkiran', 'Parakannyasag', 'Sirnagalih', 'Sukamaju Kaler', 'Sukamaju Kidul'],
-            // Mangkubumi (45)
-            45 => ['Cigantang', 'Cipari', 'Cipawitra', 'Karikil', 'Linggajaya', 'Mangkubumi', 'Sambongjaya', 'Sambongpari'],
-            // Bungursari (46)
-            46 => ['Bungursari', 'Cibunigeulis', 'Sukajaya', 'Sukalaksana', 'Sukamulya', 'Sukarindik'],
-            // Purbaratu (47)
-            47 => ['Purbaratu', 'Singkup', 'Sukaasih', 'Sukajaya', 'Sukamenak', 'Sukanagara'],
+        $subdistrictsMap = [
+            'Cihideung'   => ['Argasari', 'Cilembang', 'Nagarawangi', 'Tugujaya', 'Tuguraja', 'Yudanagara'],
+            'Cipedes'     => ['Cipedes', 'Nagarasari', 'Panglayungan', 'Sukamanah'],
+            'Tawang'      => ['Cikalang', 'Empangsari', 'Kahuripan', 'Lengkongsari', 'Tawangsari'],
+            'Kawalu'      => ['Talagasari', 'Cilamajang', 'Karsamenak', 'Gunungtandala', 'Karanganyar', 'Urug', 'Cibeuti', 'Saguling', 'Leuwiliang'],
+            'Cibeureum'   => ['Ciakar', 'Ciherang', 'Kersanagara', 'Kotabaru', 'Margabakti', 'Setianegara'],
+            'Indihiang'   => ['Indihiang', 'Panyingkiran', 'Parakannyasag', 'Sirnagalih', 'Sukamaju Kaler', 'Sukamaju Kidul'],
+            'Tamansari'   => ['Setiamulya', 'Setiawargi', 'Sukahurip', 'Sukamaju', 'Sukalaksana', 'Sumelap', 'Tamanjaya', 'Mugarsari'],
+            'Mangkubumi'  => ['Cigantang', 'Cipari', 'Cipawitra', 'Karikil', 'Linggajaya', 'Mangkubumi', 'Sambongjaya', 'Sambongpari'],
+            'Bungursari'  => ['Bungursari', 'Cibunigeulis', 'Sukajaya', 'Sukalaksana', 'Sukamulya', 'Sukarindik'],
+            'Purbaratu'   => ['Purbaratu', 'Singkup', 'Sukaasih', 'Sukajaya', 'Sukamenak', 'Sukanagara'],
         ];
 
-        foreach ($villagesBySubdistrict as $subdistrictId => $villages) {
+        foreach ($subdistrictsMap as $subdistrictName => $villages) {
+            $subdistrictId = DB::table('subdistricts')->where('name', $subdistrictName)->value('id');
+            if (!$subdistrictId) {
+                continue;
+            }
+
             foreach ($villages as $villageName) {
                 $exists = DB::table('villages')
                     ->where('subdistrict_id', $subdistrictId)
@@ -42,10 +41,10 @@ class VillageSeeder extends Seeder
 
                 if (!$exists) {
                     DB::table('villages')->insert([
-                        'name' => $villageName,
+                        'name'           => $villageName,
                         'subdistrict_id' => $subdistrictId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'created_at'     => now(),
+                        'updated_at'     => now(),
                     ]);
                 }
             }

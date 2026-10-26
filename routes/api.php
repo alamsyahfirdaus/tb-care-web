@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\SubdistrictController;
 use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
 use App\Http\Controllers\Api\CloseContactController;
+use App\Http\Controllers\Api\AppVersionApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +68,10 @@ Route::prefix('screening')->group(function () {
     Route::get('/{id}', [ScreeningController::class, 'show']);
 });
 
+// Pemeriksaan & Unduhan Versi Aplikasi Mobile (Publik)
+Route::get('/mobile/app-version', [AppVersionApiController::class, 'checkVersion']);
+Route::get('/mobile/app-version/download/{id?}', [AppVersionApiController::class, 'downloadApk']);
+
 // Route yang membutuhkan autentikasi (sanctum & akun aktif)
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
@@ -75,28 +80,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
-
-    // Admin maintenance password update (terproteksi auth)
-    Route::post('/password/batch-reset', [AuthController::class, 'updatePassword']);
-    Route::post('/run-migration', function (\Illuminate\Http\Request $request) {
-        if (!$request->user() || $request->user()->user_type_id != 1) {
-            return response()->json(['message' => 'Hanya Administrator yang dapat menjalankan migrasi.'], 403);
-        }
-        try {
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-            $output = \Illuminate\Support\Facades\Artisan::output();
-            return response()->json([
-                'success' => true,
-                'message' => 'Migrasi berhasil dijalankan.',
-                'output'  => $output,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menjalankan migrasi: ' . $e->getMessage(),
-            ], 500);
-        }
-    });
 
     // Profil Pengguna
     Route::prefix('profile')->group(function () {
