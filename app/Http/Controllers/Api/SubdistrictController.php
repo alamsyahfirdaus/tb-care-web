@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Subdistrict;
+use App\Models\Village;
+use Illuminate\Http\Request;
+
+class SubdistrictController extends Controller
+{
+    public function index(Request $request)
+    {
+        $districtId = $request->query('district_id');
+
+        if ($districtId) {
+            $subdistricts = Subdistrict::where('district_id', $districtId)
+                ->orderBy('name', 'asc')
+                ->get(['id', 'code', 'name', 'district_id']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data kecamatan berhasil diambil.',
+                'data'    => $subdistricts
+            ]);
+        }
+
+        // Ambil data subdistrict beserta relasi ke district dan province
+        $query = Subdistrict::with(['district.province']);
+
+        // Eksekusi query untuk mengambil seluruh data
+        $subdistricts = $query->get();
+
+        // Format data agar nama subdistrict tampil lengkap dengan kabupaten/kota dan provinsi
+        $formatted = $subdistricts->map(function ($item) {
+            return [
+                'id'   => $item->id,
+                'name' => $item->name . ', ' . ($item->district->name ?? '') . ', ' . ($item->district->province->name ?? '')
+            ];
+        });
+
+        // Kirim response JSON ke frontend
+        return response()->json([
+            'success' => true,
+            'message' => 'Data kecamatan berhasil diambil.',
+            'data'    => $formatted
+        ]);
+    }
+
+    public function getVillages($id)
+    {
+        $subdistrict = Subdistrict::find($id);
+
+        if (!$subdistrict) {
+            return response()->json([
+                'message' => 'Kecamatan tidak ditemukan.'
+            ], 404);
+        }
+
+        $villages = Village::where('subdistrict_id', $id)
+            ->orderBy('name', 'asc')
+            ->get(['id', 'code', 'name', 'subdistrict_id']);
+
+        return response()->json([
+            'message' => 'Data desa/kelurahan berhasil diambil.',
+            'data'    => $villages
+        ]);
+    }
+}

@@ -1,0 +1,302 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasEncryptedId;
+
+class Patient extends Model
+{
+    use HasFactory, HasEncryptedId;
+
+    protected $table = 'patients';
+    protected $primaryKey = 'id';
+
+    protected $guarded = [];
+
+    protected $casts = [
+        'treatment_start_date' => 'date',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function subdistrict()
+    {
+        return $this->belongsTo(Subdistrict::class, 'subdistrict_id');
+    }
+
+    public function puskesmas()
+    {
+        return $this->belongsTo(Puskesmas::class, 'puskesmas_id');
+    }
+
+    public function village()
+    {
+        return $this->belongsTo(Village::class, 'village_id');
+    }
+
+    public function treatments()
+    {
+        return $this->hasMany(PatientTreatment::class, 'patient_id');
+    }
+
+    /**
+     * Pengobatan aktif yang sedang dijalankan pasien (status: Berjalan)
+     */
+    public function activeTreatment()
+    {
+        return $this->hasOne(PatientTreatment::class, 'patient_id')
+            ->where('treatment_status', 'Berjalan')
+            ->latest('id');
+    }
+
+    /**
+     * Riwayat pengobatan terbaru (apapun statusnya)
+     */
+    public function latestTreatment()
+    {
+        return $this->hasOne(PatientTreatment::class, 'patient_id')
+            ->latest('id');
+    }
+
+    public function medicationSchedule()
+    {
+        return $this->hasOne(PatientMedicationSchedule::class, 'patient_id')->where('is_active', true);
+    }
+
+    public function medicationSchedules()
+    {
+        return $this->hasMany(PatientMedicationSchedule::class, 'patient_id');
+    }
+
+    public function screenings()
+    {
+        return $this->hasMany(Screening::class, 'patient_id');
+    }
+
+    public function examinations()
+    {
+        return $this->hasMany(ClinicalExamination::class, 'patient_id');
+    }
+
+    public function closeContacts()
+    {
+        return $this->hasMany(CloseContact::class, 'patient_id');
+    }
+
+    /**
+     * Centralized patient access scope for all roles.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param \App\Models\User $user
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeAccessibleBy($query, User $user)
+    {
+        // 1. Administrator (user_type_id = 1): Full access to all patients
+        if ($user->user_type_id == 1) {
+            return $query;
+        }
+
+        // 2. Pasien (user_type_id = 2): Only self
+        if ($user->user_type_id == 2) {
+            return $query->where('user_id', $user->id);
+        }
+
+        // 3. Petugas (user_type_id = 3)
+        if ($user->user_type_id == 3) {
+            $officer = $user->officer;
+            if (!$officer) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            // Dinkes Provinsi (officer_type_id = 1): Pasien dalam provinsi faskes atau domisili
+            if ($officer->officer_type_id == 1) {
+                $provinceId = null;
+                if ($officer->district_id) {
+                    $district = District::find($officer->district_id);
+                    $provinceId = $district ? $district->province_id : null;
+                }
+
+                if (!$provinceId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where(function ($q) use ($provinceId) {
+                    $q->whereHas('puskesmas.subdistrict.district', function ($pq) use ($provinceId) {
+                        $pq->where('province_id', $provinceId);
+                    })
+                    ->orWhereHas('subdistrict.district', function ($sq) use ($provinceId) {
+                        $sq->where('province_id', $provinceId);
+                    })
+                    ->orWhereHas('village.subdistrict.district', function ($vq) use ($provinceId) {
+                        $vq->where('province_id', $provinceId);
+                    });
+                });
+            }
+
+            // Dinkes Kab/Kota (officer_type_id = 2): Pasien dalam kab/kota faskes atau domisili
+            if ($officer->officer_type_id == 2) {
+                $districtId = $officer->district_id;
+                if (!$districtId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where(function ($q) use ($districtId) {
+                    $q->whereHas('puskesmas.subdistrict', function ($pq) use ($districtId) {
+                        $pq->where('district_id', $districtId);
+                    })
+                    ->orWhereHas('subdistrict', function ($sq) use ($districtId) {
+                        $sq->where('district_id', $districtId);
+                    })
+                    ->orWhereHas('village.subdistrict', function ($vq) use ($districtId) {
+                        $vq->where('district_id', $districtId);
+                    });
+                });
+            }
+
+            // PJTB Puskesmas (officer_type_id = 3): All patients in the Puskesmas
+            if ($officer->officer_type_id == 3) {
+                if (!$officer->puskesmas_id) {
+                    return $query->whereRaw('1 = 0');
+                }
+                return $query->where('puskesmas_id', $officer->puskesmas_id);
+            }
+
+            // Kader Puskesmas (officer_type_id = 4): Strictly scoped to assigned Desa/Kelurahan (village_id)
+            if ($officer->officer_type_id == 4) {
+                $assignedVillageIds = $officer->kaderAreas()->pluck('village_id')->filter()->unique()->values()->all();
+                if (empty($assignedVillageIds)) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where(function ($q) use ($officer, $assignedVillageIds) {
+                    if ($officer->puskesmas_id) {
+                        $q->where('puskesmas_id', $officer->puskesmas_id);
+                    }
+                    $q->whereIn('village_id', $assignedVillageIds);
+                });
+            }
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * Check whether this patient can be accessed by the given user.
+     *
+     * @param \App\Models\User $user
+     * @return bool
+     */
+    public function isAccessibleBy(User $user): bool
+    {
+        return self::where('id', $this->id)->accessibleBy($user)->exists();
+    }
+
+    public static function getPatientWithUser()
+    {
+        $patients = self::with('user')->get();
+
+        $patients = $patients->sortBy(fn($patient) => $patient->user->name ?? '');
+
+        $patientData = $patients->mapWithKeys(function ($patient) {
+            if ($patient->user) {
+                return [
+                    $patient->id => $patient->user->name . ' (' . $patient->user->username . ')',
+                ];
+            }
+            return [];
+        });
+
+        return $patientData->toArray();
+    }
+
+    public static function getAllPatients()
+    {
+        $puskesmas           = Puskesmas::getAllPuskesmas();
+        $puskesmasCollection = collect($puskesmas);
+
+        $puskesmasIds        = $puskesmasCollection->pluck('id')->toArray();
+
+        $query = self::with(['user', 'puskesmas']);
+
+        if (!empty($puskesmasIds)) {
+            $query->whereIn('puskesmas_id', $puskesmasIds);
+        }
+
+        return $query
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($patient) {
+                return [
+                    'id'             => $patient->id,
+                    'user_id'        => $patient->user_id,
+                    'full_name'      => $patient->user->name,
+                    'gender'         => $patient->user->gender,
+                    'phone'      => $patient->user->phone ?? '-',
+                    'username'       => $patient->user->username ?? '-',
+                    'email'          => $patient->user->email ?? '-',
+                    'puskesmas_name' => $patient->puskesmas->name ?? '-',
+                ];
+            })
+            ->toArray();
+    }
+
+    public static function getByUserId($userId)
+    {
+        return self::where('user_id', $userId)->first();
+    }
+
+    /**
+     * Dapatkan daftar petugas (User) yang bertanggung jawab dan berwenang atas pasien ini.
+     * Termasuk:
+     * 1. PJTB Puskesmas tempat pasien terdaftar.
+     * 2. Kader Puskesmas yang membina Desa/Kelurahan domisili pasien.
+     * Tidak menyertakan akun non-aktif, dan menghindari duplikasi petugas.
+     *
+     * @return \Illuminate\Support\Collection<\App\Models\User>
+     */
+    public function getResponsibleOfficers(): \Illuminate\Support\Collection
+    {
+        $officers = collect();
+
+        // 1. PJTB Puskesmas (officer_type_id = 3)
+        if ($this->puskesmas_id) {
+            $pjtbs = Officer::where('officer_type_id', 3)
+                ->where('puskesmas_id', $this->puskesmas_id)
+                ->whereHas('user', function ($q) {
+                    $q->where('is_active', true);
+                })
+                ->with('user')
+                ->get();
+            $officers = $officers->merge($pjtbs);
+        }
+
+        // 2. Kader Puskesmas binaan desa pasien (officer_type_id = 4)
+        if ($this->village_id) {
+            $kaders = Officer::where('officer_type_id', 4)
+                ->when($this->puskesmas_id, function ($q) {
+                    $q->where('puskesmas_id', $this->puskesmas_id);
+                })
+                ->whereHas('kaderAreas', function ($q) {
+                    $q->where('village_id', $this->village_id);
+                })
+                ->whereHas('user', function ($q) {
+                    $q->where('is_active', true);
+                })
+                ->with('user')
+                ->get();
+            $officers = $officers->merge($kaders);
+        }
+
+        // Ambil User yang aktif dan pastikan unik
+        return $officers->pluck('user')
+            ->filter()
+            ->unique('id')
+            ->values();
+    }
+}

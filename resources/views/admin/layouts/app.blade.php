@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $title ?? 'Admin' }} | {{ config('constants.APP_NAME', 'TB Care') }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon.ico') }}" />
+
+    <!-- Google Font: Source Sans Pro -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/fontawesome/css/all.min.css') }}">
+    <!-- icheck bootstrap -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+    <!-- DataTables -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/plugins/datatables-buttons/css/buttons.bootstrap4.min.css') }}">
+    <!-- Select2 -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
+    <!-- SweetAlert2 & Toastr -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/plugins/toastr/toastr.min.css') }}">
+    <!-- Tempusdominus Bootstrap 4 -->
+    <link rel="stylesheet"
+        href="{{ asset('assets/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css') }}">
+    <!-- Daterange picker -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/daterangepicker/daterangepicker.css') }}">
+    <!-- Theme style (AdminLTE) -->
+    <link rel="stylesheet" href="{{ asset('assets/dist/css/tbcare.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/plugins/overlayScrollbars/css/OverlayScrollbars.min.css') }}">
+
+    <!-- Healthcare Custom Styling -->
+    <style>
+        :root {
+            --tb-primary: #1b75bb;
+            --tb-primary-dark: #12558a;
+            --tb-teal: #17a2b8;
+            --tb-success: #28a745;
+            --tb-warning: #ffc107;
+            --tb-danger: #dc3545;
+            --tb-light: #f4f6f9;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--tb-light);
+            color: #333333;
+        }
+
+        .main-header {
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .navbar-navy {
+            background-color: var(--tb-primary);
+        }
+
+        .brand-link {
+            background-color: var(--tb-primary-dark) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.8125rem 1rem;
+        }
+
+        .brand-link .brand-text {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-size: 1.25rem;
+            color: #ffffff;
+        }
+
+        .brand-link .brand-badge {
+            background-color: #20c997;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 5px;
+            vertical-align: middle;
+            text-transform: uppercase;
+        }
+
+        .sidebar-dark-primary .nav-sidebar>.nav-item>.nav-link.active,
+        .sidebar-light-primary .nav-sidebar>.nav-item>.nav-link.active {
+            background-color: var(--tb-primary);
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        }
+
+        .nav-sidebar .nav-treeview>.nav-item>.nav-link.active {
+            background-color: rgba(27, 117, 187, 0.12);
+            color: var(--tb-primary);
+            font-weight: 600;
+        }
+
+        .nav-sidebar .nav-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8898aa;
+            padding: 0.75rem 1rem 0.35rem 1rem;
+        }
+
+        .card {
+            border: 0;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid rgba(0, 0, 0, .08);
+            padding: 0.85rem 1.25rem;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: #2c3e50;
+        }
+
+        .badge-tb-rendah {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+        }
+
+        .badge-tb-sedang {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+        }
+
+        .badge-tb-tinggi {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+        }
+
+        .badge-tb-lanjut {
+            background-color: #e2e3e5;
+            color: #383d41;
+            border: 1px solid #d6d8db;
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+        }
+
+        .badge-tb-berjalan {
+            background-color: #cce5ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+        }
+
+        .small-box {
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .info-box {
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid #eef2f5;
+        }
+
+        .table thead th {
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.88rem;
+            vertical-align: middle;
+            background-color: #f8f9fa;
+        }
+
+        .table tbody td {
+            font-size: 0.9rem;
+            vertical-align: middle;
+        }
+
+        .btn-action-group .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .user-panel img {
+            object-fit: cover;
+        }
+
+        .breadcrumb {
+            background-color: transparent;
+            padding: 0;
+            margin-bottom: 0;
+            font-size: 0.85rem;
+        }
+
+        .filter-card {
+            background-color: #ffffff;
+            border-left: 4px solid var(--tb-primary);
+        }
+    </style>
+    @stack('styles')
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed layout-footer-fixed text-sm">
+    <div class="wrapper">
+
+        <!-- Navbar -->
+        <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+            <!-- Left navbar links -->
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i
+                            class="fas fa-bars"></i></a>
+                </li>
+                {{-- <li class="nav-item d-none d-sm-inline-block">
+                    <a href="{{ route('dashboard') }}" class="nav-link"><i
+                            class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
+                </li>
+                <li class="nav-item d-none d-sm-inline-block">
+                    <a href="{{ route('screenings.index') }}" class="nav-link"><i
+                            class="fas fa-stethoscope mr-1"></i> Skrining TB</a>
+                </li>
+                <li class="nav-item d-none d-sm-inline-block">
+                    <a href="{{ route('patients.index') }}" class="nav-link"><i
+                            class="fas fa-user-injured mr-1"></i> Data Pasien</a>
+                </li> --}}
+            </ul>
+
+            <!-- Right navbar links -->
+            <ul class="navbar-nav ml-auto">
+                <!-- Quick Link to Public Portal -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url('/') }}" target="_blank"
+                        title="Buka Portal Pasien / Web Publik">
+                        <i class="fas fa-external-link-alt mr-1"></i> Portal Publik
+                    </a>
+                </li>
+
+                <!-- Notifications Dropdown Menu -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link" data-toggle="dropdown" href="#" title="Notifikasi Masuk">
+                        <i class="far fa-bell"></i>
+                        @php
+                            $userUnreadNotifs = (auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('notifications')) 
+                                ? auth()->user()->unreadNotifications 
+                                : collect();
+                            $unreadNotifCount = $userUnreadNotifs->count();
+                        @endphp
+                        @if ($unreadNotifCount > 0)
+                            <span class="badge badge-danger navbar-badge font-weight-bold">{{ $unreadNotifCount }}</span>
+                        @endif
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right shadow-sm" style="min-width: 330px;">
+                        <div class="dropdown-item dropdown-header font-weight-bold d-flex justify-content-between align-items-center bg-light">
+                            <span class="text-dark"><i class="fas fa-bell mr-1 text-primary"></i> {{ $unreadNotifCount }} Notifikasi Baru</span>
+                            @if ($unreadNotifCount > 0)
+                                <form method="POST" action="{{ route('notifications.mark_all_read') }}" class="m-0 p-0">
+                                    @csrf
+                                    <button type="submit" class="btn btn-xs btn-link p-0 text-primary font-weight-bold" style="text-decoration: underline;">
+                                        Tandai Dibaca
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                        <div class="dropdown-divider m-0"></div>
+                        @forelse($userUnreadNotifs->take(5) as $notifItem)
+                            @php
+                                $d = $notifItem->data;
+                                $targetUrl = route('notifications.read', $notifItem->id);
+                            @endphp
+                            <a href="{{ $targetUrl }}" class="dropdown-item py-2" style="white-space: normal;">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-2 mt-1">
+                                        <span class="badge badge-success p-1 rounded-circle"><i class="fas fa-pills text-white text-xs"></i></span>
+                                    </div>
+                                    <div class="flex-grow-1" style="line-height: 1.3;">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong class="text-sm text-dark">{{ $d['title'] ?? 'Pasien Minum Obat' }}</strong>
+                                            <span class="badge badge-danger text-2xs">Baru</span>
+                                        </div>
+                                        <p class="text-xs text-muted mb-1">{{ Str::limit($d['message'] ?? '', 85) }}</p>
+                                        <div class="text-2xs text-secondary">
+                                            <i class="far fa-clock mr-1"></i>{{ $notifItem->created_at ? $notifItem->created_at->diffForHumans() : '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                            <div class="dropdown-divider m-0"></div>
+                        @empty
+                            <div class="dropdown-item text-center text-muted text-sm py-3">
+                                <i class="fas fa-check-circle text-success mr-1"></i> Tidak ada notifikasi baru
+                            </div>
+                            <div class="dropdown-divider m-0"></div>
+                        @endforelse
+                        <a href="{{ route('notifications.index') }}" class="dropdown-item dropdown-footer text-center font-weight-bold text-primary">
+                            Lihat Semua Notifikasi <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                </li>
+
+                <!-- User Account Menu -->
+                <li class="nav-item dropdown user-menu">
+                    <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                        <img src="{{ Auth::user() && Auth::user()->photo ? asset('images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
+                            class="user-image img-circle elevation-1" alt="User Image">
+                        <span
+                            class="d-none d-md-inline font-weight-bold">{{ Auth::user() ? Auth::user()->name : 'Admin' }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+                        <!-- User image -->
+                        <li class="user-header bg-primary">
+                            <img src="{{ Auth::user() && Auth::user()->photo ? asset('images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
+                                class="img-circle elevation-2" alt="User Image">
+                            <p>
+                                {{ Auth::user() ? Auth::user()->name : 'Administrator' }}
+                                <small class="d-block">{{ Auth::user() ? Auth::user()->role_display_name : 'Petugas TB Care' }}</small>
+                                @if(Auth::user() && Auth::user()->officer && Auth::user()->officer->scope_description)
+                                    <small class="text-xs text-light font-italic">{{ Auth::user()->officer->scope_description }}</small>
+                                @endif
+                            </p>
+                        </li>
+                        <!-- Menu Footer-->
+                        <li class="user-footer d-flex ">
+                            <a href="{{ route('settings.profile') }}" class="btn btn-default btn-flat"><i
+                                    class="fas fa-user mr-1"></i> Profil</a>
+                            <a href="{{ route('logout') }}" class="btn btn-danger btn-flat"><i
+                                    class="fas fa-sign-out-alt mr-1"></i> Keluar</a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <!-- /.navbar -->
+
+        <!-- Main Sidebar Container -->
+        <aside class="main-sidebar sidebar-dark-primary elevation-4">
+            <!-- Brand Logo -->
+            <a href="{{ route('dashboard') }}" class="brand-link">
+                <span class="brand-text font-weight-bold">TB CARE</span>
+            </a>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Sidebar user panel -->
+                {{-- <div class="user-panel mt-3 pb-3 mb-3 d-flex align-items-center">
+                    <div class="image">
+                        <img src="{{ Auth::user() && Auth::user()->photo ? asset('images/' . Auth::user()->photo) : asset('assets/img/profile.png') }}"
+                            class="img-circle elevation-1" style="width: 36px; height: 36px;" alt="User Image">
+                    </div>
+                    <div class="info">
+                        <a href="{{ route('settings.profile') }}"
+                            class="d-block font-weight-bold text-white text-truncate" style="max-width: 170px;">
+                            {{ Auth::user() ? Auth::user()->name : 'Administrator' }}
+                        </a>
+                        <span class="text-xs text-success"><i class="fas fa-circle text-xs mr-1"></i> Online</span>
+                    </div>
+                </div> --}}
+
+                <!-- Sidebar Menu -->
+                <nav class="mt-4 mb-4">
+                    <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview"
+                        role="menu" data-accordion="false">
+
+                        <!-- 1. DASHBOARD -->
+                        <li class="nav-item">
+                            <a href="{{ route('dashboard') }}"
+                                class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-home"></i>
+                                <p>Beranda</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-header">MANAJEMEN UTAMA</li>
+
+                        @if(Auth::user()->isSuperAdmin())
+                        <!-- 2. PENGGUNA (Khusus Super Administrator) -->
+                        <li class="nav-item {{ request()->is('users*') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->is('users*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-users text-primary"></i>
+                                <p>
+                                    Pengguna
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('users.index') }}"
+                                        class="nav-link {{ request()->routeIs('users.index') && !request('role') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Pengguna</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('users.index', ['role' => 2]) }}"
+                                        class="nav-link {{ request('role') == '2' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Pasien</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('users.index', ['role' => 3]) }}"
+                                        class="nav-link {{ request('role') == '3' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Petugas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('users.index', ['role' => 1]) }}"
+                                        class="nav-link {{ request('role') == '1' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Administrator</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        @endif
+
+                        <!-- 3. DATA PASIEN -->
+                        <li class="nav-item {{ request()->is('patients*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('patients*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user-injured text-danger"></i>
+                                <p>
+                                    Data Pasien
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('patients.index') }}"
+                                        class="nav-link {{ request()->routeIs('patients.index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Pasien</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('patients.create') }}"
+                                        class="nav-link {{ request()->routeIs('patients.create') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Tambah Pasien Baru</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 4. SKRINING TB -->
+                        <li class="nav-item {{ request()->is('screenings*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('screenings*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-stethoscope text-warning"></i>
+                                <p>
+                                    Skrining TB
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('screenings.index') }}"
+                                        class="nav-link {{ request()->routeIs('screenings.index') && !request('risk') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Skrining</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Rendah']) }}"
+                                        class="nav-link {{ request('risk') == 'Risiko Rendah' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon text-success"></i>
+                                        <p>Risiko Rendah</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Sedang']) }}"
+                                        class="nav-link {{ request('risk') == 'Risiko Sedang' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon text-warning"></i>
+                                        <p>Risiko Sedang</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('screenings.index', ['risk' => 'Risiko Tinggi']) }}"
+                                        class="nav-link {{ request('risk') == 'Risiko Tinggi' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon text-danger"></i>
+                                        <p>Risiko Tinggi</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('screenings.action_needed') }}"
+                                        class="nav-link {{ request()->routeIs('screenings.action_needed') ? 'active' : '' }}">
+                                        <i class="fas fa-exclamation-triangle nav-icon text-danger"></i>
+                                        <p>Perlu Tindak Lanjut</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 5. PEMERIKSAAN -->
+                        <li class="nav-item {{ request()->is('examinations*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('examinations*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-microscope text-cyan"></i>
+                                <p>
+                                    Pemeriksaan
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('examinations.index') }}"
+                                        class="nav-link {{ request()->routeIs('examinations.index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Pemeriksaan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('examinations.index', ['view' => 'results']) }}"
+                                        class="nav-link {{ request('view') == 'results' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Hasil Pemeriksaan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('examinations.index', ['view' => 'diagnosis']) }}"
+                                        class="nav-link {{ request('view') == 'diagnosis' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Diagnosis Pasien</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 6. PENGOBATAN -->
+                        <li class="nav-item {{ request()->is('treatments*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('treatments*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-pills text-success"></i>
+                                <p>
+                                    Pengobatan
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('treatments.index', ['status' => 'Berjalan']) }}"
+                                        class="nav-link {{ request('status') == 'Berjalan' || (request()->routeIs('treatments.index') && !request('status')) ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon text-primary"></i>
+                                        <p>Dalam Pengobatan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('treatments.monitoring') }}"
+                                        class="nav-link {{ request()->routeIs('treatments.monitoring') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon text-info"></i>
+                                        <p>Monitoring Pengobatan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('treatments.index', ['status' => 'Selesai']) }}"
+                                        class="nav-link {{ request('status') == 'Selesai' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon text-success"></i>
+                                        <p>Hasil Pengobatan</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 7. KONTAK ERAT -->
+                        <li class="nav-item {{ request()->is('contacts*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('contacts*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-people-arrows text-teal"></i>
+                                <p>
+                                    Kontak Erat
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('contacts.index') }}"
+                                        class="nav-link {{ request()->routeIs('contacts.index') && !request('filter') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Kontak</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('contacts.index', ['filter' => 'keluarga']) }}"
+                                        class="nav-link {{ request('filter') == 'keluarga' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Kontak Keluarga</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('contacts.index', ['filter' => 'screening']) }}"
+                                        class="nav-link {{ request('filter') == 'screening' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Hasil Skrining Kontak</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        @if(Auth::user()->isSuperAdmin() || Auth::user()->isPJTB())
+                        <li class="nav-header">MANAJEMEN PETUGAS</li>
+                        <li class="nav-item">
+                            <a href="{{ route('kaders.index') }}"
+                                class="nav-link {{ request()->is('kaders*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user-friends text-teal"></i>
+                                <p>Manajemen Kader</p>
+                            </a>
+                        </li>
+                        @endif
+
+                        <li class="nav-header">FASKES & WILAYAH</li>
+
+                        <!-- 8. FASILITAS KESEHATAN -->
+                        <li class="nav-item {{ request()->is('puskesmas*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('puskesmas*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-hospital-alt text-info"></i>
+                                <p>
+                                    Fasilitas Kesehatan
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('puskesmas.index') }}"
+                                        class="nav-link {{ request()->routeIs('puskesmas.index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Puskesmas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('puskesmas.index', ['type' => 'klinik']) }}"
+                                        class="nav-link {{ request('type') == 'klinik' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Klinik</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('puskesmas.index', ['type' => 'rs']) }}"
+                                        class="nav-link {{ request('type') == 'rs' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Rumah Sakit</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        @if(Auth::user()->isSuperAdmin())
+                        <!-- 9. WILAYAH (Khusus Super Administrator) -->
+                        <li class="nav-item {{ request()->is('regions*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('regions*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-map-marked-alt text-warning"></i>
+                                <p>
+                                    Wilayah
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('regions.index', ['tier' => 'provinces']) }}"
+                                        class="nav-link {{ request('tier') == 'provinces' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Provinsi</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('regions.index', ['tier' => 'districts']) }}"
+                                        class="nav-link {{ request('tier') == 'districts' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Kabupaten / Kota</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('regions.index', ['tier' => 'subdistricts']) }}"
+                                        class="nav-link {{ request('tier') == 'subdistricts' || !request('tier') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Kecamatan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('regions.index', ['tier' => 'villages']) }}"
+                                        class="nav-link {{ request('tier') == 'villages' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Desa / Kelurahan</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        @endif
+
+                        <li class="nav-header">MEDIA & KOMUNIKASI</li>
+
+                        <!-- 10. EDUKASI -->
+                        <li class="nav-item {{ request()->is('education*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('education*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-book-medical text-primary"></i>
+                                <p>
+                                    Edukasi
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('education.index') }}"
+                                        class="nav-link {{ request()->routeIs('education.index') && !request('type') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Konten</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('education.index', ['type' => 'image']) }}"
+                                        class="nav-link {{ request('type') == 'image' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Poster & Infografis</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('education.index', ['type' => 'video']) }}"
+                                        class="nav-link {{ request('type') == 'video' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Video Edukasi</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 11. NOTIFIKASI -->
+                        <li class="nav-item {{ request()->is('notifications*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('notifications*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-bell text-secondary"></i>
+                                <p>
+                                    Notifikasi
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('notifications.index') }}"
+                                        class="nav-link {{ request()->routeIs('notifications.index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Semua Notifikasi</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('notifications.consultations') }}"
+                                        class="nav-link {{ request()->routeIs('notifications.consultations') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Pesan Konsultasi</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-header">LAPORAN & ANALISIS</li>
+
+                        <!-- 12. LAPORAN -->
+                        <li class="nav-item {{ request()->is('reports*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-file-invoice text-success"></i>
+                                <p>
+                                    Laporan
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('reports.index', ['type' => 'screening']) }}"
+                                        class="nav-link {{ request('type') == 'screening' || !request('type') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Laporan Skrining</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('reports.index', ['type' => 'patient']) }}"
+                                        class="nav-link {{ in_array(request('type'), ['patient', 'patients']) ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Laporan Pasien TB</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('reports.index', ['type' => 'regional']) }}"
+                                        class="nav-link {{ in_array(request('type'), ['regional', 'regions']) ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Laporan Wilayah</p>
+                                    </a>
+                                </li>
+                                @if(Auth::user()->isSuperAdmin())
+                                <li class="nav-item">
+                                    <a href="{{ route('reports.index', ['type' => 'user']) }}"
+                                        class="nav-link {{ in_array(request('type'), ['user', 'users']) ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Laporan Pengguna</p>
+                                    </a>
+                                </li>
+                                @endif
+                            </ul>
+                        </li>
+
+                        <!-- 13. ANALITIK -->
+                        <li class="nav-item">
+                            <a href="{{ route('analytics.index') }}"
+                                class="nav-link {{ request()->routeIs('analytics.index') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-chart-pie text-purple"></i>
+                                <p>Analitik TB</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-header">SISTEM & KONFIGURASI</li>
+
+                        @if(Auth::user()->isSuperAdmin())
+                        <!-- 14. MASTER DATA (Khusus Super Administrator) -->
+                        <li class="nav-item {{ request()->is('master*') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->is('master*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-database text-warning"></i>
+                                <p>
+                                    Master Data
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('master.questions') }}"
+                                        class="nav-link {{ request()->routeIs('master.questions') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Pertanyaan Skrining</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('master.treatment_types') }}"
+                                        class="nav-link {{ request()->routeIs('master.treatment_types') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Jenis Pengobatan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('master.categories') }}"
+                                        class="nav-link {{ request()->routeIs('master.categories') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Kategori Data</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 15. LOG AKTIVITAS (Khusus Super Administrator) -->
+                        <li class="nav-item">
+                            <a href="{{ route('activity_logs.index') }}"
+                                class="nav-link {{ request()->routeIs('activity_logs.index') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-history text-secondary"></i>
+                                <p>Log Aktivitas</p>
+                            </a>
+                        </li>
+
+                        <!-- 15B. VERSI APLIKASI MOBILE (Khusus Super Administrator) -->
+                        <li class="nav-item">
+                            <a href="{{ route('app-versions.index') }}"
+                                class="nav-link {{ request()->is('app-versions*') ? 'active' : '' }}">
+                                <i class="nav-icon fab fa-android text-success"></i>
+                                <p>Versi TB Care Mobile</p>
+                            </a>
+                        </li>
+                        @endif
+
+                        <!-- 16. PENGATURAN -->
+                        <li class="nav-item {{ request()->is('settings*') ? 'menu-open' : '' }}">
+                            <a href="#"
+                                class="nav-link {{ request()->is('settings*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-cog text-muted"></i>
+                                <p>
+                                    Pengaturan
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('settings.profile') }}"
+                                        class="nav-link {{ request()->routeIs('settings.profile') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Profil Pengguna</p>
+                                    </a>
+                                </li>
+                                @if(Auth::user()->isSuperAdmin())
+                                <li class="nav-item">
+                                    <a href="{{ route('settings.roles') }}"
+                                        class="nav-link {{ request()->routeIs('settings.roles') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Role & Hak Akses</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('settings.system') }}"
+                                        class="nav-link {{ request()->routeIs('settings.system') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Pengaturan Sistem</p>
+                                    </a>
+                                </li>
+                                @endif
+                            </ul>
+                        </li>
+
+                    </ul>
+                </nav>
+                <!-- /.sidebar-menu -->
+            </div>
+            <!-- /.sidebar -->
+        </aside>
+
+        <!-- Content Wrapper. Contains page content -->
+        <div class="content-wrapper">
+            <!-- Content Header (Page header) -->
+            <div class="content-header py-3">
+                <div class="container-fluid">
+                    <div class="row align-items-center">
+                        <div class="col-sm-6">
+                            <h1 class="m-0 font-weight-bold text-dark" style="font-size: 1.5rem;">
+                                {{ $pageTitle ?? ($title ?? 'Admin Dashboard') }}
+                            </h1>
+                            {{-- @if (isset($pageSubtitle))
+                                <span class="text-muted text-sm">{{ $pageSubtitle }}</span>
+                            @endif --}}
+                        </div>
+                        <div class="col-sm-6">
+                            <ol class="breadcrumb float-sm-right">
+                                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i
+                                            class="fas fa-home"></i> Beranda</a></li>
+                                @yield('breadcrumb')
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.content-header -->
+
+            <!-- Main content -->
+            <section class="content">
+                <div class="container-fluid">
+                    <!-- Flash Messages -->
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    @if (session('warning'))
+                        <div class="alert alert-warning alert-dismissible fade show text-dark" role="alert">
+                            <i class="fas fa-exclamation-circle mr-2"></i> {{ session('warning') }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <h6 class="font-weight-bold"><i class="fas fa-ban mr-1"></i> Terdapat Kesalahan Pengisian
+                                Form:</h6>
+                            <ul class="mb-0 pl-3">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    @endif
+
+                    @yield('content')
+                </div>
+            </section>
+            <!-- /.content -->
+        </div>
+        <!-- /.content-wrapper -->
+
+        <footer class="main-footer text-sm">
+            <strong>Copyright &copy; 2024-{{ date('Y') }} <a href="{{ url('/') }}"
+                    class="text-primary font-weight-bold">TB Care</a>.</strong>
+            Sistem Informasi & Pengawasan Pengobatan Tuberkulosis Terintegrasi.
+            <div class="float-right d-none d-sm-inline-block">
+                <b>Versi</b> 2.5 (Production)
+            </div>
+        </footer>
+    </div>
+    <!-- ./wrapper -->
+
+    <!-- REQUIRED SCRIPTS -->
+    <!-- jQuery -->
+    <script src="{{ asset('assets/plugins/jquery/jquery.min.js') }}"></script>
+    <!-- Bootstrap 4 -->
+    <script src="{{ asset('assets/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- DataTables & Plugins -->
+    <script src="{{ asset('assets/plugins/datatables/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-responsive/js/dataTables.responsive.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-buttons/js/dataTables.buttons.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-buttons/js/buttons.bootstrap4.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/jszip/jszip.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/pdfmake/pdfmake.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/pdfmake/vfs_fonts.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-buttons/js/buttons.html5.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-buttons/js/buttons.print.min.js') }}"></script>
+    <script src="{{ asset('assets/plugins/datatables-buttons/js/buttons.colVis.min.js') }}"></script>
+    <!-- Select2 -->
+    <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
+    <!-- Moment -->
+    <script src="{{ asset('assets/plugins/moment/moment.min.js') }}"></script>
+    <!-- Daterangepicker -->
+    <script src="{{ asset('assets/plugins/daterangepicker/daterangepicker.js') }}"></script>
+    <!-- Tempusdominus Bootstrap 4 -->
+    <script src="{{ asset('assets/plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js') }}"></script>
+    <!-- ChartJS -->
+    <script src="{{ asset('assets/plugins/chart.js/Chart.min.js') }}"></script>
+    <!-- SweetAlert2 -->
+    <script src="{{ asset('assets/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+    <!-- Toastr -->
+    <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
+    <!-- OverlayScrollbars -->
+    <script src="{{ asset('assets/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
+    <!-- AdminLTE App -->
+    <script src="{{ asset('assets/dist/js/tbcare.min.js') }}"></script>
+
+    <script>
+        // Global setup for AJAX CSRF
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        $(function() {
+            // Initialize Select2 Elements
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%'
+            });
+
+            // Function to safely initialize standard DataTables
+            window.initTbDataTable = function(selector, customOptions = {}) {
+                var defaultOptions = {
+                    responsive: true,
+                    autoWidth: false,
+                    pageLength: 10,
+                    lengthMenu: [
+                        [10, 25, 50, 100, -1],
+                        [10, 25, 50, 100, "Semua"]
+                    ],
+                    ordering: true,
+                    searching: true,
+                    paging: true,
+                    info: true,
+                    language: {
+                        search: "Cari:",
+                        lengthMenu: "Tampilkan _MENU_ data",
+                        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                        infoEmpty: "Tidak ada data",
+                        infoFiltered: "(disaring dari _MAX_ total data)",
+                        zeroRecords: "Data tidak ditemukan",
+                        emptyTable: "Belum ada data",
+                        paginate: {
+                            first: "Pertama",
+                            last: "Terakhir",
+                            next: "Berikutnya",
+                            previous: "Sebelumnya"
+                        }
+                    }
+                };
+
+                var finalOptions = $.extend(true, {}, defaultOptions, customOptions);
+
+                $(selector).each(function() {
+                    if (!$.fn.DataTable.isDataTable(this)) {
+                        $(this).DataTable(finalOptions);
+                    }
+                });
+            };
+
+            // Auto-initialize any .data-table on document ready
+            initTbDataTable('.data-table');
+
+            // Adjust column sizing when switching tabs
+            $('a[data-toggle="pill"], a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                $.fn.dataTable.tables({
+                    visible: true,
+                    api: true
+                }).columns.adjust().responsive.recalc();
+            });
+        });
+
+        // Confirmation Modal for Deletion
+        function confirmDelete(target, itemName, customHtml = null) {
+            var text = itemName ? 'Apakah Anda yakin ingin menghapus data "' + itemName + '"?' :
+                'Apakah Anda yakin ingin menghapus data ini?';
+
+            var swalConfig = {
+                title: 'Konfirmasi Hapus Data',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash"></i> Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            };
+
+            if (customHtml) {
+                swalConfig.html = customHtml;
+            } else {
+                swalConfig.text = text;
+            }
+
+            Swal.fire(swalConfig).then((result) => {
+                if (result.isConfirmed) {
+                    var el = null;
+                    if (typeof target === 'string' && !target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('/')) {
+                        try {
+                            el = document.getElementById(target);
+                        } catch (e) {
+                            el = null;
+                        }
+                    }
+
+                    if (el && typeof el.submit === 'function') {
+                        el.submit();
+                    } else {
+                        var form = document.getElementById('global-delete-form');
+                        if (!form) {
+                            form = document.createElement('form');
+                            form.id = 'global-delete-form';
+                            form.method = 'POST';
+                            form.style.display = 'none';
+
+                            var csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = '_token';
+                            form.appendChild(csrfInput);
+
+                            var methodInput = document.createElement('input');
+                            methodInput.type = 'hidden';
+                            methodInput.name = '_method';
+                            methodInput.value = 'DELETE';
+                            form.appendChild(methodInput);
+
+                            document.body.appendChild(form);
+                        }
+
+                        var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        var tokenVal = tokenMeta ? tokenMeta.getAttribute('content') : (window.$ ? $('meta[name="csrf-token"]').attr('content') : '');
+                        var csrfEl = form.querySelector('input[name="_token"]');
+                        if (csrfEl) csrfEl.value = tokenVal;
+
+                        form.action = target;
+                        form.submit();
+                    }
+                }
+            });
+        }
+    </script>
+
+    @stack('scripts')
+</body>
+
+</html>
