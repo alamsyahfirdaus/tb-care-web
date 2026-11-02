@@ -40,6 +40,8 @@ class PatientRegistrationTreatmentTest extends TestCase
             'district_id'          => $district ? $district->id : 1,
             'subdistrict_id'       => $subdistrict ? $subdistrict->id : 1,
             'village_id'           => $village ? $village->id : 1,
+            'rt'                   => '001',
+            'rw'                   => '002',
         ], $overrides);
     }
 

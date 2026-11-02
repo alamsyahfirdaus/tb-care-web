@@ -1029,33 +1029,57 @@ class PatientController extends Controller
             'today_record'   => $todayRecordData,
         ];
 
-        // 5. Ringkasan Konsultasi Terakhir
-        $consultation = Consultation::with(['recipient:id,name', 'replies.user:id,name'])
+        // 5. Ringkasan Konsultasi Terakhir (Didukung Conversation baru & fallback Consultation lama)
+        $latestConversation = \App\Models\Conversation::with(['lastMessage', 'participantOne', 'participantTwo'])
             ->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhere('recipient_id', $user->id);
+                $q->where('participant_one_id', $user->id)
+                  ->orWhere('participant_two_id', $user->id);
             })
-            ->latest('updated_at')
+            ->orderByDesc('last_message_at')
             ->first();
 
         $consultationData = null;
-        if ($consultation) {
-            $doctorOrOfficer = optional($consultation->recipient)->name;
-            if (!$doctorOrOfficer && $consultation->replies->isNotEmpty()) {
-                $doctorOrOfficer = optional($consultation->replies->last()->user)->name;
-            }
-
+        if ($latestConversation) {
+            $other = $latestConversation->getOtherParticipant($user);
+            $lastMsg = $latestConversation->lastMessage;
             $consultationData = [
-                'id'                     => $consultation->id,
-                'title'                  => $consultation->title,
-                'latest_message'         => $consultation->replies->isNotEmpty()
-                    ? $consultation->replies->last()->message
-                    : $consultation->message,
-                'doctor_or_officer_name' => $doctorOrOfficer ?? 'Petugas TB Care',
-                'is_answered'            => (bool) $consultation->is_answered,
-                'updated_at'             => $consultation->updated_at ? $consultation->updated_at->format('Y-m-d H:i') : null,
-                'unread_replies_count'   => $consultation->replies->where('is_read', false)->where('user_id', '!=', $user->id)->count(),
+                'id'                     => $latestConversation->id,
+                'title'                  => 'Konsultasi dengan ' . ($other?->name ?? 'Petugas'),
+                'latest_message'         => $lastMsg?->message_type === 'image' && empty($lastMsg?->message)
+                                              ? '📷 Gambar'
+                                              : ($lastMsg?->message ?? 'Percakapan baru'),
+                'doctor_or_officer_name' => $other?->name ?? 'Petugas TB Care',
+                'is_answered'            => $lastMsg ? (int) $lastMsg->sender_id !== (int) $user->id : false,
+                'updated_at'             => $latestConversation->last_message_at ? $latestConversation->last_message_at->format('Y-m-d H:i') : null,
+                'unread_replies_count'   => $latestConversation->unreadCountFor($user),
             ];
+        } else {
+            $consultation = Consultation::with(['recipient:id,name', 'replies.user:id,name'])
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere('recipient_id', $user->id);
+                })
+                ->latest('updated_at')
+                ->first();
+
+            if ($consultation) {
+                $doctorOrOfficer = optional($consultation->recipient)->name;
+                if (!$doctorOrOfficer && $consultation->replies->isNotEmpty()) {
+                    $doctorOrOfficer = optional($consultation->replies->last()->user)->name;
+                }
+
+                $consultationData = [
+                    'id'                     => $consultation->id,
+                    'title'                  => $consultation->title,
+                    'latest_message'         => $consultation->replies->isNotEmpty()
+                        ? $consultation->replies->last()->message
+                        : $consultation->message,
+                    'doctor_or_officer_name' => $doctorOrOfficer ?? 'Petugas TB Care',
+                    'is_answered'            => (bool) $consultation->is_answered,
+                    'updated_at'             => $consultation->updated_at ? $consultation->updated_at->format('Y-m-d H:i') : null,
+                    'unread_replies_count'   => $consultation->replies->where('is_read', false)->where('user_id', '!=', $user->id)->count(),
+                ];
+            }
         }
 
         // 6. Notifikasi Sistem Terbaru

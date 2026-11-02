@@ -67,7 +67,20 @@ class PatientRegistrationApiTest extends TestCase
                 'treatment_start_date',
                 'subdistrict_id',
                 'village_id',
+                'rt',
+                'rw',
             ]);
+    }
+
+    public function test_patient_registration_rt_rw_must_be_numeric()
+    {
+        $response = $this->postJson('/api/register', [
+            'rt' => 'abc',
+            'rw' => 'xyz',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['rt', 'rw']);
     }
 
     public function test_patient_registration_full_flow()
@@ -91,6 +104,8 @@ class PatientRegistrationApiTest extends TestCase
             'district_id'          => $district ? $district->id : 1,
             'subdistrict_id'       => $subdistrict ? $subdistrict->id : 1,
             'village_id'           => $village ? $village->id : 1,
+            'rt'                   => '001',
+            'rw'                   => '005',
         ];
 
         // 1. Submit Registration
@@ -129,6 +144,8 @@ class PatientRegistrationApiTest extends TestCase
         $this->assertEquals($uniqueNik, $patient->nik);
         $this->assertEquals($payload['subdistrict_id'], $patient->subdistrict_id);
         $this->assertEquals($payload['village_id'], $patient->village_id);
+        $this->assertEquals('001', $patient->rt);
+        $this->assertEquals('005', $patient->rw);
 
         // 2. Test Duplicate NIK
         $dupNikPayload = $payload;

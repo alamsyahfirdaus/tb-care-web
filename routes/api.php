@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConsultationController;
+use App\Http\Controllers\Api\ConversationController;
+use App\Http\Controllers\Api\BulkReminderController;
 use App\Http\Controllers\Api\EducationController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ProfileController;
@@ -131,6 +133,23 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::match(['post', 'put'], '/reply', [ConsultationController::class, 'saveReply']); // Simpan / update balasan
         Route::delete('/{id}/reply', [ConsultationController::class, 'deleteReply']);   // Hapus balasan
         Route::get('/recipients', [ConsultationController::class, 'getRecipients']); // Ambil daftar penerima untuk konsultasi
+    });
+
+    // Live Chat (Percakapan Privat Dua Arah)
+    Route::prefix('conversations')->group(function () {
+        Route::get('/', [ConversationController::class, 'index']);
+        Route::get('/recipients', [ConversationController::class, 'getRecipients']);
+        Route::post('/', [ConversationController::class, 'store']);
+        Route::get('/{id}', [ConversationController::class, 'show']);
+        Route::get('/{id}/messages', [ConversationController::class, 'getMessages']);
+        Route::post('/{id}/messages', [ConversationController::class, 'sendMessage']);
+        Route::post('/{id}/read', [ConversationController::class, 'markAsRead']);
+    });
+
+    // Pengingat Minum Obat Massal (Bulk Medication Reminder)
+    Route::prefix('reminders')->group(function () {
+        Route::get('/recipients', [BulkReminderController::class, 'getRecipients']);
+        Route::post('/bulk-send', [BulkReminderController::class, 'sendBulk']);
     });
 
     // Dashboard / Beranda Pasien Terpadu

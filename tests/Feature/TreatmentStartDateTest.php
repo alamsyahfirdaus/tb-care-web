@@ -94,6 +94,8 @@ class TreatmentStartDateTest extends TestCase
             'puskesmas_id'         => $this->puskesmas->id,
             'subdistrict_id'       => $this->subdistrict->id,
             'village_id'           => $this->village->id,
+            'rt'                   => '002',
+            'rw'                   => '003',
             'treatment_start_date' => $today,
         ]);
 
@@ -374,6 +376,8 @@ class TreatmentStartDateTest extends TestCase
             'puskesmas_id'         => $this->puskesmas->id,
             'subdistrict_id'       => $this->subdistrict->id,
             'village_id'           => $this->village->id,
+            'rt'                   => '002',
+            'rw'                   => '003',
             'treatment_start_date' => $today,
         ]);
 

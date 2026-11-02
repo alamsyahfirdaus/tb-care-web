@@ -145,6 +145,8 @@ class AuthController extends Controller
             'district_id'          => 'nullable|exists:districts,id',
             'subdistrict_id'       => 'required|exists:subdistricts,id',
             'village_id'           => 'required|exists:villages,id',
+            'rt'                   => 'required|string|regex:/^[0-9]+$/|max:10',
+            'rw'                   => 'required|string|regex:/^[0-9]+$/|max:10',
             'address'              => 'nullable|string|max:500',
             'gender'               => 'nullable|in:L,P',
             'email'                => 'nullable|string|email|unique:users,email',
@@ -168,6 +170,10 @@ class AuthController extends Controller
             'subdistrict_id.exists'         => 'Kecamatan tidak valid.',
             'village_id.required'           => 'Desa/Kelurahan wajib dipilih.',
             'village_id.exists'             => 'Desa/Kelurahan tidak valid.',
+            'rt.required'                   => 'RT wajib diisi.',
+            'rt.regex'                      => 'RT hanya boleh berisi angka.',
+            'rw.required'                   => 'RW wajib diisi.',
+            'rw.regex'                      => 'RW hanya boleh berisi angka.',
         ]);
 
         return DB::transaction(function () use ($validatedData) {
@@ -212,6 +218,8 @@ class AuthController extends Controller
                 'subdistrict_id'       => $validatedData['subdistrict_id'],
                 'village_id'           => $validatedData['village_id'],
                 'treatment_start_date' => $validatedData['treatment_start_date'],
+                'rt'                   => trim($validatedData['rt']),
+                'rw'                   => trim($validatedData['rw']),
                 'address'              => $address,
             ]);
 

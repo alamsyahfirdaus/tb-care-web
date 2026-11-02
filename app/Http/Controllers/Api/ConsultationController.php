@@ -8,6 +8,7 @@ use App\Models\ConsultationReply;
 use App\Models\Officer;
 use App\Models\Patient;
 use App\Models\User;
+use App\Services\ChatAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -271,90 +272,11 @@ class ConsultationController extends Controller
     public function getRecipients()
     {
         $user = Auth::user();
+        $recipients = ChatAuthorizationService::getEligibleRecipients($user);
 
-        // Pasien hanya bisa memilih petugas di wilayah puskesmasnya
-        if ($user->user_type_id == 2) {
-            $patient = Patient::where('user_id', $user->id)->first();
-
-            if (!$patient) {
-                return response()->json(['message' => 'Data pasien tidak ditemukan.'], 404);
-            }
-
-            // Cari petugas (PJTB/Kader) di Puskesmas yang sama yang akunnya aktif
-            $officers = Officer::with('user')
-                ->where('puskesmas_id', $patient->puskesmas_id)
-                ->whereHas('user', function ($q) {
-                    $q->where('is_active', true);
-                })
-                ->get()
-                ->map(function ($officer) {
-                    return [
-                        'id'    => $officer->user->id,
-                        'name'  => $officer->user->name,
-                        'email' => $officer->user->email,
-                        'role'  => 'Petugas',
-                    ];
-                });
-
-            return response()->json([
-                'message' => 'Daftar petugas berhasil diambil.',
-                'data'    => $officers
-            ]);
-        }
-
-        // Petugas hanya bisa memilih pasien di wilayah kerjanya
-        elseif ($user->user_type_id == 3) {
-            $officer = Officer::where('user_id', $user->id)->first();
-
-            if (!$officer) {
-                return response()->json(['message' => 'Data petugas tidak ditemukan.'], 404);
-            }
-
-            // Centralized scoping menggunakan Patient::accessibleBy dengan filter user aktif
-            $patients = Patient::accessibleBy($user)
-                ->whereHas('user', function ($q) {
-                    $q->where('is_active', true);
-                })
-                ->with('user')
-                ->get()
-                ->map(function ($patient) {
-                    return [
-                        'id'    => $patient->user->id,
-                        'name'  => $patient->user->name,
-                        'email' => $patient->user->email,
-                        'role'  => 'Pasien',
-                    ];
-                });
-
-            return response()->json([
-                'message' => 'Daftar pasien berhasil diambil.',
-                'data'    => $patients
-            ]);
-        }
-
-        // Admin atau selainnya bisa memilih semua user yang aktif
-        else {
-            $users = User::where('id', '!=', $user->id)
-                ->where('is_active', true)
-                ->get()
-                ->map(function ($u) {
-                return [
-                    'id'    => $u->id,
-                    'name'  => $u->name,
-                    'email' => $u->email,
-                    'role'  => match ($u->user_type_id) {
-                        1 => 'Admin',
-                        2 => 'Pasien',
-                        3 => 'Petugas',
-                        default => 'Lainnya',
-                    },
-                ];
-            });
-
-            return response()->json([
-                'message' => 'Daftar pengguna berhasil diambil.',
-                'data'    => $users
-            ]);
-        }
+        return response()->json([
+            'message' => 'Daftar penerima berhasil diambil.',
+            'data'    => $recipients
+        ]);
     }
 }
