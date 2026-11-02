@@ -117,20 +117,20 @@ class ChatAuthorizationService
     {
         // 1. PASIEN: Kader in village + PJTB in Puskesmas
         if ($user->user_type_id == 2) {
-            $patient = Patient::where('user_id', $user->id)->first();
+            $patient = Patient::where('user_id', $user->id)->with(['village.subdistrict', 'puskesmas.subdistrict'])->first();
             if (!$patient) {
                 return collect([]);
             }
 
-            // Kaders in same village
-            $kaderOfficers = Officer::with(['user', 'kaderAreas.village', 'puskesmas'])
+            // Kaders in same village (eager loading village and subdistrict)
+            $kaderOfficers = Officer::with(['user', 'kaderAreas.village.subdistrict', 'kaderAreas.subdistrict', 'puskesmas.subdistrict'])
                 ->where('officer_type_id', 4)
                 ->whereHas('user', fn($q) => $q->where('is_active', true))
                 ->whereHas('kaderAreas', fn($q) => $q->where('village_id', $patient->village_id))
                 ->get();
 
-            // PJTB in same Puskesmas
-            $pjtbOfficers = Officer::with(['user', 'puskesmas'])
+            // PJTB in same Puskesmas (eager loading puskesmas and subdistrict)
+            $pjtbOfficers = Officer::with(['user', 'puskesmas.subdistrict'])
                 ->where('officer_type_id', 3)
                 ->where('puskesmas_id', $patient->puskesmas_id)
                 ->whereHas('user', fn($q) => $q->where('is_active', true))
@@ -140,6 +140,27 @@ class ChatAuthorizationService
 
             foreach ($kaderOfficers as $ko) {
                 if (!$ko->user) continue;
+
+                $areaStrings = $ko->kaderAreas->map(function ($a) {
+                    $vName = optional($a->village)->name;
+                    $sName = optional($a->subdistrict)->name ?: optional(optional($a->village)->subdistrict)->name;
+                    if ($vName && $sName) {
+                        return "{$vName}, {$sName}";
+                    }
+                    return $vName ?: $sName;
+                })->filter()->unique()->values();
+
+                if ($areaStrings->isNotEmpty()) {
+                    $kaderSubtitle = 'Kader ' . $areaStrings->implode('; ');
+                } elseif ($patient->village) {
+                    $vName = $patient->village->name;
+                    $sName = optional($patient->village->subdistrict)->name;
+                    $areaText = ($vName && $sName) ? "{$vName}, {$sName}" : ($vName ?: $sName);
+                    $kaderSubtitle = $areaText ? 'Kader ' . $areaText : 'Kader';
+                } else {
+                    $kaderSubtitle = 'Kader';
+                }
+
                 $results->push([
                     'id'          => $ko->user->id,
                     'name'        => $ko->user->name,
@@ -147,13 +168,26 @@ class ChatAuthorizationService
                     'phone'       => $ko->user->phone,
                     'photo'       => $ko->user->photo,
                     'role'        => 'Kader',
-                    'role_detail' => 'Kader Desa ' . ($patient->village?->name ?? ''),
-                    'sub_info'    => $ko->puskesmas ? 'Puskesmas ' . $ko->puskesmas->name : 'Kader Wilayah',
+                    'role_detail' => $kaderSubtitle,
+                    'sub_info'    => $kaderSubtitle,
                 ]);
             }
 
             foreach ($pjtbOfficers as $po) {
                 if (!$po->user) continue;
+
+                $pkm = $po->puskesmas;
+                $pkmName = $pkm ? (stripos($pkm->name, 'puskesmas') !== false ? $pkm->name : 'Puskesmas ' . $pkm->name) : '';
+                $kecName = $pkm && $pkm->subdistrict ? $pkm->subdistrict->name : null;
+
+                if ($pkmName && $kecName) {
+                    $pjtbSubtitle = 'PJTB ' . $pkmName . ', ' . $kecName;
+                } elseif ($pkmName) {
+                    $pjtbSubtitle = 'PJTB ' . $pkmName;
+                } else {
+                    $pjtbSubtitle = 'PJTB';
+                }
+
                 $results->push([
                     'id'          => $po->user->id,
                     'name'        => $po->user->name,
@@ -161,12 +195,15 @@ class ChatAuthorizationService
                     'phone'       => $po->user->phone,
                     'photo'       => $po->user->photo,
                     'role'        => 'PJTB',
-                    'role_detail' => 'PJTB Puskesmas',
-                    'sub_info'    => $po->puskesmas ? 'Puskesmas ' . $po->puskesmas->name : 'Puskesmas',
+                    'role_detail' => $pjtbSubtitle,
+                    'sub_info'    => $pjtbSubtitle,
                 ]);
             }
 
-            return $results->unique('id')->values();
+            // Ketentuan Wajib: Gabungkan Kader & PJTB dalam SATU daftar, urutkan A-Z alfabetis nama lengkap
+            return $results->unique('id')->sort(function ($a, $b) {
+                return strcasecmp(trim($a['name']), trim($b['name'])) ?: ($a['id'] <=> $b['id']);
+            })->values();
         }
 
         // 2. PETUGAS (Kader / PJTB)
@@ -179,10 +216,15 @@ class ChatAuthorizationService
             // Using Patient::accessibleBy($user) strictly filters by village for Kader and Puskesmas for PJTB
             $patients = Patient::accessibleBy($user)
                 ->whereHas('user', fn($q) => $q->where('is_active', true))
-                ->with(['user', 'village', 'puskesmas'])
+                ->with(['user', 'village.subdistrict', 'puskesmas.subdistrict'])
                 ->get();
 
             return $patients->map(function ($p) {
+                $vName = $p->village?->name;
+                $sName = optional($p->village?->subdistrict)->name;
+                $areaText = ($vName && $sName) ? "{$vName}, {$sName}" : ($vName ?: $sName);
+                $patientSubtitle = $areaText ? 'Pasien ' . $areaText : 'Pasien';
+
                 return [
                     'id'          => $p->user->id,
                     'patient_id'  => $p->id,
@@ -191,9 +233,11 @@ class ChatAuthorizationService
                     'phone'       => $p->user->phone,
                     'photo'       => $p->user->photo,
                     'role'        => 'Pasien',
-                    'role_detail' => 'Pasien TB',
-                    'sub_info'    => 'Desa ' . ($p->village?->name ?? '-') . ', RT ' . ($p->rt ?? '-') . '/RW ' . ($p->rw ?? '-'),
+                    'role_detail' => $patientSubtitle,
+                    'sub_info'    => $patientSubtitle,
                 ];
+            })->unique('id')->sort(function ($a, $b) {
+                return strcasecmp(trim($a['name']), trim($b['name'])) ?: ($a['id'] <=> $b['id']);
             })->values();
         }
 
@@ -217,6 +261,8 @@ class ChatAuthorizationService
                     'role_detail' => 'Pengguna TB Care',
                     'sub_info'    => $u->email,
                 ];
+            })->unique('id')->sort(function ($a, $b) {
+                return strcasecmp(trim($a['name']), trim($b['name'])) ?: ($a['id'] <=> $b['id']);
             })->values();
     }
 }

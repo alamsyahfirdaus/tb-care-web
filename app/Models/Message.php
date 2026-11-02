@@ -20,10 +20,15 @@ class Message extends Model
         'attachment_mime_type',
         'attachment_size',
         'read_at',
+        'edited_at',
+        'deleted_at',
+        'deleted_by',
     ];
 
     protected $casts = [
         'read_at'         => 'datetime',
+        'edited_at'       => 'datetime',
+        'deleted_at'      => 'datetime',
         'attachment_size' => 'integer',
     ];
 
@@ -37,9 +42,29 @@ class Message extends Model
         return $this->belongsTo(User::class, 'sender_id');
     }
 
+    public function deletedBy()
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereNull('deleted_at');
+    }
+
+    public function getIsDeletedAttribute(): bool
+    {
+        return $this->deleted_at !== null;
+    }
+
+    public function getIsEditedAttribute(): bool
+    {
+        return $this->edited_at !== null;
+    }
+
     public function getAttachmentUrlAttribute(): ?string
     {
-        if (!$this->attachment_path) {
+        if ($this->deleted_at !== null || !$this->attachment_path) {
             return null;
         }
 

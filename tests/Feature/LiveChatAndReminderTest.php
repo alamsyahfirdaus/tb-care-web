@@ -660,4 +660,268 @@ class LiveChatAndReminderTest extends TestCase
         $ids2 = collect($listRes2->json('data'))->pluck('id')->all();
         $this->assertContains($emptyConv->id, $ids2);
     }
+
+    /**
+     * Test 14: Officer list is merged into one list and sorted alphabetically A-Z by full name with proper subtitles.
+     */
+    public function test_officer_list_is_sorted_az_and_subtitles_contain_district()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        // Create officers with specific alphabetical names
+        $kaderZ = $this->createUser(['name' => 'Zahra Kader', 'user_type_id' => 3]);
+        $offZ = $this->createOfficer($kaderZ, 4, ['puskesmas_id' => $this->puskesmas1->id]);
+        KaderArea::create([
+            'officer_id'     => $offZ->id,
+            'village_id'     => $this->village1->id,
+            'subdistrict_id' => $this->subdistrict->id,
+        ]);
+
+        $pjtbA = $this->createUser(['name' => 'Agus PJTB', 'user_type_id' => 3]);
+        $this->createOfficer($pjtbA, 3, ['puskesmas_id' => $this->puskesmas1->id]);
+
+        $kaderM = $this->createUser(['name' => 'Maya Kader', 'user_type_id' => 3]);
+        $offM = $this->createOfficer($kaderM, 4, ['puskesmas_id' => $this->puskesmas1->id]);
+        KaderArea::create([
+            'officer_id'     => $offM->id,
+            'village_id'     => $this->village1->id,
+            'subdistrict_id' => $this->subdistrict->id,
+        ]);
+
+        $res = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations/recipients');
+        $res->assertStatus(200);
+
+        $data = collect($res->json('data'));
+        $names = $data->pluck('name')->all();
+
+        // Ensure A-Z sorted
+        $sortedNames = $names;
+        natcasesort($sortedNames);
+        $this->assertEquals(array_values($sortedNames), array_values($names));
+
+        // Subtitle check for Kader & PJTB
+        $kaderItem = $data->firstWhere('name', 'Zahra Kader');
+        $this->assertNotNull($kaderItem);
+        $this->assertStringContainsString('Kader', $kaderItem['sub_info']);
+
+        $pjtbItem = $data->firstWhere('name', 'Agus PJTB');
+        $this->assertNotNull($pjtbItem);
+        $this->assertStringContainsString('PJTB', $pjtbItem['sub_info']);
+    }
+
+    /**
+     * Test 15: Sender can edit own message.
+     */
+    public function test_sender_can_edit_own_message()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan awal sebelum diedit',
+        ]);
+        $conv->update(['last_message_id' => $msg->id, 'last_message_at' => now()]);
+
+        // Edit message
+        $res = $this->actingAs($userA, 'sanctum')
+            ->putJson("/api/messages/{$msg->id}", [
+                'message' => 'Pesan sudah diperbarui dengan baik',
+            ]);
+
+        $res->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.message', 'Pesan sudah diperbarui dengan baik')
+            ->assertJsonPath('data.is_edited', true);
+
+        $msg->refresh();
+        $this->assertEquals('Pesan sudah diperbarui dengan baik', $msg->message);
+        $this->assertNotNull($msg->edited_at);
+    }
+
+    /**
+     * Test 16: Non-sender cannot edit message (Forbidden 403).
+     */
+    public function test_non_sender_cannot_edit_message()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan milik User A',
+        ]);
+
+        // User B attempts to edit User A's message
+        $res = $this->actingAs($userB, 'sanctum')
+            ->putJson("/api/messages/{$msg->id}", [
+                'message' => 'User B membajak pesan ini',
+            ]);
+
+        $res->assertStatus(403);
+
+        $msg->refresh();
+        $this->assertEquals('Pesan milik User A', $msg->message);
+        $this->assertNull($msg->edited_at);
+    }
+
+    /**
+     * Test 17: Deleted message cannot be edited.
+     */
+    public function test_deleted_message_cannot_be_edited()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan ini dihapus',
+            'deleted_at'      => now(),
+            'deleted_by'      => $userA->id,
+        ]);
+
+        $res = $this->actingAs($userA, 'sanctum')
+            ->putJson("/api/messages/{$msg->id}", [
+                'message' => 'Mencoba mengedit pesan terhapus',
+            ]);
+
+        $res->assertStatus(422);
+    }
+
+    /**
+     * Test 18: Sender can soft delete own message and recipient sees masked message.
+     */
+    public function test_sender_can_soft_delete_own_message()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan rahasia yang akan dihapus',
+        ]);
+        $conv->update(['last_message_id' => $msg->id, 'last_message_at' => now()]);
+
+        // Delete message
+        $res = $this->actingAs($userA, 'sanctum')
+            ->deleteJson("/api/messages/{$msg->id}");
+
+        $res->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $msg->refresh();
+        $this->assertNotNull($msg->deleted_at);
+        $this->assertEquals($userA->id, $msg->deleted_by);
+
+        // Recipient fetches messages: sees "Pesan ini telah dihapus"
+        $getRes = $this->actingAs($userB, 'sanctum')
+            ->getJson("/api/conversations/{$conv->id}/messages");
+
+        $getRes->assertStatus(200)
+            ->assertJsonPath('data.0.message', 'Pesan ini telah dihapus')
+            ->assertJsonPath('data.0.is_deleted', true);
+    }
+
+    /**
+     * Test 19: Non-sender cannot delete message.
+     */
+    public function test_non_sender_cannot_delete_message()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan milik User A',
+        ]);
+
+        $res = $this->actingAs($userB, 'sanctum')
+            ->deleteJson("/api/messages/{$msg->id}");
+
+        $res->assertStatus(403);
+        $msg->refresh();
+        $this->assertNull($msg->deleted_at);
+    }
+
+    /**
+     * Test 20: Deleting last message updates conversation pointer and all-deleted hides conversation from index.
+     */
+    public function test_deleting_last_message_updates_conversation_last_message_or_hides_conversation()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg1 = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Message 1',
+        ]);
+
+        $msg2 = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Message 2 (last)',
+        ]);
+
+        $conv->update(['last_message_id' => $msg2->id, 'last_message_at' => now()]);
+
+        // Delete msg2
+        $this->actingAs($userA, 'sanctum')->deleteJson("/api/messages/{$msg2->id}")->assertStatus(200);
+
+        // Conv last_message_id should now point to msg1
+        $conv->refresh();
+        $this->assertEquals($msg1->id, $conv->last_message_id);
+
+        // Delete msg1 (now all messages are deleted)
+        $this->actingAs($userA, 'sanctum')->deleteJson("/api/messages/{$msg1->id}")->assertStatus(200);
+
+        $conv->refresh();
+        $this->assertNull($conv->last_message_id);
+
+        // Conversation should be hidden from index
+        $indexRes = $this->actingAs($userA, 'sanctum')->getJson('/api/conversations');
+        $indexRes->assertStatus(200);
+        $ids = collect($indexRes->json('data'))->pluck('id')->all();
+        $this->assertNotContains($conv->id, $ids);
+    }
 }

@@ -140,7 +140,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/{id}/messages', [ConversationController::class, 'getMessages']);
         Route::post('/{id}/messages', [ConversationController::class, 'sendMessage']);
         Route::post('/{id}/read', [ConversationController::class, 'markAsRead']);
+        Route::put('/messages/{id}', [ConversationController::class, 'updateMessage']);
+        Route::delete('/messages/{id}', [ConversationController::class, 'deleteMessage']);
     });
+
+    // Direct message edit and delete endpoints (Section 9)
+    Route::put('/messages/{id}', [ConversationController::class, 'updateMessage']);
+    Route::delete('/messages/{id}', [ConversationController::class, 'deleteMessage']);
 
     // Pengingat Minum Obat Massal (Bulk Medication Reminder)
     Route::prefix('reminders')->group(function () {

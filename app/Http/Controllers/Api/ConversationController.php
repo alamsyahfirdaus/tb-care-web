@@ -36,7 +36,10 @@ class ConversationController extends Controller
             $query->where('participant_one_id', $user->id)
                   ->orWhere('participant_two_id', $user->id);
         })
-        ->whereHas('messages')
+        ->whereNotNull('last_message_id')
+        ->whereHas('messages', function ($q) {
+            $q->whereNull('deleted_at');
+        })
         ->orderByDesc('last_message_at')
         ->orderByDesc('updated_at')
         ->get();
@@ -51,6 +54,10 @@ class ConversationController extends Controller
             $subInfo = $this->determineUserSubInfo($otherUser);
 
             $lastMsg = $conv->lastMessage;
+            if ($lastMsg && $lastMsg->deleted_at !== null) {
+                $lastMsg = $conv->messages()->whereNull('deleted_at')->orderByDesc('id')->first();
+            }
+
             $unreadCount = $conv->unreadCountFor($user);
 
             return [
@@ -70,6 +77,7 @@ class ConversationController extends Controller
                                         ? '📷 Gambar'
                                         : ($lastMsg->message ?? '📷 Gambar'),
                     'is_sender'    => (int) $lastMsg->sender_id === (int) $user->id,
+                    'is_edited'    => $lastMsg->edited_at !== null,
                     'read_at'      => $lastMsg->read_at ? $lastMsg->read_at->toIso8601String() : null,
                     'created_at'   => $lastMsg->created_at ? $lastMsg->created_at->toIso8601String() : null,
                     'time_display' => $lastMsg->created_at ? $lastMsg->created_at->timezone('Asia/Jakarta')->format('H:i') : null,
@@ -243,19 +251,27 @@ class ConversationController extends Controller
         $query = Message::with('sender')
             ->where('conversation_id', $conversation->id);
 
-        // Fast live polling by since_id
+        // Fast live polling by since_id, supporting edited & soft-deleted messages
         if ($request->filled('since_id')) {
             $sinceId = (int) $request->since_id;
-            $newMessages = $query->where('id', '>', $sinceId)
-                ->orderBy('created_at', 'asc')
-                ->get();
 
-            $formatted = $newMessages->map(function ($msg) use ($user) {
+            $newOrUpdatedMessages = $query->where(function ($q) use ($sinceId, $request) {
+                $q->where('id', '>', $sinceId);
+                if ($request->filled('updated_since')) {
+                    $q->orWhere(function ($sub) use ($request) {
+                        $sub->where('updated_at', '>=', $request->input('updated_since'));
+                    });
+                }
+            })
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+            $formatted = $newOrUpdatedMessages->map(function ($msg) use ($user) {
                 return $this->formatMessageItem($msg, $user);
             });
 
             return response()->json([
-                'message' => 'Pesan baru berhasil dimuat.',
+                'message' => 'Pesan baru atau diperbarui berhasil dimuat.',
                 'data'    => $formatted,
             ]);
         }
@@ -493,11 +509,15 @@ class ConversationController extends Controller
         }
 
         try {
-            $senderRole = $this->determineUserRoleLabel($sender);
-            $title = "Pesan Baru dari {$sender->name} ({$senderRole})";
-            $body = $message->message_type === 'image' && empty($message->message)
-                ? '📷 Mengirimkan gambar'
-                : ($message->message ?? '📷 Mengirimkan gambar');
+            if ($message->message_type === 'image') {
+                $title = "Pesan gambar dari {$sender->name}";
+                $body = !empty(trim($message->message ?? ''))
+                    ? trim($message->message)
+                    : 'Anda menerima sebuah gambar.';
+            } else {
+                $title = "Pesan baru dari {$sender->name}";
+                $body = $message->message ?? 'Anda menerima pesan baru.';
+            }
 
             $data = [
                 'type'            => 'chat',
@@ -515,10 +535,169 @@ class ConversationController extends Controller
     }
 
     /**
+     * Edit an existing message (only the original sender can edit).
+     */
+    public function updateMessage($id, Request $request)
+    {
+        $user = Auth::user();
+        $message = Message::with('conversation')->findOrFail($id);
+
+        // Authorize conversation access
+        if (!ChatAuthorizationService::authorizeConversationAccess($user, $message->conversation)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke percakapan ini.'
+            ], 403);
+        }
+
+        // Strict sender check: only original sender can edit
+        if ((int) $message->sender_id !== (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk mengubah pesan ini.'
+            ], 403);
+        }
+
+        // Message cannot be edited if already soft deleted
+        if ($message->deleted_at !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesan yang sudah dihapus tidak dapat diedit.'
+            ], 422);
+        }
+
+        // Validate content
+        if ($message->message_type === 'image') {
+            $request->validate([
+                'message' => 'nullable|string|max:5000',
+            ]);
+            $newText = $request->input('message');
+        } else {
+            $request->validate([
+                'message' => 'required|string|max:5000',
+            ]);
+            $newText = trim($request->input('message'));
+            if ($newText === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Isi pesan tidak boleh kosong.'
+                ], 422);
+            }
+        }
+
+        // If content did not change, return current without error
+        if ($message->message === $newText) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesan berhasil diperbarui.',
+                'data'    => $this->formatMessageItem($message, $user),
+            ], 200);
+        }
+
+        $message->message = $newText;
+        $message->edited_at = now();
+        $message->save();
+
+        // Touch conversation to notify observers/update timestamp
+        $message->conversation->touch();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesan berhasil diperbarui.',
+            'data'    => $this->formatMessageItem($message, $user),
+        ], 200);
+    }
+
+    /**
+     * Soft delete an existing message (only the original sender can delete).
+     */
+    public function deleteMessage($id, Request $request)
+    {
+        $user = Auth::user();
+        $message = Message::with('conversation')->findOrFail($id);
+
+        // Authorize conversation access
+        if (!ChatAuthorizationService::authorizeConversationAccess($user, $message->conversation)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke percakapan ini.'
+            ], 403);
+        }
+
+        // Strict sender check: only original sender can delete
+        if ((int) $message->sender_id !== (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk menghapus pesan ini.'
+            ], 403);
+        }
+
+        // Check if already deleted
+        if ($message->deleted_at !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesan ini sudah dihapus sebelumnya.'
+            ], 400);
+        }
+
+        DB::transaction(function () use ($message, $user) {
+            $message->deleted_at = now();
+            $message->deleted_by = $user->id;
+            $oldPath = $message->attachment_path;
+            $message->save();
+
+            // Safe physical file handling (Section 7D)
+            if ($oldPath) {
+                $isUsedElsewhere = Message::where('id', '!=', $message->id)
+                    ->where('attachment_path', $oldPath)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if (!$isUsedElsewhere) {
+                    $fullPath = public_path('images/' . $oldPath);
+                    if (file_exists($fullPath)) {
+                        @unlink($fullPath);
+                    }
+                }
+            }
+
+            // Update conversation last_message pointer if this was the last message
+            $conversation = $message->conversation;
+            if ((int) $conversation->last_message_id === (int) $message->id) {
+                $prevActive = Message::where('conversation_id', $conversation->id)
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($prevActive) {
+                    $conversation->last_message_id = $prevActive->id;
+                    $conversation->last_message_at = $prevActive->created_at;
+                } else {
+                    $conversation->last_message_id = null;
+                    $conversation->last_message_at = null;
+                }
+                $conversation->save();
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesan berhasil dihapus.',
+            'data'    => [
+                'id'         => $message->id,
+                'deleted_at' => $message->deleted_at ? $message->deleted_at->toIso8601String() : now()->toIso8601String(),
+            ]
+        ], 200);
+    }
+
+    /**
      * Format a message model for JSON response.
      */
     protected function formatMessageItem(Message $msg, User $currentUser): array
     {
+        $isDeleted = $msg->deleted_at !== null;
+        $isEdited = $msg->edited_at !== null;
+
         return [
             'id'                   => $msg->id,
             'conversation_id'      => $msg->conversation_id,
@@ -526,12 +705,16 @@ class ConversationController extends Controller
             'sender_name'          => $msg->sender ? $msg->sender->name : 'Pengguna',
             'is_sender'            => (int) $msg->sender_id === (int) $currentUser->id,
             'message_type'         => $msg->message_type,
-            'message'              => $msg->message,
-            'attachment_url'       => $msg->attachment_path ? url('/api/image/' . $msg->attachment_path) : null,
-            'attachment_mime_type' => $msg->attachment_mime_type,
-            'attachment_size'      => $msg->attachment_size,
+            'message'              => $isDeleted ? 'Pesan ini telah dihapus' : $msg->message,
+            'attachment_url'       => $isDeleted ? null : ($msg->attachment_path ? url('/api/image/' . $msg->attachment_path) : null),
+            'attachment_mime_type' => $isDeleted ? null : $msg->attachment_mime_type,
+            'attachment_size'      => $isDeleted ? null : $msg->attachment_size,
             'is_read'              => $msg->read_at !== null,
             'read_at'              => $msg->read_at ? $msg->read_at->toIso8601String() : null,
+            'is_edited'            => $isEdited,
+            'edited_at'            => $msg->edited_at ? $msg->edited_at->toIso8601String() : null,
+            'is_deleted'           => $isDeleted,
+            'deleted_at'           => $msg->deleted_at ? $msg->deleted_at->toIso8601String() : null,
             'created_at'           => $msg->created_at ? $msg->created_at->toIso8601String() : null,
             'time_display'         => $msg->created_at ? $msg->created_at->timezone('Asia/Jakarta')->format('H:i') : null,
             'date_display'         => $msg->created_at ? $msg->created_at->timezone('Asia/Jakarta')->format('Y-m-d') : null,
@@ -568,36 +751,60 @@ class ConversationController extends Controller
     }
 
     /**
-     * Determine subtitle / sub info for user (e.g. Village or Puskesmas).
+     * Determine subtitle / sub info for user (e.g. "Kader Setiamulya, Sukahurip", "PJTB Puskesmas Tamansari, Tamansari", "Pasien Setiamulya").
      */
     protected function determineUserSubInfo(User $user): string
     {
         if ($user->user_type_id == 2) {
             $patient = $user->patient;
             if ($patient && $patient->village) {
-                return 'Desa ' . $patient->village->name;
+                $vName = $patient->village->name;
+                $sName = optional($patient->village->subdistrict)->name;
+                $areaText = ($vName && $sName) ? "{$vName}, {$sName}" : ($vName ?: $sName);
+                return 'Pasien ' . $areaText;
             }
-            return 'Pasien TB Care';
+            return 'Pasien';
         }
 
         if ($user->user_type_id == 3) {
             $officer = $user->officer;
             if ($officer) {
                 if ($officer->isKader()) {
-                    $areas = $officer->kaderAreas()->with('village')->get();
+                    $areas = $officer->kaderAreas()->with(['village.subdistrict', 'subdistrict'])->get();
                     if ($areas->isNotEmpty()) {
-                        $villages = $areas->map(fn($a) => optional($a->village)->name)->filter()->unique()->implode(', ');
-                        if ($villages) {
-                            return 'Wilayah: ' . $villages;
+                        $areaStrings = $areas->map(function ($a) {
+                            $vName = optional($a->village)->name;
+                            $sName = optional($a->subdistrict)->name ?: optional(optional($a->village)->subdistrict)->name;
+                            if ($vName && $sName) {
+                                return "{$vName}, {$sName}";
+                            }
+                            return $vName ?: $sName;
+                        })->filter()->unique()->values();
+
+                        if ($areaStrings->isNotEmpty()) {
+                            return 'Kader ' . $areaStrings->implode('; ');
                         }
                     }
-                    return $officer->puskesmas ? 'Puskesmas ' . $officer->puskesmas->name : 'Kader';
+                    return 'Kader';
                 }
                 if ($officer->isPJTB()) {
-                    return $officer->puskesmas ? 'Puskesmas ' . $officer->puskesmas->name : 'PJTB';
+                    $pkm = $officer->puskesmas()->with('subdistrict')->first();
+                    if ($pkm) {
+                        $pkmName = stripos($pkm->name, 'puskesmas') !== false ? $pkm->name : 'Puskesmas ' . $pkm->name;
+                        $kecName = optional($pkm->subdistrict)->name;
+                        if ($kecName) {
+                            return 'PJTB ' . $pkmName . ', ' . $kecName;
+                        }
+                        return 'PJTB ' . $pkmName;
+                    }
+                    return 'PJTB';
                 }
             }
             return 'Petugas Kesehatan';
+        }
+
+        if ($user->user_type_id == 1) {
+            return 'Administrator';
         }
 
         return $user->email ?? '';

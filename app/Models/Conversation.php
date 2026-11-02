@@ -100,13 +100,14 @@ class Conversation extends Model
     }
 
     /**
-     * Count unread messages for the specified user.
+     * Count unread messages for the specified user (excluding soft deleted messages).
      */
     public function unreadCountFor(User $user): int
     {
         return $this->messages()
             ->where('sender_id', '!=', $user->id)
             ->whereNull('read_at')
+            ->whereNull('deleted_at')
             ->count();
     }
 }
