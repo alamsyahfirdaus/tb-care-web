@@ -6,19 +6,63 @@ use App\Http\Controllers\Controller;
 use App\Models\EducationalMaterial;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class EducationController extends Controller
 {
+    /**
+     * Menampilkan daftar materi edukasi dengan RBAC dan aturan kepemilikan.
+     *
+     * Ketentuan:
+     * 1. Seluruh materi dengan status published (is_publish = 1) ditampilkan kepada
+     *    semua pengguna (Admin, Petugas, Kader, Pasien) TANPA memandang siapa pembuatnya.
+     * 2. Draft hanya dapat dilihat oleh Admin (seluruh draft) dan Petugas (hanya draft miliknya).
+     * 3. Pasien dan Kader dilarang mengakses draft.
+     */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = EducationalMaterial::orderBy('created_at', 'desc');
+        $query = EducationalMaterial::with('author')->orderBy('created_at', 'desc');
 
-        // Pasien (user_type_id == 2) hanya boleh melihat materi yang dipublikasikan
-        if ($user && $user->user_type_id === 2) {
+        $statusFilter = $request->query('status'); // 'published', 'draft', or null
+
+        // Cek wewenang pengguna
+        $isAdmin = $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : ($user && $user->user_type_id === 1);
+        $isPetugas = $user && method_exists($user, 'isPetugas') ? $user->isPetugas() : ($user && $user->user_type_id === 3 && optional($user->officer)->officer_type_id != 4);
+        $canManage = $isAdmin || $isPetugas;
+
+        if ($statusFilter === 'draft') {
+            // Pasien dan Kader tidak memiliki izin melihat draft
+            if (!$canManage) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki izin untuk melihat draft materi edukasi.'
+                ], 403);
+            }
+
+            // Admin melihat semua draft; Petugas hanya melihat draft miliknya
+            if ($isAdmin) {
+                $query->where('is_publish', 0);
+            } else {
+                $query->where('is_publish', 0)->where('created_by', $user->id);
+            }
+        } elseif ($statusFilter === 'published') {
+            // Semua role dapat melihat semua materi published tanpa filter pemilik
             $query->where('is_publish', 1);
+        } else {
+            // Default tanpa filter query 'status'
+            if (!$canManage) {
+                // Pasien dan Kader HANYA boleh melihat materi published
+                $query->where('is_publish', 1);
+            } elseif ($isPetugas && !$isAdmin) {
+                // Petugas melihat seluruh published + draft miliknya sendiri
+                $query->where(function ($q) use ($user) {
+                    $q->where('is_publish', 1)
+                      ->orWhere(function ($sub) use ($user) {
+                          $sub->where('is_publish', 0)->where('created_by', $user->id);
+                      });
+                });
+            }
+            // Admin melihat seluruh materi tanpa pembatasan
         }
 
         if ($request->has('limit')) {
@@ -27,7 +71,6 @@ class EducationController extends Controller
 
         $materials = $query->get();
 
-        // Jika tidak ada data, kirim response kosong dengan status 200
         if ($materials->isEmpty()) {
             return response()->json([
                 'message' => 'Belum ada materi edukasi yang tersedia.',
@@ -35,49 +78,67 @@ class EducationController extends Controller
             ], 200);
         }
 
-        // Format data untuk dikirim ke frontend
-        $data = $materials->map(function ($material) {
+        $currentUserId = $user ? $user->id : null;
+
+        // Format data untuk dikirim ke frontend dengan informasi hak aksi
+        $data = $materials->map(function ($material) use ($isAdmin, $isPetugas, $currentUserId) {
+            $isOwner = $currentUserId && ($material->created_by == $currentUserId);
+            $canEdit = $isAdmin || ($isPetugas && $isOwner);
+            $canDelete = $isAdmin || ($isPetugas && $isOwner);
+
+            $authorName = $material->author ? $material->author->name : 'Petugas TB Care';
+
             return [
                 'id'             => $material->id,
                 'title_material' => $material->title_material,
                 'description'    => $material->description,
-                'material_type'  => $material->material_type, // image atau video
+                'material_type'  => $material->material_type, // 'image' atau 'video'
 
-                // Nama/path file gambar jika tipe 'image' (konsisten dengan Riwayat Minum Obat)
                 'photo' => $material->material_type === 'image'
                     ? ($material->image_path ?: null)
                     : null,
 
-                // URL video jika tipe 'video'
                 'video_url' => $material->material_type === 'video'
                     ? $material->video_url
                     : null,
 
-                'is_publish' => (int) ($material->is_publish ? 1 : 0),
-                'created_by' => $material->created_by,
-                'created_at' => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
+                'is_publish'  => (int) ($material->is_publish ? 1 : 0),
+                'created_by'  => $material->created_by,
+                'author_name' => $authorName,
+                'can_edit'    => $canEdit,
+                'can_delete'  => $canDelete,
+                'created_at'  => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
             ];
         });
 
-        // Kirim response sukses
         return response()->json([
             'message' => 'Daftar materi edukasi berhasil diambil.',
             'data'    => $data
         ]);
     }
 
+    /**
+     * Tambah atau perbarui materi edukasi dengan verifikasi RBAC dan kepemilikan.
+     *
+     * Aturan:
+     * - Admin dan Petugas berhak menambah materi baru.
+     * - Admin berhak mengedit materi siapapun (created_by TIDAK boleh ditimpa).
+     * - Petugas HANYA berhak mengedit materi miliknya sendiri.
+     * - Kader dan Pasien dilarang (403 Forbidden).
+     */
     public function store(Request $request)
     {
         $user = Auth::user();
 
-        // Cegah user yang tidak memiliki hak akses (misal pasien)
-        if ($user->user_type_id === 2) {
+        $isAdmin = $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : ($user && $user->user_type_id === 1);
+        $isPetugas = $user && method_exists($user, 'isPetugas') ? $user->isPetugas() : ($user && $user->user_type_id === 3 && optional($user->officer)->officer_type_id != 4);
+
+        if (!$isAdmin && !$isPetugas) {
             return response()->json([
                 'message' => 'Anda tidak memiliki izin untuk menambahkan atau memperbarui materi edukasi.'
             ], 403);
         }
 
-        // Validasi data masukan
         $request->validate([
             'id'             => 'nullable|exists:educational_materials,id',
             'title_material' => 'required|string|max:255',
@@ -101,6 +162,16 @@ class EducationController extends Controller
             ? EducationalMaterial::findOrFail($request->id)
             : new EducationalMaterial();
 
+        // Validasi kepemilikan saat update:
+        // Petugas hanya boleh mengedit materi buatannya sendiri
+        if ($isUpdate) {
+            if (!$isAdmin && $material->created_by != $user->id) {
+                return response()->json([
+                    'message' => 'Anda hanya berhak mengedit materi edukasi yang Anda buat sendiri.'
+                ], 403);
+            }
+        }
+
         $wasPublished = $isUpdate ? ($material->is_publish == 1) : false;
 
         $isPublishInput = 1;
@@ -109,53 +180,49 @@ class EducationController extends Controller
             $isPublishInput = ($val == '1' || $val == 'true' || $val === true) ? 1 : 0;
         }
 
-        // Data dasar untuk disimpan
         $data = [
             'title_material' => $request->title_material,
             'description'    => $request->description,
             'material_type'  => $request->material_type,
             'video_url'      => $request->material_type === 'video' ? $request->video_url : null,
             'is_publish'     => $isPublishInput,
-            'created_by'     => $user->id,
         ];
+
+        // PENTING: Saat update oleh Admin atau Petugas, created_by TIDAK BOLEH ditimpa!
+        // created_by hanya diset ketika materi baru dibuat.
+        if (!$isUpdate) {
+            $data['created_by'] = $user->id;
+        }
 
         if ($request->material_type === 'video') {
             $data['image_path'] = null;
         }
 
-        // Upload gambar jika tipe = image (DISAMAKAN DENGAN UPLOAD MINUM OBAT)
+        // Upload gambar jika tipe = image
         if ($request->material_type === 'image' && $request->hasFile('image_file')) {
-
-            // 1. Hapus gambar lama jika update
             if ($isUpdate && $material->image_path) {
                 $oldPath = public_path('images/' . $material->image_path);
                 if (file_exists($oldPath)) {
-                    unlink($oldPath);
+                    @unlink($oldPath);
                 }
             }
 
-            // 2. Pastikan folder public/images ada
             $destinationPath = public_path('images');
             if (!is_dir($destinationPath)) {
                 mkdir($destinationPath, 0755, true);
             }
 
-            // 3. Generate nama file (xxx.jpg)
             $fileName = Str::random(20) . '.' . $request->file('image_file')->getClientOriginalExtension();
-
-            // 4. SIMPAN KE public/images (INI YANG BENAR)
             $request->file('image_file')->move($destinationPath, $fileName);
 
-            // 5. Simpan NAMA FILE SAJA ke database
             $data['image_path'] = $fileName;
             $data['video_url']  = null;
         }
 
-        // Simpan data ke database
         $material->fill($data)->save();
 
-        // Kirim notifikasi jika baru dipublikasikan (idempotent, dicegah duplikasi)
-        if ($material->is_publish == 1) {
+        // Kirim notifikasi jika baru dipublikasikan (idempotent)
+        if ($material->is_publish == 1 && !$wasPublished) {
             $material->sendPublishNotification();
         }
 
@@ -167,12 +234,13 @@ class EducationController extends Controller
         ], $isUpdate ? 200 : 201);
     }
 
+    /**
+     * Menampilkan detail materi edukasi.
+     */
     public function show($id)
     {
-        // Cari materi berdasarkan ID
-        $material = EducationalMaterial::find($id);
+        $material = EducationalMaterial::with('author')->find($id);
 
-        // Jika tidak ditemukan, kirim respons 404
         if (!$material) {
             return response()->json([
                 'message' => 'Materi edukasi tidak ditemukan.',
@@ -180,36 +248,48 @@ class EducationController extends Controller
             ], 404);
         }
 
-        // Pasien (user_type_id == 2) tidak boleh melihat materi draft (is_publish = 0)
         $user = Auth::user();
-        if ($user && $user->user_type_id === 2 && !$material->is_publish) {
-            return response()->json([
-                'message' => 'Materi edukasi ini belum dipublikasikan.',
-                'data'    => null
-            ], 403);
+        $isAdmin = $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : ($user && $user->user_type_id === 1);
+        $isPetugas = $user && method_exists($user, 'isPetugas') ? $user->isPetugas() : ($user && $user->user_type_id === 3 && optional($user->officer)->officer_type_id != 4);
+
+        // Jika materi belum dipublikasikan (draft), hanya Admin dan pemilik materi yang boleh melihat
+        if (!$material->is_publish) {
+            $isOwner = $user && ($material->created_by == $user->id);
+            if (!$isAdmin && (!$isPetugas || !$isOwner)) {
+                return response()->json([
+                    'message' => 'Materi edukasi ini belum dipublikasikan.',
+                    'data'    => null
+                ], 403);
+            }
         }
 
-        // Format data untuk response
+        $isOwner = $user && ($material->created_by == $user->id);
+        $canEdit = $isAdmin || ($isPetugas && $isOwner);
+        $canDelete = $isAdmin || ($isPetugas && $isOwner);
+
+        $authorName = $material->author ? $material->author->name : 'Petugas TB Care';
+
         $data = [
             'id'             => $material->id,
             'title_material' => $material->title_material,
             'description'    => $material->description,
             'material_type'  => $material->material_type,
 
-            // Nama/path file gambar jika tipe 'image' (konsisten dengan Riwayat Minum Obat)
             'photo' => $material->material_type === 'image'
                 ? ($material->image_path ?: null)
                 : null,
 
-            // URL video jika tipe 'video'
             'video_url' => $material->material_type === 'video'
                 ? $material->video_url
                 : null,
 
-            'is_publish'     => (int) ($material->is_publish ? 1 : 0),
-            'created_by'     => $material->created_by,
-            'created_at'     => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
-            'updated_at'     => $material->updated_at ? $material->updated_at->format('Y-m-d H:i:s') : null,
+            'is_publish'  => (int) ($material->is_publish ? 1 : 0),
+            'created_by'  => $material->created_by,
+            'author_name' => $authorName,
+            'can_edit'    => $canEdit,
+            'can_delete'  => $canDelete,
+            'created_at'  => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
+            'updated_at'  => $material->updated_at ? $material->updated_at->format('Y-m-d H:i:s') : null,
         ];
 
         return response()->json([
@@ -218,18 +298,22 @@ class EducationController extends Controller
         ]);
     }
 
+    /**
+     * Menghapus materi edukasi dengan pemeriksaan hak kepemilikan.
+     */
     public function destroy($id)
     {
         $user = Auth::user();
 
-        // 1. Cek hak akses (user_type_id 2 = pasien)
-        if ($user->user_type_id === 2) {
+        $isAdmin = $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : ($user && $user->user_type_id === 1);
+        $isPetugas = $user && method_exists($user, 'isPetugas') ? $user->isPetugas() : ($user && $user->user_type_id === 3 && optional($user->officer)->officer_type_id != 4);
+
+        if (!$isAdmin && !$isPetugas) {
             return response()->json([
                 'message' => 'Anda tidak memiliki izin untuk menghapus materi edukasi.'
             ], 403);
         }
 
-        // 2. Ambil materi
         $material = EducationalMaterial::find($id);
         if (!$material) {
             return response()->json([
@@ -237,43 +321,43 @@ class EducationController extends Controller
             ], 404);
         }
 
-        // 3. Hapus file gambar jika tipe image dan file tersedia
+        // Petugas hanya boleh menghapus materi buatannya sendiri
+        if (!$isAdmin && $material->created_by != $user->id) {
+            return response()->json([
+                'message' => 'Anda hanya berhak menghapus materi edukasi yang Anda buat sendiri.'
+            ], 403);
+        }
+
         if ($material->material_type === 'image' && !empty($material->image_path)) {
-
             $filePath = public_path('images/' . $material->image_path);
-
-            // Pastikan file benar-benar ada sebelum dihapus
             if (is_file($filePath)) {
-                try {
-                    unlink($filePath);
-                } catch (\Throwable $e) {
-                    // Optional: logging jika diperlukan
-                    // \Log::error('Gagal menghapus file edukasi: ' . $e->getMessage());
-                }
+                @unlink($filePath);
             }
         }
 
-        // 4. Hapus data dari database
         $material->delete();
 
-        // 5. Response sukses
         return response()->json([
             'message' => 'Materi edukasi berhasil dihapus.'
         ], 200);
     }
 
+    /**
+     * Mengubah status publikasi (toggle publish).
+     */
     public function togglePublish($id)
     {
         $user = Auth::user();
 
-        // Cek hak akses (Pasien = 2, Kader = 4 tidak diizinkan mengubah status publikasi)
-        if ($user->user_type_id == 2 || $user->user_type_id == 4) {
+        $isAdmin = $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : ($user && $user->user_type_id === 1);
+        $isPetugas = $user && method_exists($user, 'isPetugas') ? $user->isPetugas() : ($user && $user->user_type_id === 3 && optional($user->officer)->officer_type_id != 4);
+
+        if (!$isAdmin && !$isPetugas) {
             return response()->json([
-                'message' => 'Anda tidak memiliki izin untuk mengubah status publikasi.'
+                'message' => 'Anda tidak memiliki izin untuk mengubah status publikasi materi edukasi.'
             ], 403);
         }
 
-        // Cek apakah materi ada
         $material = EducationalMaterial::find($id);
         if (!$material) {
             return response()->json([
@@ -281,17 +365,24 @@ class EducationController extends Controller
             ], 404);
         }
 
-        // Ubah status publikasi
+        // Petugas hanya boleh mengubah status publikasi materi miliknya sendiri
+        if (!$isAdmin && $material->created_by != $user->id) {
+            return response()->json([
+                'message' => 'Anda hanya berhak mengubah status publikasi materi edukasi yang Anda buat sendiri.'
+            ], 403);
+        }
+
+        $wasPublished = ($material->is_publish == 1);
         $material->is_publish = !$material->is_publish;
         $material->save();
 
-        if ($material->is_publish == 1) {
+        if ($material->is_publish == 1 && !$wasPublished) {
             $material->sendPublishNotification();
         }
 
         return response()->json([
             'message'    => 'Status publikasi berhasil diperbarui.',
-            'is_publish' => $material->is_publish
+            'is_publish' => (int) ($material->is_publish ? 1 : 0)
         ]);
     }
 }

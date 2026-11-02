@@ -32,10 +32,7 @@ class ConversationController extends Controller
             'participantTwo.patient.village',
             'lastMessage'
         ])
-        ->where(function ($query) use ($user) {
-            $query->where('participant_one_id', $user->id)
-                  ->orWhere('participant_two_id', $user->id);
-        })
+        ->whereNotHiddenFor($user)
         ->whereNotNull('last_message_id')
         ->whereHas('messages', function ($q) {
             $q->whereNull('deleted_at');
@@ -375,8 +372,10 @@ class ConversationController extends Controller
                 ]);
 
                 $conversation->update([
-                    'last_message_id' => $msg->id,
-                    'last_message_at' => $msg->created_at,
+                    'last_message_id'                => $msg->id,
+                    'last_message_at'                => $msg->created_at,
+                    'deleted_for_participant_one_at' => null,
+                    'deleted_for_participant_two_at' => null,
                 ]);
 
                 return [
@@ -449,8 +448,10 @@ class ConversationController extends Controller
             ]);
 
             $conversation->update([
-                'last_message_id' => $msg->id,
-                'last_message_at' => $msg->created_at,
+                'last_message_id'                => $msg->id,
+                'last_message_at'                => $msg->created_at,
+                'deleted_for_participant_one_at' => null,
+                'deleted_for_participant_two_at' => null,
             ]);
 
             return $msg;
@@ -497,6 +498,110 @@ class ConversationController extends Controller
             'message'       => 'Pesan telah ditandai sebagai dibaca.',
             'updated_count' => $updatedCount,
         ]);
+    }
+
+    /**
+     * Hide conversation for the authenticated user (Hide for Me).
+     * Does NOT permanently delete conversation or messages from the database.
+     */
+    public function destroy($id)
+    {
+        $user = Auth::user();
+        $conversation = Conversation::findOrFail($id);
+
+        if (!ChatAuthorizationService::authorizeConversationAccess($user, $conversation)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke percakapan ini.'
+            ], 403);
+        }
+
+        $conversation->hideFor($user);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Percakapan berhasil dihapus dari daftar Anda.',
+            'data'    => [
+                'conversation_id' => $conversation->id,
+                'hidden_at'       => now()->toIso8601String(),
+            ]
+        ], 200);
+    }
+
+    /**
+     * Bulk hide conversations for the authenticated user (Bulk Hide for Me).
+     * Validates that all IDs belong to conversations where user is a participant.
+     */
+    public function bulkHide(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'conversation_ids'   => 'required|array|min:1',
+            'conversation_ids.*' => 'required|integer',
+        ], [
+            'conversation_ids.required' => 'Pilih setidaknya satu percakapan.',
+            'conversation_ids.min'      => 'Pilih setidaknya satu percakapan.',
+            'conversation_ids.*.integer'=> 'ID percakapan tidak valid.',
+        ]);
+
+        $requestedIds = array_values(array_unique($request->conversation_ids));
+
+        // Fetch conversations
+        $conversations = Conversation::whereIn('id', $requestedIds)->get();
+
+        if ($conversations->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Percakapan tidak ditemukan.',
+            ], 404);
+        }
+
+        // Validate that all requested IDs exist in database
+        if ($conversations->count() !== count($requestedIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Satu atau lebih percakapan tidak ditemukan di sistem.',
+            ], 404);
+        }
+
+        // Authorize access: user must be a participant of every requested conversation
+        foreach ($conversations as $conversation) {
+            if (!ChatAuthorizationService::authorizeConversationAccess($user, $conversation)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki hak akses ke satu atau lebih percakapan yang dipilih.',
+                ], 403);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $hiddenIds = [];
+            foreach ($conversations as $conversation) {
+                $conversation->hideFor($user);
+                $hiddenIds[] = $conversation->id;
+            }
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($hiddenIds) . ' percakapan berhasil dihapus dari daftar Anda.',
+                'data'    => [
+                    'total_requested' => count($requestedIds),
+                    'total_hidden'    => count($hiddenIds),
+                    'total_failed'    => 0,
+                    'hidden_ids'      => $hiddenIds,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Gagal melakukan bulk hide percakapan: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus percakapan: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

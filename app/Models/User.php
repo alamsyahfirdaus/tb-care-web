@@ -127,6 +127,16 @@ class User extends Authenticatable
         return $this->isOfficer() && optional($this->officer)->isKader();
     }
 
+    public function isPetugas(): bool
+    {
+        return $this->isOfficer() && !$this->isKader();
+    }
+
+    public function canManageEducation(): bool
+    {
+        return $this->isSuperAdmin() || $this->isPetugas();
+    }
+
     public function canAccessWebAdmin(): bool
     {
         if ($this->isSuperAdmin()) {

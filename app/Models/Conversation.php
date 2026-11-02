@@ -14,12 +14,16 @@ class Conversation extends Model
     protected $fillable = [
         'participant_one_id',
         'participant_two_id',
+        'deleted_for_participant_one_at',
+        'deleted_for_participant_two_at',
         'last_message_id',
         'last_message_at',
     ];
 
     protected $casts = [
-        'last_message_at' => 'datetime',
+        'last_message_at'                => 'datetime',
+        'deleted_for_participant_one_at' => 'datetime',
+        'deleted_for_participant_two_at' => 'datetime',
     ];
 
     public function participantOne()
@@ -109,5 +113,92 @@ class Conversation extends Model
             ->whereNull('read_at')
             ->whereNull('deleted_at')
             ->count();
+    }
+
+    /**
+     * Check if this conversation is hidden / deleted for the given user.
+     */
+    public function isHiddenFor(User $user): bool
+    {
+        if ((int) $this->participant_one_id === (int) $user->id) {
+            return $this->deleted_for_participant_one_at !== null;
+        }
+
+        if ((int) $this->participant_two_id === (int) $user->id) {
+            return $this->deleted_for_participant_two_at !== null;
+        }
+
+        return false;
+    }
+
+    /**
+     * Hide (soft delete for me) this conversation for the given user.
+     */
+    public function hideFor(User $user): void
+    {
+        if ((int) $this->participant_one_id === (int) $user->id) {
+            $this->deleted_for_participant_one_at = now();
+        } elseif ((int) $this->participant_two_id === (int) $user->id) {
+            $this->deleted_for_participant_two_at = now();
+        }
+
+        $this->save();
+    }
+
+    /**
+     * Unhide this conversation for the given user if previously hidden.
+     */
+    public function unhideFor(User $user): void
+    {
+        $changed = false;
+        if ((int) $this->participant_one_id === (int) $user->id && $this->deleted_for_participant_one_at !== null) {
+            $this->deleted_for_participant_one_at = null;
+            $changed = true;
+        } elseif ((int) $this->participant_two_id === (int) $user->id && $this->deleted_for_participant_two_at !== null) {
+            $this->deleted_for_participant_two_at = null;
+            $changed = true;
+        }
+
+        if ($changed) {
+            $this->save();
+        }
+    }
+
+    /**
+     * Unhide this conversation for both participants (e.g. when a new valid message is sent).
+     */
+    public function unhideAll(): void
+    {
+        $changed = false;
+        if ($this->deleted_for_participant_one_at !== null) {
+            $this->deleted_for_participant_one_at = null;
+            $changed = true;
+        }
+        if ($this->deleted_for_participant_two_at !== null) {
+            $this->deleted_for_participant_two_at = null;
+            $changed = true;
+        }
+
+        if ($changed) {
+            $this->save();
+        }
+    }
+
+    /**
+     * Scope to filter conversations that are not hidden for the given user.
+     */
+    public function scopeWhereNotHiddenFor($query, $user)
+    {
+        $userId = is_object($user) ? (int) $user->id : (int) $user;
+
+        return $query->where(function ($q) use ($userId) {
+            $q->where(function ($sub) use ($userId) {
+                $sub->where('participant_one_id', $userId)
+                    ->whereNull('deleted_for_participant_one_at');
+            })->orWhere(function ($sub) use ($userId) {
+                $sub->where('participant_two_id', $userId)
+                    ->whereNull('deleted_for_participant_two_at');
+            });
+        });
     }
 }

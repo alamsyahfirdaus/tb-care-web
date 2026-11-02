@@ -35,21 +35,28 @@ class BulkReminderController extends Controller
             ->whereHas('user', function ($q) {
                 $q->where('is_active', true);
             })
-            ->with(['user', 'village', 'puskesmas', 'activeTreatment.treatmentType'])
+            ->with(['user', 'village.subdistrict', 'subdistrict', 'puskesmas', 'activeTreatment.treatmentType'])
             ->get();
 
         $data = $patients->map(function ($patient) {
+            $village = $patient->village?->name;
+            $subdistrict = $patient->subdistrict?->name ?? $patient->village?->subdistrict?->name;
+
             return [
-                'user_id'         => $patient->user->id,
-                'patient_id'      => $patient->id,
-                'name'            => $patient->user->name,
-                'phone'           => $patient->user->phone,
-                'photo'           => $patient->user->photo ? url('/api/image/' . $patient->user->photo) : null,
-                'village_name'    => $patient->village?->name ?? '-',
-                'rt'              => $patient->rt ?? '-',
-                'rw'              => $patient->rw ?? '-',
-                'puskesmas_name'  => $patient->puskesmas?->name ?? '-',
-                'treatment_phase' => $patient->activeTreatment?->phase ?? 'Pengobatan',
+                'user_id'          => $patient->user->id,
+                'patient_id'       => $patient->id,
+                'name'             => $patient->user->name,
+                'phone'            => $patient->user->phone,
+                'photo'            => $patient->user->photo ? url('/api/image/' . $patient->user->photo) : null,
+                'village_name'     => $village ?? '-',
+                'village'          => $village,
+                'subdistrict_name' => $subdistrict,
+                'district_name'    => $subdistrict,
+                'district'         => $subdistrict,
+                'rt'               => $patient->rt ?? '-',
+                'rw'               => $patient->rw ?? '-',
+                'puskesmas_name'   => $patient->puskesmas?->name ?? '-',
+                'treatment_phase'  => $patient->activeTreatment?->phase ?? 'Pengobatan',
             ];
         })->values();
 

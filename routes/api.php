@@ -121,6 +121,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/{id}/show', [EducationController::class, 'show']);          // Detail edukasi
         Route::match(['post', 'put'], '/store', [EducationController::class, 'store']); // Simpan / update edukasi
         Route::delete('/{id}/delete', [EducationController::class, 'destroy']);  // Hapus edukasi
+        Route::delete('/{id}', [EducationController::class, 'destroy']);         // RESTful alias hapus edukasi
         Route::put('/{id}/publish', [EducationController::class, 'togglePublish']); // Ubah status publikasi
     });
 
@@ -133,6 +134,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/', [ConversationController::class, 'index']);
         Route::get('/recipients', [ConversationController::class, 'getRecipients']);
         Route::post('/', [ConversationController::class, 'store']);
+        Route::post('/bulk-hide', [ConversationController::class, 'bulkHide']);
         Route::post('/messages', function (\Illuminate\Http\Request $request) {
             return app(ConversationController::class)->sendMessage(0, $request);
         });
@@ -140,6 +142,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/{id}/messages', [ConversationController::class, 'getMessages']);
         Route::post('/{id}/messages', [ConversationController::class, 'sendMessage']);
         Route::post('/{id}/read', [ConversationController::class, 'markAsRead']);
+        Route::delete('/{id}', [ConversationController::class, 'destroy']);
         Route::put('/messages/{id}', [ConversationController::class, 'updateMessage']);
         Route::delete('/messages/{id}', [ConversationController::class, 'deleteMessage']);
     });

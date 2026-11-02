@@ -374,10 +374,18 @@ class LiveChatAndReminderTest extends TestCase
         $recipRes = $this->actingAs($kaderUser, 'sanctum')
             ->getJson('/api/reminders/recipients');
         $recipRes->assertStatus(200);
-        $recipUserIds = collect($recipRes->json('data'))->pluck('user_id')->all();
+        $recipData = collect($recipRes->json('data'));
+        $recipUserIds = $recipData->pluck('user_id')->all();
         $this->assertContains($patientUser1->id, $recipUserIds);
         $this->assertContains($patientUser2->id, $recipUserIds);
         $this->assertNotContains($patientUser3->id, $recipUserIds);
+
+        // Verify territory fields (village and subdistrict/district)
+        $p1Item = $recipData->firstWhere('user_id', $patientUser1->id);
+        $this->assertNotNull($p1Item);
+        $this->assertEquals($this->village1->name, $p1Item['village_name']);
+        $this->assertEquals($this->subdistrict->name, $p1Item['subdistrict_name']);
+        $this->assertEquals($this->subdistrict->name, $p1Item['district_name']);
 
         // Kader sends bulk reminder
         $reminderText = "Halo, jangan lupa minum obat TBC hari ini sesuai anjuran.";
@@ -923,5 +931,288 @@ class LiveChatAndReminderTest extends TestCase
         $indexRes->assertStatus(200);
         $ids = collect($indexRes->json('data'))->pluck('id')->all();
         $this->assertNotContains($conv->id, $ids);
+    }
+
+    /**
+     * Test 21: Patient can hide conversation for themselves without affecting other participant.
+     */
+    public function test_patient_can_hide_conversation_for_themselves_without_affecting_kader()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        $kaderUser = $this->createUser(['user_type_id' => 3]);
+        $kaderOfficer = $this->createOfficer($kaderUser, 4, ['puskesmas_id' => $this->puskesmas1->id]);
+        KaderArea::create([
+            'officer_id'     => $kaderOfficer->id,
+            'village_id'     => $this->village1->id,
+            'subdistrict_id' => $this->subdistrict->id,
+        ]);
+
+        $conv = Conversation::create([
+            'participant_one_id' => min($patientUser->id, $kaderUser->id),
+            'participant_two_id' => max($patientUser->id, $kaderUser->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $kaderUser->id,
+            'message_type'    => 'text',
+            'message'         => 'Halo pasien, jangan lupa kontrol besok.',
+        ]);
+        $conv->update(['last_message_id' => $msg->id, 'last_message_at' => now()]);
+
+        // Patient hides conversation (DELETE /api/conversations/{id})
+        $hideRes = $this->actingAs($patientUser, 'sanctum')->deleteJson("/api/conversations/{$conv->id}");
+        $hideRes->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        // Database integrity check: Conversation and messages are NOT deleted
+        $this->assertDatabaseHas('conversations', ['id' => $conv->id]);
+        $this->assertDatabaseHas('messages', ['id' => $msg->id]);
+
+        // Patient list does NOT contain this conversation
+        $patientList = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations');
+        $patientList->assertStatus(200);
+        $patientIds = collect($patientList->json('data'))->pluck('id')->all();
+        $this->assertNotContains($conv->id, $patientIds);
+
+        // Kader list STILL contains this conversation with intact message
+        $kaderList = $this->actingAs($kaderUser, 'sanctum')->getJson('/api/conversations');
+        $kaderList->assertStatus(200);
+        $kaderIds = collect($kaderList->json('data'))->pluck('id')->all();
+        $this->assertContains($conv->id, $kaderIds);
+    }
+
+    /**
+     * Test 22: Unauthorized user cannot hide other conversation (403).
+     */
+    public function test_unauthorized_user_cannot_hide_other_conversation_403()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+        $stranger = $this->createUser(['user_type_id' => 2]);
+
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $res = $this->actingAs($stranger, 'sanctum')->deleteJson("/api/conversations/{$conv->id}");
+        $res->assertStatus(403);
+    }
+
+    /**
+     * Test 23: Sending a new message restores hidden conversation for recipient.
+     */
+    public function test_sending_new_message_restores_hidden_conversation_for_recipient()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        $kaderUser = $this->createUser(['user_type_id' => 3]);
+        $kaderOfficer = $this->createOfficer($kaderUser, 4, ['puskesmas_id' => $this->puskesmas1->id]);
+        KaderArea::create([
+            'officer_id'     => $kaderOfficer->id,
+            'village_id'     => $this->village1->id,
+            'subdistrict_id' => $this->subdistrict->id,
+        ]);
+
+        $conv = Conversation::create([
+            'participant_one_id' => min($patientUser->id, $kaderUser->id),
+            'participant_two_id' => max($patientUser->id, $kaderUser->id),
+        ]);
+
+        $msg1 = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $patientUser->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan pertama',
+        ]);
+        $conv->update(['last_message_id' => $msg1->id, 'last_message_at' => now()]);
+
+        // Patient hides conversation
+        $this->actingAs($patientUser, 'sanctum')->deleteJson("/api/conversations/{$conv->id}")->assertStatus(200);
+
+        // Verify patient doesn't see it
+        $listBefore = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations');
+        $this->assertNotContains($conv->id, collect($listBefore->json('data'))->pluck('id')->all());
+
+        // Kader sends a new message to patient
+        $sendRes = $this->actingAs($kaderUser, 'sanctum')
+            ->postJson("/api/conversations/{$conv->id}/messages", [
+                'message' => 'Pesan baru dari Kader membangunkan percakapan.',
+            ]);
+        $sendRes->assertStatus(201);
+
+        // Verify patient now sees the restored conversation automatically
+        $listAfter = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations');
+        $this->assertContains($conv->id, collect($listAfter->json('data'))->pluck('id')->all());
+    }
+
+    /**
+     * Test 24: Editing or deleting old message does not restore hidden conversation.
+     */
+    public function test_editing_or_deleting_message_does_not_restore_hidden_conversation()
+    {
+        $userA = $this->createUser(['user_type_id' => 2]);
+        $userB = $this->createUser(['user_type_id' => 3]);
+
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userB->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan dari User B',
+        ]);
+        $conv->update(['last_message_id' => $msg->id, 'last_message_at' => now()]);
+
+        // User A hides conversation
+        $this->actingAs($userA, 'sanctum')->deleteJson("/api/conversations/{$conv->id}")->assertStatus(200);
+
+        // User B edits their own message
+        $this->actingAs($userB, 'sanctum')
+            ->putJson("/api/messages/{$msg->id}", [
+                'message' => 'Pesan diedit oleh User B',
+            ])->assertStatus(200);
+
+        // User A still should NOT see the conversation
+        $listA = $this->actingAs($userA, 'sanctum')->getJson('/api/conversations');
+        $this->assertNotContains($conv->id, collect($listA->json('data'))->pluck('id')->all());
+    }
+
+    /**
+     * Test 25: User can bulk hide multiple conversations without affecting others.
+     */
+    public function test_user_can_bulk_hide_multiple_conversations()
+    {
+        $patient = $this->createUser(['user_type_id' => 2]);
+        $kaderA = $this->createUser(['user_type_id' => 3]);
+        $kaderB = $this->createUser(['user_type_id' => 3]);
+        $kaderC = $this->createUser(['user_type_id' => 3]);
+
+        // 3 active conversations with messages
+        $conv1 = Conversation::create([
+            'participant_one_id' => min($patient->id, $kaderA->id),
+            'participant_two_id' => max($patient->id, $kaderA->id),
+        ]);
+        $msg1 = Message::create([
+            'conversation_id' => $conv1->id,
+            'sender_id'       => $patient->id,
+            'message_type'    => 'text',
+            'message'         => 'Chat 1',
+        ]);
+        $conv1->update(['last_message_id' => $msg1->id, 'last_message_at' => now()]);
+
+        $conv2 = Conversation::create([
+            'participant_one_id' => min($patient->id, $kaderB->id),
+            'participant_two_id' => max($patient->id, $kaderB->id),
+        ]);
+        $msg2 = Message::create([
+            'conversation_id' => $conv2->id,
+            'sender_id'       => $patient->id,
+            'message_type'    => 'text',
+            'message'         => 'Chat 2',
+        ]);
+        $conv2->update(['last_message_id' => $msg2->id, 'last_message_at' => now()]);
+
+        $conv3 = Conversation::create([
+            'participant_one_id' => min($patient->id, $kaderC->id),
+            'participant_two_id' => max($patient->id, $kaderC->id),
+        ]);
+        $msg3 = Message::create([
+            'conversation_id' => $conv3->id,
+            'sender_id'       => $patient->id,
+            'message_type'    => 'text',
+            'message'         => 'Chat 3',
+        ]);
+        $conv3->update(['last_message_id' => $msg3->id, 'last_message_at' => now()]);
+
+        // Bulk hide conv1 and conv2
+        $response = $this->actingAs($patient, 'sanctum')
+            ->postJson('/api/conversations/bulk-hide', [
+                'conversation_ids' => [$conv1->id, $conv2->id],
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_requested', 2)
+            ->assertJsonPath('data.total_hidden', 2);
+
+        // Verify patient only sees conv3 in GET /api/conversations
+        $patientList = $this->actingAs($patient, 'sanctum')->getJson('/api/conversations');
+        $patientConvIds = collect($patientList->json('data'))->pluck('id')->all();
+        $this->assertNotContains($conv1->id, $patientConvIds);
+        $this->assertNotContains($conv2->id, $patientConvIds);
+        $this->assertContains($conv3->id, $patientConvIds);
+
+        // Verify kaderA still sees conv1
+        $kaderAList = $this->actingAs($kaderA, 'sanctum')->getJson('/api/conversations');
+        $this->assertContains($conv1->id, collect($kaderAList->json('data'))->pluck('id')->all());
+
+        // Verify messages table still contains all messages
+        $this->assertDatabaseHas('messages', ['id' => $msg1->id]);
+        $this->assertDatabaseHas('messages', ['id' => $msg2->id]);
+    }
+
+    /**
+     * Test 26: Unauthorized user cannot bulk hide others' conversations (403 Forbidden).
+     */
+    public function test_unauthorized_user_cannot_bulk_hide_others_conversation()
+    {
+        $userA = $this->createUser();
+        $userB = $this->createUser();
+        $stranger = $this->createUser();
+
+        $conv = Conversation::create([
+            'participant_one_id' => min($userA->id, $userB->id),
+            'participant_two_id' => max($userA->id, $userB->id),
+        ]);
+        $msg = Message::create([
+            'conversation_id' => $conv->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan privat',
+        ]);
+        $conv->update(['last_message_id' => $msg->id, 'last_message_at' => now()]);
+
+        $response = $this->actingAs($stranger, 'sanctum')
+            ->postJson('/api/conversations/bulk-hide', [
+                'conversation_ids' => [$conv->id],
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test 27: Bulk hide input validation.
+     */
+    public function test_bulk_hide_input_validation()
+    {
+        $user = $this->createUser();
+
+        // Empty array
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/conversations/bulk-hide', [
+                'conversation_ids' => [],
+            ])
+            ->assertStatus(422);
+
+        // Non-existent ID
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/conversations/bulk-hide', [
+                'conversation_ids' => [9999999],
+            ])
+            ->assertStatus(404);
     }
 }

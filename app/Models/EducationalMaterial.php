@@ -72,7 +72,7 @@ class EducationalMaterial extends Model
     }
 
     /**
-     * Memicu notifikasi materi edukasi baru ke pasien TB Care
+     * Memicu notifikasi materi edukasi baru ke pasien dan kader TB Care yang aktif
      * Hanya dikirim jika materi berstatus publish dan belum pernah dikirim notifikasi.
      */
     public function sendPublishNotification(): bool
@@ -85,14 +85,29 @@ class EducationalMaterial extends Model
         $this->notification_sent = true;
         $this->saveQuietly();
 
-        $tokens = User::whereNotNull('fcm_token')
-            ->where('user_type_id', 2) // Pasien TB Care
+        // Penerima: Pasien aktif (user_type_id == 2) dan Kader aktif (user_type_id == 3 && officer_type_id == 4)
+        // Tidak mengirim ke Admin, Petugas, atau akun nonaktif
+        $patientTokens = User::where('is_active', true)
+            ->where('user_type_id', 2)
+            ->whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
-            ->pluck('fcm_token')
-            ->toArray();
+            ->pluck('fcm_token');
 
+        $kaderTokens = User::where('is_active', true)
+            ->where('user_type_id', 3)
+            ->whereHas('officer', function ($q) {
+                $q->where('officer_type_id', 4);
+            })
+            ->whereNotNull('fcm_token')
+            ->where('fcm_token', '!=', '')
+            ->pluck('fcm_token');
+
+        $tokens = $patientTokens->merge($kaderTokens)->unique()->filter()->values()->toArray();
+
+        $creator = $this->author;
+        $senderRole = ($creator && $creator->isSuperAdmin()) ? 'Administrator TB Care' : 'Petugas TB Care';
         $title = 'Materi Edukasi Baru';
-        $body  = "Ada materi edukasi baru untuk Anda: {$this->title_material}";
+        $body  = "{$senderRole} telah menerbitkan materi edukasi baru: {$this->title_material}.";
         $data  = [
             'type'         => 'education',
             'material_id'  => (string) $this->id,
@@ -105,7 +120,7 @@ class EducationalMaterial extends Model
                 'title'                => $title,
                 'message'              => $body,
                 'type'                 => 'Edukasi',
-                'target_role'          => 'Pasien',
+                'target_role'          => 'Pasien & Kader',
                 'target_puskesmas_id'  => null,
                 'sent_by'              => $this->created_by ?? (Auth::check() ? Auth::id() : 1),
                 'sent_count'           => count($tokens),
@@ -129,15 +144,6 @@ class EducationalMaterial extends Model
 
     public static function getAllMaterials()
     {
-        if (Auth::check()) {
-            $user = Auth::user();
-            if ($user->user_type_id == 1) {
-                return self::with('author')->orderBy('id', 'desc')->get();
-            } else {
-                return self::with('author')->where('created_by', $user->id)->orderBy('id', 'desc')->get();
-            }
-        }
-
         return self::with('author')->where('is_publish', 1)->orderBy('id', 'desc')->paginate(12);
     }
 
