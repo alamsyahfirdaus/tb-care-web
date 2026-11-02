@@ -3,7 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\BulkReminderController;
 use App\Http\Controllers\Api\EducationController;
@@ -125,21 +124,18 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/{id}/publish', [EducationController::class, 'togglePublish']); // Ubah status publikasi
     });
 
-    // Konsultasi dan Balasan
-    Route::prefix('consultations')->group(function () {
-        Route::get('/', [ConsultationController::class, 'index']);                      // Daftar konsultasi
-        Route::match(['post', 'put'], '/store', [ConsultationController::class, 'store']); // Simpan / update konsultasi
-        Route::delete('/{id}/delete', [ConsultationController::class, 'destroy']);      // Hapus konsultasi
-        Route::match(['post', 'put'], '/reply', [ConsultationController::class, 'saveReply']); // Simpan / update balasan
-        Route::delete('/{id}/reply', [ConsultationController::class, 'deleteReply']);   // Hapus balasan
-        Route::get('/recipients', [ConsultationController::class, 'getRecipients']); // Ambil daftar penerima untuk konsultasi
-    });
+    // Backward compatibility aliases mapping /consultations to Live Chat ConversationController
+    Route::get('/consultations', [ConversationController::class, 'index']);
+    Route::get('/consultations/recipients', [ConversationController::class, 'getRecipients']);
 
     // Live Chat (Percakapan Privat Dua Arah)
     Route::prefix('conversations')->group(function () {
         Route::get('/', [ConversationController::class, 'index']);
         Route::get('/recipients', [ConversationController::class, 'getRecipients']);
         Route::post('/', [ConversationController::class, 'store']);
+        Route::post('/messages', function (\Illuminate\Http\Request $request) {
+            return app(ConversationController::class)->sendMessage(0, $request);
+        });
         Route::get('/{id}', [ConversationController::class, 'show']);
         Route::get('/{id}/messages', [ConversationController::class, 'getMessages']);
         Route::post('/{id}/messages', [ConversationController::class, 'sendMessage']);

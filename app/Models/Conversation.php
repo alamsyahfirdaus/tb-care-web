@@ -68,6 +68,21 @@ class Conversation extends Model
     }
 
     /**
+     * Scope to query conversation between two users strictly checking ordered participant IDs.
+     */
+    public function scopeBetween($query, $userA, $userB)
+    {
+        $idA = is_object($userA) ? (int) $userA->id : (int) $userA;
+        $idB = is_object($userB) ? (int) $userB->id : (int) $userB;
+
+        $p1 = min($idA, $idB);
+        $p2 = max($idA, $idB);
+
+        return $query->where('participant_one_id', $p1)
+                     ->where('participant_two_id', $p2);
+    }
+
+    /**
      * Get or create a conversation between two users strictly enforcing ID ordering.
      */
     public static function getOrCreateBetween(User $userA, User $userB): self

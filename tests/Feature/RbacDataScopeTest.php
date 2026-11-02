@@ -18,8 +18,8 @@ use App\Models\User;
 use App\Models\Village;
 use App\Models\TreatmentType;
 use App\Models\Screening;
-use App\Models\Consultation;
-use App\Models\ConsultationReply;
+use App\Models\Conversation;
+use App\Models\Message;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -589,26 +589,24 @@ class RbacDataScopeTest extends TestCase
         $resVisitDel = $this->deleteJson("/api/visits/{$visitB->id}/delete");
         $resVisitDel->assertStatus(403);
 
-        // 5. IDOR on Consultations and Replies
-        $consultationB = Consultation::create([
-            'user_id'     => $this->patientUserB->id,
-            'title'       => 'Konsultasi Pribadi B',
-            'message'     => 'Pertanyaan keluhan dari Pasien B',
-            'is_answered' => false,
+        // 5. IDOR on Conversations and Messages (Live Chat)
+        $convB = Conversation::getOrCreateBetween($this->patientUserB, $this->pjtbUser);
+        $msgB = Message::create([
+            'conversation_id' => $convB->id,
+            'sender_id'       => $this->patientUserB->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan privat dari Pasien B',
         ]);
 
-        $replyB = ConsultationReply::create([
-            'consultation_id' => $consultationB->id,
-            'user_id'         => $this->patientUserB->id,
-            'message'         => 'Balasan tambahan dari Pasien B',
-        ]);
-
-        // Patient A attempting to delete Consultation B -> 403
+        // Patient A attempting to view Conversation B -> 403
         Sanctum::actingAs($this->patientUserA);
-        $this->deleteJson("/api/consultations/{$consultationB->id}/delete")->assertStatus(403);
+        $this->getJson("/api/conversations/{$convB->id}")->assertStatus(403);
 
-        // Patient A attempting to delete Reply B -> 403
-        $this->deleteJson("/api/consultations/{$replyB->id}/reply")->assertStatus(403);
+        // Patient A attempting to view messages of Conversation B -> 403
+        $this->getJson("/api/conversations/{$convB->id}/messages")->assertStatus(403);
+
+        // Patient A attempting to send message into Conversation B -> 403
+        $this->postJson("/api/conversations/{$convB->id}/messages", ['message' => 'Inject message'])->assertStatus(403);
 
         // 6. Report User Scoping (Admin only)
         // PJTB attempting to view User Report -> 403

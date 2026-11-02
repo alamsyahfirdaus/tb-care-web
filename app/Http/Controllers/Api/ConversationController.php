@@ -36,6 +36,7 @@ class ConversationController extends Controller
             $query->where('participant_one_id', $user->id)
                   ->orWhere('participant_two_id', $user->id);
         })
+        ->whereHas('messages')
         ->orderByDesc('last_message_at')
         ->orderByDesc('updated_at')
         ->get();
@@ -135,20 +136,46 @@ class ConversationController extends Controller
             ], 403);
         }
 
-        $conversation = Conversation::getOrCreateBetween($user, $recipient);
+        // Cari apakah percakapan antara kedua pengguna sudah ada dan memiliki pesan
+        $existingConversation = Conversation::between($user->id, $recipient->id)
+            ->whereHas('messages')
+            ->first();
 
+        if ($existingConversation) {
+            return response()->json([
+                'message' => 'Ruang percakapan siap.',
+                'data'    => [
+                    'id'         => $existingConversation->id,
+                    'is_new'     => false,
+                    'other_user' => [
+                        'id'        => $recipient->id,
+                        'name'      => $recipient->name,
+                        'photo'     => $recipient->photo ? url('/api/image/' . $recipient->photo) : null,
+                        'role'      => $this->determineUserRoleLabel($recipient),
+                        'sub_info'  => $this->determineUserSubInfo($recipient),
+                        'is_active' => (bool) $recipient->is_active,
+                    ],
+                    'created_at' => $existingConversation->created_at ? $existingConversation->created_at->toIso8601String() : null,
+                ]
+            ], 200);
+        }
+
+        // Percakapan baru: JANGAN simpan data ke tabel conversations sebelum pesan pertama dikirim.
+        // Cukup siapkan identitas penerima dengan ID 0 agar tidak meninggalkan percakapan kosong jika dibatalkan.
         return response()->json([
-            'message' => 'Ruang percakapan siap.',
+            'message' => 'Penerima siap untuk memulai percakapan.',
             'data'    => [
-                'id'         => $conversation->id,
+                'id'         => 0,
+                'is_new'     => true,
                 'other_user' => [
-                    'id'          => $recipient->id,
-                    'name'        => $recipient->name,
-                    'photo'       => $recipient->photo ? url('/api/image/' . $recipient->photo) : null,
-                    'role'        => $this->determineUserRoleLabel($recipient),
-                    'sub_info'    => $this->determineUserSubInfo($recipient),
+                    'id'        => $recipient->id,
+                    'name'      => $recipient->name,
+                    'photo'     => $recipient->photo ? url('/api/image/' . $recipient->photo) : null,
+                    'role'      => $this->determineUserRoleLabel($recipient),
+                    'sub_info'  => $this->determineUserSubInfo($recipient),
+                    'is_active' => (bool) $recipient->is_active,
                 ],
-                'created_at' => $conversation->created_at ? $conversation->created_at->toIso8601String() : null,
+                'created_at' => null,
             ]
         ], 200);
     }
@@ -158,6 +185,13 @@ class ConversationController extends Controller
      */
     public function show($id)
     {
+        if ((int) $id === 0) {
+            return response()->json([
+                'message' => 'Percakapan baru belum aktif.',
+                'data'    => null,
+            ]);
+        }
+
         $user = Auth::user();
         $conversation = Conversation::findOrFail($id);
 
@@ -190,6 +224,13 @@ class ConversationController extends Controller
      */
     public function getMessages($id, Request $request)
     {
+        if ((int) $id === 0) {
+            return response()->json([
+                'message' => 'Riwayat pesan kosong.',
+                'data'    => [],
+            ]);
+        }
+
         $user = Auth::user();
         $conversation = Conversation::findOrFail($id);
 
@@ -241,10 +282,18 @@ class ConversationController extends Controller
      */
     public function sendMessage($id, Request $request)
     {
-        $request->validate([
+        $rules = [
             'message' => 'required_without:image|nullable|string|max:5000',
             'image'   => 'required_without:message|nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
-        ], [
+        ];
+
+        if ((int) $id === 0) {
+            $rules['recipient_id'] = 'required|integer|exists:users,id';
+        }
+
+        $request->validate($rules, [
+            'recipient_id.required'    => 'Penerima percakapan wajib ditentukan.',
+            'recipient_id.exists'      => 'Penerima tidak ditemukan dalam sistem.',
             'message.required_without' => 'Pesan teks atau gambar wajib disertakan.',
             'image.required_without'   => 'Pesan teks atau gambar wajib disertakan.',
             'image.file'               => 'Lampiran harus berupa file yang valid.',
@@ -253,6 +302,83 @@ class ConversationController extends Controller
         ]);
 
         $user = Auth::user();
+
+        // 1. Pengiriman pesan pertama untuk percakapan baru ($id === 0)
+        if ((int) $id === 0) {
+            $recipientId = (int) $request->recipient_id;
+            if ($user->id === $recipientId) {
+                return response()->json([
+                    'message' => 'Anda tidak dapat mengirim pesan kepada diri sendiri.'
+                ], 422);
+            }
+
+            $recipient = User::findOrFail($recipientId);
+            if (!$recipient->is_active) {
+                return response()->json([
+                    'message' => 'Penerima tidak aktif atau tidak ditemukan.'
+                ], 403);
+            }
+
+            // Validasi hak komunikasi wilayah
+            if (!ChatAuthorizationService::canCommunicate($user, $recipient)) {
+                return response()->json([
+                    'message' => 'Anda tidak memiliki wewenang untuk mengirim pesan kepada pengguna ini.'
+                ], 403);
+            }
+
+            $attachmentPath = null;
+            $attachmentMime = null;
+            $attachmentSize = null;
+            $messageType = 'text';
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $extension = strtolower($file->getClientOriginalExtension());
+                $fileName = 'chat_' . Str::random(24) . '.' . $extension;
+                $file->move(public_path('images'), $fileName);
+
+                $attachmentPath = $fileName;
+                $attachmentMime = $file->getClientMimeType() ?? 'image/' . $extension;
+                $attachmentSize = @filesize(public_path('images/' . $fileName)) ?: null;
+                $messageType = 'image';
+            }
+
+            // Gunakan transaksi atomik: Buat percakapan jika belum ada, simpan pesan, dan update pointer pesan terakhir
+            $result = DB::transaction(function () use ($user, $recipient, $request, $messageType, $attachmentPath, $attachmentMime, $attachmentSize) {
+                $conversation = Conversation::getOrCreateBetween($user, $recipient);
+
+                $msg = Message::create([
+                    'conversation_id'      => $conversation->id,
+                    'sender_id'            => $user->id,
+                    'message_type'         => $messageType,
+                    'message'              => $request->message,
+                    'attachment_path'      => $attachmentPath,
+                    'attachment_mime_type' => $attachmentMime,
+                    'attachment_size'      => $attachmentSize,
+                    'read_at'              => null,
+                ]);
+
+                $conversation->update([
+                    'last_message_id' => $msg->id,
+                    'last_message_at' => $msg->created_at,
+                ]);
+
+                return [
+                    'conversation' => $conversation,
+                    'message'      => $msg,
+                ];
+            });
+
+            // Kirim notifikasi FCM ke penerima
+            $this->dispatchChatNotification($recipient, $user, $result['conversation'], $result['message']);
+
+            return response()->json([
+                'message' => 'Pesan berhasil dikirim.',
+                'data'    => $this->formatMessageItem($result['message'], $user),
+            ], 201);
+        }
+
+        // 2. Pengiriman pesan pada percakapan yang sudah aktif ($id > 0)
         $conversation = Conversation::findOrFail($id);
 
         if (!ChatAuthorizationService::authorizeConversationAccess($user, $conversation)) {
@@ -328,6 +454,13 @@ class ConversationController extends Controller
      */
     public function markAsRead($id)
     {
+        if ((int) $id === 0) {
+            return response()->json([
+                'message'       => 'Tidak ada pesan untuk ditandai.',
+                'updated_count' => 0,
+            ]);
+        }
+
         $user = Auth::user();
         $conversation = Conversation::findOrFail($id);
 

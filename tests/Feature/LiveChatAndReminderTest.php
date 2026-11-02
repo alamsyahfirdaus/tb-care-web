@@ -174,6 +174,13 @@ class LiveChatAndReminderTest extends TestCase
 
         $responseSuccess->assertStatus(200)
             ->assertJsonStructure(['data' => ['id', 'other_user']]);
+
+        // Pastikan memilih petugas mengembalikan id 0 dan belum membuat data di tabel conversations
+        $this->assertEquals(0, $responseSuccess->json('data.id'));
+        $this->assertDatabaseMissing('conversations', [
+            'participant_one_id' => min($patientUser->id, $localKader->id),
+            'participant_two_id' => max($patientUser->id, $localKader->id),
+        ]);
     }
 
     /**
@@ -469,5 +476,188 @@ class LiveChatAndReminderTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $msg2->id)
             ->assertJsonPath('data.0.message', 'Message 2');
+    }
+
+    /**
+     * Test 10: Memilih petugas atau membuka chat tanpa mengirim pesan tidak memunculkan percakapan di daftar konsultasi.
+     */
+    public function test_selecting_recipient_does_not_appear_in_conversations_list()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        $kaderUser = $this->createUser(['user_type_id' => 3]);
+        $kaderOfficer = $this->createOfficer($kaderUser, 4);
+        KaderArea::create([
+            'officer_id'     => $kaderOfficer->id,
+            'subdistrict_id' => $this->subdistrict->id,
+            'village_id'     => $this->village1->id,
+        ]);
+
+        // 1. Pasien memilih kader
+        $selectRes = $this->actingAs($patientUser, 'sanctum')
+            ->postJson('/api/conversations', ['recipient_id' => $kaderUser->id]);
+        $selectRes->assertStatus(200);
+        $this->assertEquals(0, $selectRes->json('data.id'));
+
+        // 2. Pasien membatalkan dan kembali ke daftar konsultasi
+        $listRes = $this->actingAs($patientUser, 'sanctum')
+            ->getJson('/api/conversations');
+        $listRes->assertStatus(200);
+
+        // Tidak boleh ada percakapan dengan kader yang muncul di daftar
+        $otherUserIds = collect($listRes->json('data'))->pluck('other_user.id')->all();
+        $this->assertNotContains($kaderUser->id, $otherUserIds);
+
+        // Di database, tidak boleh ada percakapan antara pasien dan kader
+        $this->assertDatabaseMissing('conversations', [
+            'participant_one_id' => min($patientUser->id, $kaderUser->id),
+            'participant_two_id' => max($patientUser->id, $kaderUser->id),
+        ]);
+    }
+
+    /**
+     * Test 11: Mengirim pesan pertama mengaktifkan percakapan dan memunculkannya di daftar kedua pihak.
+     */
+    public function test_sending_first_message_activates_conversation_and_appears_in_list()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        $kaderUser = $this->createUser(['user_type_id' => 3]);
+        $kaderOfficer = $this->createOfficer($kaderUser, 4);
+        KaderArea::create([
+            'officer_id'     => $kaderOfficer->id,
+            'subdistrict_id' => $this->subdistrict->id,
+            'village_id'     => $this->village1->id,
+        ]);
+
+        // Pasien kirim pesan pertama ke kader via endpoint /api/conversations/0/messages dengan recipient_id
+        $sendRes = $this->actingAs($patientUser, 'sanctum')
+            ->postJson('/api/conversations/0/messages', [
+                'recipient_id' => $kaderUser->id,
+                'message'      => 'Halo Bu Kader, saya pasien baru.',
+            ]);
+
+        $sendRes->assertStatus(201)
+            ->assertJsonPath('data.message', 'Halo Bu Kader, saya pasien baru.')
+            ->assertJsonPath('data.is_sender', true);
+
+        $newConvId = $sendRes->json('data.conversation_id');
+        $this->assertGreaterThan(0, $newConvId);
+
+        // Sekarang percakapan muncul di daftar konsultasi Pasien
+        $listPatient = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations');
+        $listPatient->assertStatus(200);
+        $patientConvIds = collect($listPatient->json('data'))->pluck('id')->all();
+        $this->assertContains($newConvId, $patientConvIds);
+
+        // Sekarang percakapan juga muncul di daftar konsultasi Kader
+        $listKader = $this->actingAs($kaderUser, 'sanctum')->getJson('/api/conversations');
+        $listKader->assertStatus(200);
+        $kaderConvIds = collect($listKader->json('data'))->pluck('id')->all();
+        $this->assertContains($newConvId, $kaderConvIds);
+
+        // Pesan kedua dikirim pada percakapan yang sama ($id > 0)
+        $secondMsgRes = $this->actingAs($kaderUser, 'sanctum')
+            ->postJson("/api/conversations/{$newConvId}/messages", [
+                'message' => 'Halo, ada yang bisa saya bantu?',
+            ]);
+        $secondMsgRes->assertStatus(201);
+
+        // Pastikan tidak ada duplikasi percakapan di database
+        $totalConvs = Conversation::between($patientUser->id, $kaderUser->id)->count();
+        $this->assertEquals(1, $totalConvs);
+    }
+
+    /**
+     * Test 12: Pengiriman pesan pertama yang gagal validasi tidak membuat percakapan di database.
+     */
+    public function test_failed_first_message_does_not_create_conversation()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        $kaderUser = $this->createUser(['user_type_id' => 3]);
+        $kaderOfficer = $this->createOfficer($kaderUser, 4);
+        KaderArea::create([
+            'officer_id'     => $kaderOfficer->id,
+            'subdistrict_id' => $this->subdistrict->id,
+            'village_id'     => $this->village1->id,
+        ]);
+
+        // Coba kirim pesan kosong tanpa teks dan tanpa gambar (gagal validasi 422)
+        $sendRes = $this->actingAs($patientUser, 'sanctum')
+            ->withHeader('Accept', 'application/json')
+            ->postJson('/api/conversations/0/messages', [
+                'recipient_id' => $kaderUser->id,
+                'message'      => '',
+            ]);
+
+        $sendRes->assertStatus(422);
+
+        // Database tetap bersih tanpa record percakapan
+        $this->assertDatabaseMissing('conversations', [
+            'participant_one_id' => min($patientUser->id, $kaderUser->id),
+            'participant_two_id' => max($patientUser->id, $kaderUser->id),
+        ]);
+    }
+
+    /**
+     * Test 13: Percakapan kosong (jika ada di database) disembunyikan dari index dan digunakan kembali saat pesan dikirim.
+     */
+    public function test_empty_conversation_in_db_is_hidden_from_index_and_reused_on_first_message()
+    {
+        $patientUser = $this->createUser(['user_type_id' => 2]);
+        $this->createPatient($patientUser, [
+            'village_id'   => $this->village1->id,
+            'puskesmas_id' => $this->puskesmas1->id,
+        ]);
+
+        $kaderUser = $this->createUser(['user_type_id' => 3]);
+        $kaderOfficer = $this->createOfficer($kaderUser, 4);
+        KaderArea::create([
+            'officer_id'     => $kaderOfficer->id,
+            'subdistrict_id' => $this->subdistrict->id,
+            'village_id'     => $this->village1->id,
+        ]);
+
+        // Simulasikan record percakapan yang belum memiliki pesan di tabel messages
+        $emptyConv = Conversation::create([
+            'participant_one_id' => min($patientUser->id, $kaderUser->id),
+            'participant_two_id' => max($patientUser->id, $kaderUser->id),
+            'last_message_id'    => null,
+            'last_message_at'    => null,
+        ]);
+
+        // Pastikan TIDAK muncul di daftar konsultasi (/api/conversations)
+        $listRes = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations');
+        $listRes->assertStatus(200);
+        $ids = collect($listRes->json('data'))->pluck('id')->all();
+        $this->assertNotContains($emptyConv->id, $ids);
+
+        // Saat pengguna mengirim pesan pertama, record percakapan ini digunakan kembali
+        $sendRes = $this->actingAs($patientUser, 'sanctum')
+            ->postJson('/api/conversations/0/messages', [
+                'recipient_id' => $kaderUser->id,
+                'message'      => 'Pesan pertama mengaktifkan percakapan lama.',
+            ]);
+
+        $sendRes->assertStatus(201);
+        $this->assertEquals($emptyConv->id, $sendRes->json('data.conversation_id'));
+
+        // Sekarang percakapan muncul di daftar
+        $listRes2 = $this->actingAs($patientUser, 'sanctum')->getJson('/api/conversations');
+        $ids2 = collect($listRes2->json('data'))->pluck('id')->all();
+        $this->assertContains($emptyConv->id, $ids2);
     }
 }
