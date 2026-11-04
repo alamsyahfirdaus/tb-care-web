@@ -41,7 +41,10 @@ class PatientPolicy
      */
     public function create(User $user)
     {
-        // Admin (1) and Petugas (3) can create patients
+        // Admin (1) and Petugas non-Kader can create patients. Kader (officer_type_id 4) is forbidden.
+        if ($user->isKader()) {
+            return false;
+        }
         return in_array($user->user_type_id, [1, 3]);
     }
 
@@ -54,6 +57,10 @@ class PatientPolicy
      */
     public function update(User $user, Patient $patient)
     {
+        // Kader is strictly read-only and forbidden from modifying patient identity/data
+        if ($user->isKader()) {
+            return false;
+        }
         return $patient->isAccessibleBy($user);
     }
 
@@ -66,6 +73,10 @@ class PatientPolicy
      */
     public function delete(User $user, Patient $patient)
     {
+        // Kader is strictly forbidden from deleting patient data
+        if ($user->isKader()) {
+            return false;
+        }
         return $patient->isAccessibleBy($user);
     }
 

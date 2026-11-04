@@ -13,6 +13,15 @@ class TreatmentVisitController extends Controller
 {
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        // Kader strictly forbidden from creating or updating visit schedules
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk mengatur jadwal kunjungan.'
+            ], 403);
+        }
+
         // Validasi input dari form request
         $validator = Validator::make($request->all(), [
             'id'                   => 'nullable|exists:treatment_visits,id',
@@ -46,8 +55,6 @@ class TreatmentVisitController extends Controller
                 'errors'  => $validator->errors()
             ], 422);
         }
-
-        $user = Auth::user();
 
         // Validasi akses jika sedang melakukan update
         if ($request->filled('id')) {
@@ -95,6 +102,15 @@ class TreatmentVisitController extends Controller
 
     public function destroy($id)
     {
+        $user = Auth::user();
+
+        // Kader strictly forbidden from deleting visit schedules
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menghapus data kunjungan.'
+            ], 403);
+        }
+
         $visit = TreatmentVisit::with('patientTreatment.patient')->find($id);
 
         if (!$visit) {
@@ -119,6 +135,15 @@ class TreatmentVisitController extends Controller
 
     public function cancelVisit(Request $request, $id)
     {
+        $user = Auth::user();
+
+        // Kader strictly forbidden from cancelling visit schedules
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk membatalkan jadwal kunjungan.'
+            ], 403);
+        }
+
         $visit = TreatmentVisit::with('patientTreatment.patient')->find($id);
 
         if (!$visit) {

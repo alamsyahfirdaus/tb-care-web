@@ -18,7 +18,7 @@ class MedicationRecord extends Model
     public static function getRecordByDate($patient_treatment_id, $current_date)
     {
         return self::where('patient_treatment_id', $patient_treatment_id)
-            ->whereDate('taken_at', $current_date)
+            ->whereDate('created_at', $current_date)
             ->first();
     }
 

@@ -86,7 +86,10 @@ class PatientController extends Controller
             });
         }
 
-        $patients = $patientsQuery->get();
+        // Urutkan pasien berdasarkan nama secara alfabetis A-Z (case-insensitive)
+        $patients = $patientsQuery->get()->sortBy(function ($patient) {
+            return strtolower(trim(optional($patient->user)->name ?? ''));
+        }, SORT_NATURAL)->values();
 
         // Mapping data pasien menjadi format array JSON
         $patientsData = $patients->map(function ($patient) {
@@ -166,6 +169,14 @@ class PatientController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
+
+        // Kader strictly forbidden from adding or editing patient data
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menambah atau mengubah data pasien.'
+            ], 403);
+        }
+
         $isUpdate = $request->filled('patient_id');
 
         // 1. Otorisasi create/update awal
@@ -458,6 +469,14 @@ class PatientController extends Controller
     public function destroy($id)
     {
         $user = Auth::user();
+
+        // Kader strictly forbidden from deleting patient data
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menghapus data pasien.'
+            ], 403);
+        }
+
         $patient = Patient::with('user')->find($id);
 
         if (!$patient) {
@@ -721,6 +740,14 @@ class PatientController extends Controller
     public function saveMedicationSchedule(Request $request, $id = null)
     {
         $user = Auth::user();
+
+        // Kader strictly forbidden from setting/modifying medication schedules
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk mengatur jadwal minum obat pasien.'
+            ], 403);
+        }
+
         $patientId = $id ?? $request->input('patient_id');
         if (!$patientId && $user && $user->user_type_id == 2) {
             $patientId = optional($user->patient)->id;

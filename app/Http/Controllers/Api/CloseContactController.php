@@ -232,6 +232,14 @@ class CloseContactController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Auth::user();
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kader tidak memiliki wewenang untuk mengelola data kontak erat.'
+            ], 403);
+        }
+
         [$patient, $error, $status] = $this->resolveAuthorizedPatient($request);
         if ($error) {
             return response()->json([
@@ -344,6 +352,14 @@ class CloseContactController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $user = Auth::user();
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kader tidak memiliki wewenang untuk mengelola data kontak erat.'
+            ], 403);
+        }
+
         $contact = CloseContact::find($id);
         if (!$contact) {
             return response()->json([
@@ -441,6 +457,14 @@ class CloseContactController extends Controller
      */
     public function destroy(Request $request, $id)
     {
+        $user = Auth::user();
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kader tidak memiliki wewenang untuk mengelola data kontak erat.'
+            ], 403);
+        }
+
         $contact = CloseContact::find($id);
         if (!$contact) {
             return response()->json([

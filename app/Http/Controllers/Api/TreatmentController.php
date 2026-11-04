@@ -19,6 +19,15 @@ class TreatmentController extends Controller
 {
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        // Kader strictly forbidden from creating or modifying treatments
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menambah atau mengubah data pengobatan.'
+            ], 403);
+        }
+
         // 1. Validasi masukan dari pengguna
         $validator = Validator::make($request->all(), [
             'id'                => 'nullable|exists:patient_treatments,id',
@@ -51,8 +60,6 @@ class TreatmentController extends Controller
                 'errors'  => $validator->errors()
             ], 422);
         }
-
-        $user = Auth::user();
 
         // 2. Proteksi Otorisasi Wilayah Pasien
         $patient = Patient::find($request->patient_id);
@@ -148,6 +155,15 @@ class TreatmentController extends Controller
 
     public function destroy($id)
     {
+        $user = Auth::user();
+
+        // Kader strictly forbidden from deleting treatments
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menghapus data pengobatan.'
+            ], 403);
+        }
+
         $treatment = PatientTreatment::with('patient')->find($id);
 
         if (!$treatment) {
@@ -180,6 +196,15 @@ class TreatmentController extends Controller
 
     public function updateTreatmentStatus(Request $request)
     {
+        $user = Auth::user();
+
+        // Kader strictly forbidden from updating treatment status
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk mengubah status pengobatan.'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'id'               => 'required|exists:patient_treatments,id',
             'treatment_status' => 'required|in:Berjalan,Selesai,Sembuh,Pengobatan Lengkap,Gagal,Meninggal,Putus Berobat,Tidak Dievaluasi,Pindah',
@@ -199,7 +224,6 @@ class TreatmentController extends Controller
 
         $treatment = PatientTreatment::with('patient')->findOrFail($request->id);
 
-        $user = Auth::user();
         if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
             return response()->json([
                 'message' => 'Anda tidak memiliki wewenang mengubah status pengobatan pasien ini.'
@@ -473,6 +497,14 @@ class TreatmentController extends Controller
         }
 
         $user = Auth::user();
+
+        // Kader strictly forbidden from verifying medication proof
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang memverifikasi bukti minum obat.'
+            ], 403);
+        }
+
         $patient = $record->patientTreatment?->patient;
         if ($patient && !$patient->isAccessibleBy($user)) {
             return response()->json([

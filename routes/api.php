@@ -157,6 +157,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/bulk-send', [BulkReminderController::class, 'sendBulk']);
     });
 
+    // Modul & Dashboard Khusus Kader TB
+    Route::prefix('kader')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Api\KaderController::class, 'dashboard']);
+        Route::get('/patients', [\App\Http\Controllers\Api\KaderController::class, 'dashboard']);
+        Route::get('/reminders', [\App\Http\Controllers\Api\KaderController::class, 'reminders']);
+        Route::post('/reminders/send', [\App\Http\Controllers\Api\KaderController::class, 'sendReminder']);
+        Route::get('/patients/{id}/history', [\App\Http\Controllers\Api\KaderController::class, 'patientHistory']);
+    });
+
     // Dashboard / Beranda Pasien Terpadu
     Route::get('/patient/home', [PatientController::class, 'home']);
     Route::get('/patient/medications', [TreatmentController::class, 'patientMedications']);
