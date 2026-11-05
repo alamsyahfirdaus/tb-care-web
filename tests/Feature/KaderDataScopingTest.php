@@ -332,7 +332,8 @@ class KaderDataScopingTest extends TestCase
     }
 
     /**
-     * TC-08b: Create pasien se-Desa beda RW -> PASS
+     * TC-08b: Create pasien se-Desa oleh Kader -> DENIED (403)
+     * Berdasarkan kebijakan RBAC Kader Nov 2026 (commit 067f0db), Kader dilarang mutasi (store/update/delete) data pasien.
      */
     public function test_tc08b_create_patient_in_same_village_any_rw_pass()
     {
@@ -355,7 +356,7 @@ class KaderDataScopingTest extends TestCase
         ];
 
         $response = $this->postJson('/api/patients/store', $payload);
-        $response->assertStatus(201);
+        $response->assertStatus(403);
     }
 
     /**

@@ -128,9 +128,6 @@ class KaderAuthorizationAndReminderTest extends TestCase
             'id'               => 1,
             'treatment_status' => 'Sembuh',
         ]);
-        // Mock treatment findOrFail for update status test
-        $treatmentMock = Mockery::mock('alias:' . PatientTreatment::class);
-        $treatmentMock->shouldReceive('with->findOrFail')->andReturn(new PatientTreatment(['id' => 1]));
 
         $resStatus = $controller->updateTreatmentStatus($reqStatus);
         $this->assertEquals(403, $resStatus->getStatusCode());

@@ -249,19 +249,20 @@ class MedicationScheduleTest extends TestCase
     }
 
     /**
-     * Test 7: Kader di wilayah binaan diizinkan melihat dan mengupdate jadwal pasien.
+     * Test 7: Kader di wilayah binaan dapat melihat jadwal pasien, tetapi dilarang memodifikasi jadwal (403).
+     * Sesuai kebijakan RBAC Kader Nov 2026 (commit 067f0db).
      */
     public function test_kader_in_assigned_area_can_manage_patient_schedule()
     {
-        Sanctum::actingAs($this->kaderUser);
-
-        // Kader simpan jadwal untuk Pasien A (Pasien A ada di RW 05 RT 01)
+        // 1. Pasien A membuat jadwal
+        Sanctum::actingAs($this->patientUserA);
         $postResponse = $this->postJson("/api/patients/{$this->patientA->id}/medication-schedule", [
             'reminder_time' => '08:15',
         ]);
         $postResponse->assertStatus(200);
 
-        // Kader membaca jadwal Pasien A
+        // 2. Kader membaca jadwal Pasien A di wilayah binaannya -> 200 OK
+        Sanctum::actingAs($this->kaderUser);
         $getResponse = $this->getJson("/api/patients/{$this->patientA->id}/medication-schedule");
         $getResponse->assertStatus(200)
             ->assertJson([
@@ -271,6 +272,12 @@ class MedicationScheduleTest extends TestCase
                     'reminder_time' => '08:15:00',
                 ],
             ]);
+
+        // 3. Kader mencoba mengubah jadwal pasien -> 403 Forbidden
+        $kaderPostResponse = $this->postJson("/api/patients/{$this->patientA->id}/medication-schedule", [
+            'reminder_time' => '09:00',
+        ]);
+        $kaderPostResponse->assertStatus(403);
     }
 
     /**

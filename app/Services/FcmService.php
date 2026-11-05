@@ -20,6 +20,11 @@ class FcmService
      */
     public static function sendNotification($tokens, $title, $body, $data = [])
     {
+        if (app()->environment('testing')) {
+            Log::info('FCM notification simulated in testing environment.');
+            return true;
+        }
+
         $projectId = config('services.fcm.project_id');
         $credentialsPath = config('services.fcm.credentials');
 

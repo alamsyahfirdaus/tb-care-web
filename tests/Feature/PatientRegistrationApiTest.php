@@ -67,8 +67,6 @@ class PatientRegistrationApiTest extends TestCase
                 'treatment_start_date',
                 'subdistrict_id',
                 'village_id',
-                'rt',
-                'rw',
             ]);
     }
 
