@@ -421,6 +421,9 @@ class PatientController extends Controller
             'subdistrict'    => ($subdistrictName && $districtName && $provinceName)
                 ? "$subdistrictName, $districtName, $provinceName"
                 : null,
+            'subdistrict_name' => $subdistrictName,
+            'district_name'    => $districtName,
+            'province_name'    => $provinceName,
 
             'name'           => optional($patient->user)->name,
             'email'          => optional($patient->user)->email,

@@ -344,6 +344,43 @@ class LiveChatAndReminderTest extends TestCase
         $this->assertNotNull($msg->fresh()->read_at);
     }
 
+    public function test_unread_count_endpoint_returns_accurate_total()
+    {
+        $userA = $this->createUser();
+        $userB = $this->createUser();
+
+        $conversation = Conversation::getOrCreateBetween($userA, $userB);
+
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan 1',
+            'read_at'         => null,
+        ]);
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $userA->id,
+            'message_type'    => 'text',
+            'message'         => 'Pesan 2',
+            'read_at'         => null,
+        ]);
+
+        $res = $this->actingAs($userB, 'sanctum')->getJson('/api/conversations/unread-count');
+        $res->assertStatus(200)
+            ->assertJson([
+                'success'      => true,
+                'unread_count' => 2,
+            ]);
+
+        $resSender = $this->actingAs($userA, 'sanctum')->getJson('/api/conversations/unread-count');
+        $resSender->assertStatus(200)
+            ->assertJson([
+                'success'      => true,
+                'unread_count' => 0,
+            ]);
+    }
+
     /**
      * Test 7: Bulk medication reminder sent to multiple patients as 1-on-1 private messages.
      */

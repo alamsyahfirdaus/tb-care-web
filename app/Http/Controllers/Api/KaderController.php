@@ -556,21 +556,67 @@ class KaderController extends Controller
             }
 
             // Riwayat Pengobatan
+            $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+            $puskesmasAddress = optional($patient->puskesmas)->address;
+
             $treatments = $patient->treatments()
                 ->with(['treatmentType', 'visits' => function ($vq) {
-                    $vq->orderBy('visit_date', 'desc');
+                    $vq->orderBy('visit_date', 'asc')->orderBy('visit_time', 'asc');
                 }])
                 ->orderByDesc('start_date')
                 ->get();
 
             $treatmentIds = $treatments->pluck('id')->all();
 
+            // Hitung Riwayat Lengkap & Kepatuhan Minum Obat (Harian dari tanggal mulai hingga hari ini)
+            $activeTreatment = $treatments->first();
+            $dailyRecordsDescending = [];
+            $adherenceSummary = null;
+
+            if ($activeTreatment) {
+                $detailedAdherence = $activeTreatment->calculateDetailedAdherence('all');
+                $dailyRecordsDescending = collect($detailedAdherence['daily_records'] ?? [])->map(function ($dr) {
+                    if (!empty($dr['photo'])) {
+                        $dr['photo_url'] = url('/api/image/' . $dr['photo']);
+                        $dr['has_proof'] = true;
+                    }
+                    return $dr;
+                })->all();
+                $adherenceSummary = [
+                    'due_doses'            => $detailedAdherence['due_doses'] ?? 0,
+                    'taken_doses'          => $detailedAdherence['taken_doses'] ?? 0,
+                    'missed_doses'         => $detailedAdherence['total_missed_days'] ?? 0,
+                    'adherence_percentage' => $detailedAdherence['percentage'] ?? 0.0,
+                    'adherence_average'    => $detailedAdherence['percentage_str'] ?? '0%',
+                    'status'               => $detailedAdherence['status'] ?? 'Belum ada data',
+                ];
+            }
+
+            // Cari 1 Jadwal Kunjungan Puskesmas Berikutnya yang terdekat dan masih aktif
+            $todayStr = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+            $nextVisit = TreatmentVisit::whereIn('patient_treatment_id', $treatmentIds)
+                ->where('visit_date', '>=', $todayStr)
+                ->whereNotIn('visit_status', ['Dibatalkan', 'Batal', 'Selesai', 'Hadir'])
+                ->orderBy('visit_date', 'asc')
+                ->orderBy('visit_time', 'asc')
+                ->first();
+
+            $nextVisitFormatted = $nextVisit ? [
+                'id'                => $nextVisit->id,
+                'visit_date'        => Carbon::parse($nextVisit->visit_date)->format('Y-m-d'),
+                'visit_time'        => $nextVisit->visit_time,
+                'visit_status'      => $nextVisit->visit_status,
+                'notes'             => $nextVisit->notes,
+                'puskesmas_name'    => $puskesmasName,
+                'puskesmas_address' => $puskesmasAddress,
+            ] : null;
+
             // Riwayat Minum Obat (menggunakan kolom aktual di tabel medication_records)
             $medicationRecords = DB::table('medication_records')
                 ->whereIn('patient_treatment_id', $treatmentIds)
                 ->select('id', 'photo', 'is_verified', 'late', 'notes', 'created_at')
                 ->orderByDesc('created_at')
-                ->take(60)
+                ->take(100)
                 ->get()
                 ->map(function ($r) {
                     return [
@@ -608,15 +654,20 @@ class KaderController extends Controller
                 'success' => true,
                 'data'    => [
                     'patient'            => [
-                        'id'           => $patient->id,
-                        'name'         => optional($patient->user)->name,
-                        'nik'          => $patient->nik,
-                        'phone'        => optional($patient->user)->phone,
-                        'village'      => optional($patient->village)->name,
-                        'puskesmas'    => optional($patient->puskesmas)->name,
+                        'id'                   => $patient->id,
+                        'name'                 => optional($patient->user)->name,
+                        'nik'                  => $patient->nik,
+                        'phone'                => optional($patient->user)->phone,
+                        'village'              => optional($patient->village)->name,
+                        'puskesmas'            => $puskesmasName,
+                        'treatment_start_date' => $patient->treatment_start_date ? Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : $activeTreatment?->start_date,
+                        'medication_time'      => $activeTreatment?->medication_time,
                     ],
                     'treatments'         => $treatments,
                     'medication_records' => $medicationRecords,
+                    'daily_records'      => $dailyRecordsDescending,
+                    'adherence'          => $adherenceSummary,
+                    'next_visit'         => $nextVisitFormatted,
                     'reminders'          => $reminders,
                 ]
             ]);

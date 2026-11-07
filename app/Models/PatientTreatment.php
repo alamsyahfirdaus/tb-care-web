@@ -333,11 +333,11 @@ class PatientTreatment extends Model
                         'late'                => (int) $rec->late,
                         'notes'               => $rec->notes ?: null,
                         'photo'               => $rec->photo ?: null,
-                        'photo_url'           => $rec->photo ? asset('images/' . $rec->photo) : null,
+                        'photo_url'           => $rec->photo ? url('/api/image/' . $rec->photo) : null,
                         'photo_raw'           => $rec->photo ?: null,
                         'submitted_at'        => $rec->created_at->format('Y-m-d H:i:s'),
                         'submitted_relative'  => $rec->created_at->diffForHumans(),
-                        'has_proof'           => true,
+                        'has_proof'           => !empty($rec->photo),
                     ];
 
                     $takenDays[] = $takenItem;

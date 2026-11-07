@@ -50,6 +50,19 @@ class ProfileController extends Controller
             $userData['officer_type_id'] = $user->officer->officer_type_id;
             $userData['officer_type_name'] = $user->officer->officer_type_name;
             $userData['scope_description'] = $user->officer->scope_description;
+            $userData['is_kader'] = method_exists($user->officer, 'isKader') ? $user->officer->isKader() : ((int)$user->officer->officer_type_id === 4);
+        }
+
+        // Tentukan label role terstandarisasi untuk client
+        if ((int)$user->user_type_id === 1) {
+            $userData['role_name'] = 'Admin';
+        } elseif ((int)$user->user_type_id === 2) {
+            $userData['role_name'] = 'Pasien';
+        } elseif ((int)$user->user_type_id === 3) {
+            $isKader = isset($userData['is_kader']) && $userData['is_kader'] === true;
+            $userData['role_name'] = $isKader ? 'Kader' : 'Petugas Kesehatan';
+        } else {
+            $userData['role_name'] = $user->userType?->name ?? 'Pengguna';
         }
         if ($user->patient) {
             $p = $user->patient;

@@ -106,6 +106,31 @@ class ConversationController extends Controller
     }
 
     /**
+     * Get total unread message count for the authenticated user.
+     */
+    public function unreadCount(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'unread_count' => 0,
+            ], 401);
+        }
+
+        $conversations = Conversation::whereNotHiddenFor($user)->get();
+        $totalUnread = 0;
+        foreach ($conversations as $conv) {
+            $totalUnread += $conv->unreadCountFor($user);
+        }
+
+        return response()->json([
+            'success'      => true,
+            'unread_count' => $totalUnread,
+        ]);
+    }
+
+    /**
      * Start or open a 2-way private conversation with a recipient.
      */
     public function store(Request $request)

@@ -133,6 +133,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::prefix('conversations')->group(function () {
         Route::get('/', [ConversationController::class, 'index']);
         Route::get('/recipients', [ConversationController::class, 'getRecipients']);
+        Route::get('/unread-count', [ConversationController::class, 'unreadCount']);
         Route::post('/', [ConversationController::class, 'store']);
         Route::post('/bulk-hide', [ConversationController::class, 'bulkHide']);
         Route::post('/messages', function (\Illuminate\Http\Request $request) {
