@@ -79,14 +79,21 @@ class EducationController extends Controller
         }
 
         $currentUserId = $user ? $user->id : null;
+        $readMaterialIds = $currentUserId
+            ? \App\Models\EducationalMaterialRead::where('user_id', $currentUserId)->pluck('educational_material_id')->flip()->all()
+            : [];
 
         // Format data untuk dikirim ke frontend dengan informasi hak aksi
-        $data = $materials->map(function ($material) use ($isAdmin, $isPetugas, $currentUserId) {
+        $data = $materials->map(function ($material) use ($isAdmin, $isPetugas, $currentUserId, $readMaterialIds) {
             $isOwner = $currentUserId && ($material->created_by == $currentUserId);
             $canEdit = $isAdmin || ($isPetugas && $isOwner);
             $canDelete = $isAdmin || ($isPetugas && $isOwner);
 
             $authorName = $material->author ? $material->author->name : 'Petugas TB Care';
+            $isRead = isset($readMaterialIds[$material->id]);
+            $publishedAt = $material->is_publish
+                ? ($material->updated_at ? $material->updated_at->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') : ($material->created_at ? $material->created_at->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') : null))
+                : null;
 
             return [
                 'id'             => $material->id,
@@ -102,12 +109,14 @@ class EducationController extends Controller
                     ? $material->video_url
                     : null,
 
-                'is_publish'  => (int) ($material->is_publish ? 1 : 0),
-                'created_by'  => $material->created_by,
-                'author_name' => $authorName,
-                'can_edit'    => $canEdit,
-                'can_delete'  => $canDelete,
-                'created_at'  => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
+                'is_publish'   => (int) ($material->is_publish ? 1 : 0),
+                'is_read'      => $isRead,
+                'published_at' => $publishedAt,
+                'created_by'   => $material->created_by,
+                'author_name'  => $authorName,
+                'can_edit'     => $canEdit,
+                'can_delete'   => $canDelete,
+                'created_at'   => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
             ];
         });
 
@@ -267,7 +276,41 @@ class EducationController extends Controller
         $canEdit = $isAdmin || ($isPetugas && $isOwner);
         $canDelete = $isAdmin || ($isPetugas && $isOwner);
 
+        // Tandai status materi edukasi telah diakses / dibaca oleh pengguna ini (tersimpan di database)
+        $isRead = false;
+        if ($user) {
+            try {
+                \App\Models\EducationalMaterialRead::firstOrCreate(
+                    [
+                        'user_id'                 => $user->id,
+                        'educational_material_id' => $material->id,
+                    ],
+                    [
+                        'read_at' => now(),
+                    ]
+                );
+                $isRead = true;
+            } catch (\Throwable $readEx) {
+                \Illuminate\Support\Facades\Log::warning('Gagal mencatat EducationalMaterialRead: ' . $readEx->getMessage());
+            }
+
+            // Tandai notifikasi terkait materi edukasi ini sebagai sudah dibaca (read_at terisi)
+            try {
+                $user->unreadNotifications
+                    ->filter(function ($n) use ($material) {
+                        $edId = $n->data['education_id'] ?? $n->data['material_id'] ?? null;
+                        return (int) $edId === (int) $material->id;
+                    })
+                    ->markAsRead();
+            } catch (\Throwable $notifEx) {
+                \Illuminate\Support\Facades\Log::warning('Gagal menandai notifikasi edukasi sebagai dibaca: ' . $notifEx->getMessage());
+            }
+        }
+
         $authorName = $material->author ? $material->author->name : 'Petugas TB Care';
+        $publishedAt = $material->is_publish
+            ? ($material->updated_at ? $material->updated_at->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') : ($material->created_at ? $material->created_at->timezone('Asia/Jakarta')->format('Y-m-d H:i:s') : null))
+            : null;
 
         $data = [
             'id'             => $material->id,
@@ -283,13 +326,15 @@ class EducationController extends Controller
                 ? $material->video_url
                 : null,
 
-            'is_publish'  => (int) ($material->is_publish ? 1 : 0),
-            'created_by'  => $material->created_by,
-            'author_name' => $authorName,
-            'can_edit'    => $canEdit,
-            'can_delete'  => $canDelete,
-            'created_at'  => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
-            'updated_at'  => $material->updated_at ? $material->updated_at->format('Y-m-d H:i:s') : null,
+            'is_publish'   => (int) ($material->is_publish ? 1 : 0),
+            'is_read'      => $isRead,
+            'published_at' => $publishedAt,
+            'created_by'   => $material->created_by,
+            'author_name'  => $authorName,
+            'can_edit'     => $canEdit,
+            'can_delete'   => $canDelete,
+            'created_at'   => $material->created_at ? $material->created_at->format('Y-m-d H:i:s') : null,
+            'updated_at'   => $material->updated_at ? $material->updated_at->format('Y-m-d H:i:s') : null,
         ];
 
         return response()->json([

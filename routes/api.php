@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\TreatmentController;
 use App\Http\Controllers\Api\TreatmentVisitController;
 use App\Http\Controllers\Api\CloseContactController;
 use App\Http\Controllers\Api\AppVersionApiController;
+use App\Http\Controllers\Api\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -156,6 +157,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::prefix('reminders')->group(function () {
         Route::get('/recipients', [BulkReminderController::class, 'getRecipients']);
         Route::post('/bulk-send', [BulkReminderController::class, 'sendBulk']);
+    });
+
+    // In-App Notifications & Pusat Notifikasi
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::delete('/{id}', [NotificationController::class, 'destroy']);
     });
 
     // Modul & Dashboard Khusus Kader TB

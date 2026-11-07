@@ -27,6 +27,19 @@ class EducationalMaterial extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function reads()
+    {
+        return $this->hasMany(EducationalMaterialRead::class, 'educational_material_id');
+    }
+
+    public function isReadBy(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+        return $this->reads()->where('user_id', $user->id)->exists();
+    }
+
     public function getEmbedUrlAttribute()
     {
         if (!$this->video_url) return null;
@@ -72,8 +85,9 @@ class EducationalMaterial extends Model
     }
 
     /**
-     * Memicu notifikasi materi edukasi baru ke pasien dan kader TB Care yang aktif
-     * Hanya dikirim jika materi berstatus publish dan belum pernah dikirim notifikasi.
+     * Memicu notifikasi materi edukasi baru ke kader dan pasien TB Care yang aktif.
+     * Mengirim Database Notification (in-app) dan Push Notification via FCM.
+     * Hanya dikirim jika materi berstatus publish dan belum pernah dikirim notifikasi (Idempotent).
      */
     public function sendPublishNotification(): bool
     {
@@ -81,23 +95,48 @@ class EducationalMaterial extends Model
             return false;
         }
 
-        // Kunci status notifikasi terlebih dahulu agar tidak terjadi duplikasi
+        // Kunci status notifikasi terlebih dahulu agar tidak terjadi duplikasi (idempotent)
         $this->notification_sent = true;
         $this->saveQuietly();
 
-        // Penerima: Pasien aktif (user_type_id == 2) dan Kader aktif (user_type_id == 3 && officer_type_id == 4)
-        // Tidak mengirim ke Admin, Petugas, atau akun nonaktif
-        $patientTokens = User::where('is_active', true)
-            ->where('user_type_id', 2)
-            ->whereNotNull('fcm_token')
-            ->where('fcm_token', '!=', '')
-            ->pluck('fcm_token');
+        // Penerima: Kader aktif (user_type_id == 3 && officer_type_id == 4) dan Pasien aktif (user_type_id == 2)
+        // Tidak mengirim ke Admin, Petugas selain kader, akun nonaktif, atau pembuat materi sendiri
+        $creatorId = $this->created_by;
 
-        $kaderTokens = User::where('is_active', true)
+        $kaderUsers = User::where('is_active', true)
             ->where('user_type_id', 3)
             ->whereHas('officer', function ($q) {
                 $q->where('officer_type_id', 4);
             })
+            ->when($creatorId, fn($q) => $q->where('id', '!=', $creatorId))
+            ->get();
+
+        $patientUsers = User::where('is_active', true)
+            ->where('user_type_id', 2)
+            ->when($creatorId, fn($q) => $q->where('id', '!=', $creatorId))
+            ->get();
+
+        $recipientUsers = $kaderUsers->merge($patientUsers)->unique('id');
+
+        // 1. Simpan In-App Database Notifications untuk seluruh penerima yang berhak
+        if ($recipientUsers->isNotEmpty()) {
+            try {
+                \Illuminate\Support\Facades\Notification::send(
+                    $recipientUsers,
+                    new \App\Notifications\EducationPublishedNotification($this, 'kader')
+                );
+            } catch (\Throwable $notifEx) {
+                \Illuminate\Support\Facades\Log::error('Gagal mengirim Database Notification edukasi: ' . $notifEx->getMessage());
+            }
+        }
+
+        // 2. Kumpulkan token FCM untuk push notification
+        $patientTokens = $patientUsers
+            ->whereNotNull('fcm_token')
+            ->where('fcm_token', '!=', '')
+            ->pluck('fcm_token');
+
+        $kaderTokens = $kaderUsers
             ->whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
             ->pluck('fcm_token');
@@ -107,14 +146,24 @@ class EducationalMaterial extends Model
         $creator = $this->author;
         $senderRole = ($creator && $creator->isSuperAdmin()) ? 'Administrator TB Care' : 'Petugas TB Care';
         $title = 'Materi Edukasi Baru';
-        $body  = "{$senderRole} telah menerbitkan materi edukasi baru: {$this->title_material}.";
-        $data  = [
-            'type'         => 'education',
-            'material_id'  => (string) $this->id,
-            'education_id' => (string) $this->id,
+        $body  = "Petugas telah menerbitkan materi edukasi baru: {$this->title_material}. Silakan buka aplikasi TB Care untuk membaca materi.";
+        $publishedAt = $this->updated_at
+            ? $this->updated_at->timezone('Asia/Jakarta')->format('Y-m-d H:i:s')
+            : now('Asia/Jakarta')->format('Y-m-d H:i:s');
+
+        $data = [
+            'type'              => 'education_published',
+            'notification_type' => 'education_published',
+            'material_id'       => (string) $this->id,
+            'education_id'      => (string) $this->id,
+            'title'             => $title,
+            'message'           => $body,
+            'published_at'      => $publishedAt,
+            'target_role'       => 'kader',
+            'click_action'      => 'FLUTTER_NOTIFICATION_CLICK',
         ];
 
-        // 1. Simpan catatan ke Notification Center / System Notifications
+        // 3. Simpan catatan ke Notification Center / System Notifications (Web Admin)
         try {
             SystemNotification::create([
                 'title'                => $title,
@@ -130,7 +179,7 @@ class EducationalMaterial extends Model
             \Illuminate\Support\Facades\Log::error('Gagal mencatat SystemNotification edukasi: ' . $e->getMessage());
         }
 
-        // 2. Kirim Push Notification via FCM
+        // 4. Kirim Push Notification via FCM
         if (!empty($tokens)) {
             try {
                 \App\Services\FcmService::sendNotification($tokens, $title, $body, $data);

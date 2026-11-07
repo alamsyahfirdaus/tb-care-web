@@ -10,6 +10,7 @@ use App\Models\Patient;
 use App\Models\PatientReminder;
 use App\Models\TreatmentVisit;
 use App\Models\User;
+use App\Http\Controllers\Api\PatientController;
 use App\Services\ChatAuthorizationService;
 use App\Services\FcmService;
 use Carbon\Carbon;
@@ -447,6 +448,28 @@ class KaderController extends Controller
             }
         }
 
+        // 4. Sinkronisasi notifikasi database untuk pasien (In-App Notification Center)
+        if ($patientUser && Schema::hasTable('notifications')) {
+            try {
+                $patientUser->notifications()->create([
+                    'id'      => (string) \Illuminate\Support\Str::uuid(),
+                    'type'    => ($request->type === 'visit') ? 'App\Notifications\VisitReminderNotification' : 'App\Notifications\MedicationReminderNotification',
+                    'data'    => [
+                        'notification_type' => ($request->type === 'visit') ? 'visit_reminder' : 'medication_reminder',
+                        'type'              => ($request->type === 'visit') ? 'visit_reminder' : 'medication_reminder',
+                        'patient_id'        => (int) $patient->id,
+                        'title'             => $title,
+                        'message'           => $body,
+                        'reminder_time'     => Carbon::now('Asia/Jakarta')->format('H:i'),
+                        'sender_name'       => $user->name,
+                    ],
+                    'read_at' => null,
+                ]);
+            } catch (\Throwable $notifEx) {
+                Log::warning('Database Notification Reminder Error: ' . $notifEx->getMessage());
+            }
+        }
+
         $statusLabel = match ($status) {
             'sent'     => 'Pengingat berhasil dikirim ke perangkat pasien.',
             'no_token' => 'Pengingat dicatat, namun pasien belum mengaktifkan notifikasi / belum login.',
@@ -664,6 +687,7 @@ class KaderController extends Controller
                         'medication_time'      => $activeTreatment?->medication_time,
                     ],
                     'treatments'         => $treatments,
+                    'medications'        => $activeTreatment ? PatientController::normalizePrescription($activeTreatment->prescription, $activeTreatment->medication_time) : [],
                     'medication_records' => $medicationRecords,
                     'daily_records'      => $dailyRecordsDescending,
                     'adherence'          => $adherenceSummary,

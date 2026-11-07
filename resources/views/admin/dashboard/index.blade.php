@@ -125,7 +125,7 @@
     <!-- Treatment Progress & Compliance Card -->
     <div class="row">
         <div class="col-md-4">
-            <div class="small-box bg-gradient-info">
+            <div class="small-box bg-info">
                 <div class="inner">
                     <h3>{{ $pasienAktif }} <sup style="font-size: 20px">Pasien</sup></h3>
                     <p class="font-weight-bold mb-0">Sedang Dalam Pengobatan Aktif</p>
@@ -140,7 +140,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="small-box bg-gradient-success">
+            <div class="small-box bg-success">
                 <div class="inner">
                     <h3>{{ $tingkatKepatuhan }}<sup style="font-size: 20px">%</sup></h3>
                     <p class="font-weight-bold mb-0">Tingkat Kepatuhan Minum Obat</p>
@@ -155,7 +155,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="small-box bg-gradient-secondary">
+            <div class="small-box bg-secondary">
                 <div class="inner">
                     <h3>{{ $pasienSelesai }} <sup style="font-size: 20px">Pasien</sup></h3>
                     <p class="font-weight-bold mb-0">Pengobatan Tuntas / Sembuh</p>

@@ -435,6 +435,10 @@ class PatientController extends Controller
 
             'puskesmas'      => $puskesmasName,
 
+            'medications'    => ($activeTreatment = $patient->treatments ? ($patient->treatments->firstWhere('treatment_status', 'Berjalan') ?? $patient->treatments->first()) : null)
+                ? $this->normalizePrescription($activeTreatment->prescription, $activeTreatment->medication_time)
+                : [],
+
             'treatments'     => $patient->treatments ? $patient->treatments->map(function ($treatment) use ($puskesmasName) {
                 return [
                     'id'                => $treatment->id,
@@ -1152,7 +1156,7 @@ class PatientController extends Controller
      * @param string|null $defaultMedicationTime
      * @return array
      */
-    protected function normalizePrescription($rawPrescription, $defaultMedicationTime = null): array
+    public static function normalizePrescription($rawPrescription, $defaultMedicationTime = null): array
     {
         if (empty($rawPrescription)) {
             return [];
@@ -1238,9 +1242,9 @@ class PatientController extends Controller
      * @param mixed $rawPrescription
      * @return array|null
      */
-    protected function normalizePrescriptionNames($rawPrescription): ?array
+    public static function normalizePrescriptionNames($rawPrescription): ?array
     {
-        $meds = $this->normalizePrescription($rawPrescription);
+        $meds = self::normalizePrescription($rawPrescription);
         if (empty($meds)) {
             return null;
         }
