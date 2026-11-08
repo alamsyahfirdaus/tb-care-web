@@ -32,6 +32,11 @@ class MedicationRecord extends Model
         return $this->belongsTo(PatientTreatment::class, 'patient_treatment_id');
     }
 
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
     public function scopeAccessibleBy($query, User $user)
     {
         if ($user->user_type_id == 1) {

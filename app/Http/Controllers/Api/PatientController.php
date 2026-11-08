@@ -426,6 +426,7 @@ class PatientController extends Controller
             'province_name'    => $provinceName,
 
             'name'           => optional($patient->user)->name,
+            'username'       => optional($patient->user)->username,
             'email'          => optional($patient->user)->email,
             'phone'          => optional($patient->user)->phone,
             'gender'         => optional($patient->user)->gender,

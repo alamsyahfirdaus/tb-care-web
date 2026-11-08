@@ -175,6 +175,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/reminders', [\App\Http\Controllers\Api\KaderController::class, 'reminders']);
         Route::post('/reminders/send', [\App\Http\Controllers\Api\KaderController::class, 'sendReminder']);
         Route::get('/patients/{id}/history', [\App\Http\Controllers\Api\KaderController::class, 'patientHistory']);
+        Route::post('/patients/{id}/verify-medication', [\App\Http\Controllers\Api\KaderController::class, 'verifyMedication']);
     });
 
     // Dashboard / Beranda Pasien Terpadu

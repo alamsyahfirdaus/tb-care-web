@@ -32,10 +32,10 @@ class ProfileController extends Controller
             ]);
         } elseif (in_array($user->user_type_id, [3, 4])) {
             $user->load([
-                'officer.puskesmas.subdistrict.district',
+                'officer.puskesmas.subdistrict.district.province',
                 'officer.district.province',
-                'officer.kaderAreas.village',
-                'officer.kaderAreas.subdistrict',
+                'officer.kaderAreas.village.subdistrict.district.province',
+                'officer.kaderAreas.subdistrict.district.province',
             ]);
             if ($user->officer) {
                 $user->officer->append(['officer_type_name', 'scope_description']);
@@ -50,7 +50,50 @@ class ProfileController extends Controller
             $userData['officer_type_id'] = $user->officer->officer_type_id;
             $userData['officer_type_name'] = $user->officer->officer_type_name;
             $userData['scope_description'] = $user->officer->scope_description;
-            $userData['is_kader'] = method_exists($user->officer, 'isKader') ? $user->officer->isKader() : ((int)$user->officer->officer_type_id === 4);
+            $isKader = method_exists($user->officer, 'isKader') ? $user->officer->isKader() : ((int)$user->officer->officer_type_id === 4);
+            $userData['is_kader'] = $isKader;
+
+            if ($isKader) {
+                $areas = $user->officer->kaderAreas;
+                $territoryList = [];
+                $formattedAddresses = [];
+                foreach ($areas as $area) {
+                    $vil = $area->village;
+                    $sub = $area->subdistrict ?? $vil?->subdistrict;
+                    $dist = $sub?->district ?? $user->officer->district;
+                    $prov = $dist?->province;
+
+                    $vilName = $vil?->name;
+                    $subName = $sub?->name;
+                    $distName = $dist?->name;
+                    $provName = $prov?->name;
+
+                    $parts = [];
+                    if ($vilName) $parts[] = 'Desa/Kel. ' . $vilName;
+                    if ($subName) $parts[] = 'Kec. ' . $subName;
+                    if ($distName) $parts[] = $distName;
+                    if ($provName) $parts[] = $provName;
+
+                    $formatted = implode(', ', $parts);
+                    if (!empty($formatted)) {
+                        $formattedAddresses[] = $formatted;
+                    }
+
+                    $territoryList[] = [
+                        'village_name'      => $vilName ?? '-',
+                        'subdistrict_name'  => $subName ?? '-',
+                        'district_name'     => $distName ?? '-',
+                        'province_name'     => $provName ?? '-',
+                        'formatted_address' => $formatted,
+                    ];
+                }
+
+                $userData['kader_territories'] = $territoryList;
+                $userData['kader_territory'] = !empty($territoryList) ? $territoryList[0] : null;
+                $userData['kader_territory_formatted'] = !empty($formattedAddresses)
+                    ? implode("\n", $formattedAddresses)
+                    : ($user->officer->scope_description ?? 'Wilayah Kader belum diatur');
+            }
         }
 
         // Tentukan label role terstandarisasi untuk client
@@ -114,6 +157,13 @@ class ProfileController extends Controller
         $isPatient = ($user->user_type_id == 2);
         $patient = $isPatient ? ($user->patient ?: Patient::where('user_id', $user->id)->first()) : null;
         $patientId = $patient ? $patient->id : null;
+
+        if (!$isPatient && $request->hasAny(['village_id', 'subdistrict_id', 'district_id', 'province_id', 'puskesmas_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Wilayah tugas atau instansi penugasan bersifat read-only dan hanya dapat diubah oleh Administrator / Petugas yang berwenang.',
+            ], 403);
+        }
 
         $rules = [
             'name'           => 'sometimes|required|string|max:255',

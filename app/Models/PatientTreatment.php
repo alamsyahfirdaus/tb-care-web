@@ -309,41 +309,84 @@ class PatientTreatment extends Model
                 $timeCarbonToday = \Carbon\Carbon::today($tz)->setTimeFromTimeString($doseTime);
 
                 if ($hasTakenDose) {
-                    // Dosis sudah diminum
                     $rec = $recsOnDate[min($dIndex, count($recsOnDate) - 1)];
-                    $takenAt = \Carbon\Carbon::parse($rec->created_at)->timezone($tz);
+                    $isMissedStatus = ($rec->status === 'Terlewat');
 
-                    $takenItem = [
-                        'id'                  => $rec->id,
-                        'record_id'           => $rec->id,
-                        'patient_treatment_id'=> $rec->patient_treatment_id,
-                        'date'                => $dateStr,
-                        'date_formatted'      => $dateIndo,
-                        'day_name'            => $dayNameIndo,
-                        'scheduled_time'      => substr($doseTime, 0, 5) . ' WIB',
-                        'time_taken'          => $takenAt->format('H:i:s'),
-                        'time_taken_formatted'=> $takenAt->format('H.i') . ' WIB',
-                        'status'              => 'Sudah Minum',
-                        'status_key'          => 'taken',
-                        'color'               => '#10B981',
-                        'badge_class'         => 'badge-success',
-                        'is_verified'         => (int) $rec->is_verified,
-                        'verification_status' => $rec->is_verified ? 'Terverifikasi' : 'Menunggu Verifikasi',
-                        'verification_note'   => $rec->verification_note ?? null,
-                        'late'                => (int) $rec->late,
-                        'notes'               => $rec->notes ?: null,
-                        'photo'               => $rec->photo ?: null,
-                        'photo_url'           => $rec->photo ? url('/api/image/' . $rec->photo) : null,
-                        'photo_raw'           => $rec->photo ?: null,
-                        'submitted_at'        => $rec->created_at->format('Y-m-d H:i:s'),
-                        'submitted_relative'  => $rec->created_at->diffForHumans(),
-                        'has_proof'           => !empty($rec->photo),
-                    ];
+                    if ($isMissedStatus) {
+                        // Diverifikasi oleh Kader: Pasien Tidak Minum Obat
+                        $missedItem = [
+                            'id'                  => $rec->id,
+                            'record_id'           => $rec->id,
+                            'patient_treatment_id'=> $rec->patient_treatment_id,
+                            'date'                => $dateStr,
+                            'date_formatted'      => $dateIndo,
+                            'day_name'            => $dayNameIndo,
+                            'scheduled_time'      => substr($doseTime, 0, 5) . ' WIB',
+                            'time_taken'          => null,
+                            'time_taken_formatted'=> null,
+                            'status'              => 'Terlewat',
+                            'status_key'          => 'missed',
+                            'color'               => '#EF4444',
+                            'badge_class'         => 'badge-danger',
+                            'is_verified'         => 1,
+                            'verification_status' => 'Terverifikasi (Tidak Minum)',
+                            'verification_note'   => $rec->verification_note ?? 'Diverifikasi oleh Kader: Tidak Minum Obat',
+                            'confirmation_source' => $rec->confirmation_source ?? 'kader',
+                            'verified_by'         => $rec->verified_by,
+                            'verified_at'         => $rec->verified_at ? \Carbon\Carbon::parse($rec->verified_at)->format('Y-m-d H:i:s') : null,
+                            'late'                => 1,
+                            'notes'               => $rec->notes ?: 'Diverifikasi langsung oleh Kader: Pasien Tidak Minum Obat',
+                            'photo'               => null,
+                            'photo_url'           => null,
+                            'photo_raw'           => null,
+                            'submitted_at'        => $rec->created_at ? $rec->created_at->format('Y-m-d H:i:s') : null,
+                            'submitted_relative'  => $rec->created_at ? $rec->created_at->diffForHumans() : null,
+                            'has_proof'           => false,
+                        ];
 
-                    $takenDays[] = $takenItem;
-                    $dailyRecords[] = $takenItem;
-                    $scheduledDosesCount++;
-                    $takenDosesCount++;
+                        $missedDays[] = $missedItem;
+                        $dailyRecords[] = $missedItem;
+                        $scheduledDosesCount++;
+                        $missedDosesCount++;
+                    } else {
+                        // Dosis sudah diminum (konfirmasi mandiri atau verifikasi kader)
+                        $takenAt = \Carbon\Carbon::parse($rec->created_at)->timezone($tz);
+
+                        $takenItem = [
+                            'id'                  => $rec->id,
+                            'record_id'           => $rec->id,
+                            'patient_treatment_id'=> $rec->patient_treatment_id,
+                            'date'                => $dateStr,
+                            'date_formatted'      => $dateIndo,
+                            'day_name'            => $dayNameIndo,
+                            'scheduled_time'      => substr($doseTime, 0, 5) . ' WIB',
+                            'time_taken'          => $takenAt->format('H:i:s'),
+                            'time_taken_formatted'=> $takenAt->format('H.i') . ' WIB',
+                            'status'              => 'Sudah Minum',
+                            'status_key'          => 'taken',
+                            'color'               => '#10B981',
+                            'badge_class'         => 'badge-success',
+                            'is_verified'         => (int) $rec->is_verified,
+                            'verification_status' => $rec->is_verified ? 'Terverifikasi' : 'Menunggu Verifikasi',
+                            'verification_note'   => $rec->verification_note ?? null,
+                            'confirmation_source' => $rec->confirmation_source ?? 'patient',
+                            'verified_by'         => $rec->verified_by,
+                            'verified_at'         => $rec->verified_at ? \Carbon\Carbon::parse($rec->verified_at)->format('Y-m-d H:i:s') : null,
+                            'late'                => (int) $rec->late,
+                            'notes'               => $rec->notes ?: null,
+                            'photo'               => $rec->photo ?: null,
+                            'photo_url'           => $rec->photo ? url('/api/image/' . $rec->photo) : null,
+                            'photo_raw'           => $rec->photo ?: null,
+                            'submitted_at'        => $rec->created_at ? $rec->created_at->format('Y-m-d H:i:s') : null,
+                            'submitted_relative'  => $rec->created_at ? $rec->created_at->diffForHumans() : null,
+                            'has_proof'           => !empty($rec->photo),
+                        ];
+
+                        $takenDays[] = $takenItem;
+                        $dailyRecords[] = $takenItem;
+                        $scheduledDosesCount++;
+                        $takenDosesCount++;
+                    }
                 } else {
                     // Belum ada rekaman pada tanggal ini
                     if ($isToday) {

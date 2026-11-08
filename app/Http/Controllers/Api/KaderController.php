@@ -84,18 +84,24 @@ class KaderController extends Controller
                 });
             }
 
-            // Filter status pengobatan jika disediakan
+            // Filter status pengobatan: default hanya pengobatan aktif 'Berjalan'
             if ($request->filled('treatment_status')) {
                 $statusFilter = trim($request->input('treatment_status'));
-                $patientsQuery->whereHas('treatments', function ($tq) use ($statusFilter) {
-                    $lower = strtolower($statusFilter);
-                    if ($lower === 'pengobatan lengkap') {
-                        $tq->whereIn('treatment_status', ['Pengobatan Lengkap', 'Selesai']);
-                    } elseif ($lower === 'putus berobat') {
-                        $tq->whereIn('treatment_status', ['Putus Berobat', 'Lost to Follow Up', 'Putus Obat']);
-                    } else {
-                        $tq->where('treatment_status', $statusFilter);
-                    }
+                if (strtolower($statusFilter) !== 'all' && strtolower($statusFilter) !== 'semua') {
+                    $patientsQuery->whereHas('treatments', function ($tq) use ($statusFilter) {
+                        $lower = strtolower($statusFilter);
+                        if ($lower === 'pengobatan lengkap') {
+                            $tq->whereIn('treatment_status', ['Pengobatan Lengkap', 'Selesai']);
+                        } elseif ($lower === 'putus berobat') {
+                            $tq->whereIn('treatment_status', ['Putus Berobat', 'Lost to Follow Up', 'Putus Obat']);
+                        } else {
+                            $tq->where('treatment_status', $statusFilter);
+                        }
+                    });
+                }
+            } else {
+                $patientsQuery->whereHas('treatments', function ($tq) {
+                    $tq->where('treatment_status', 'Berjalan');
                 });
             }
 
@@ -223,6 +229,7 @@ class KaderController extends Controller
                     'id'                     => $p->id,
                     'user_id'                => $p->user_id,
                     'name'                   => $formattedName,
+                    'username'               => optional($p->user)->username ?? '',
                     'nik'                    => $p->nik ?? '-',
                     'phone'                  => optional($p->user)->phone ?? '-',
                     'gender'                 => optional($p->user)->gender ?? '-',
@@ -679,6 +686,7 @@ class KaderController extends Controller
                     'patient'            => [
                         'id'                   => $patient->id,
                         'name'                 => optional($patient->user)->name,
+                        'username'             => optional($patient->user)->username ?? '',
                         'nik'                  => $patient->nik,
                         'phone'                => optional($patient->user)->phone,
                         'village'              => optional($patient->village)->name,
@@ -700,6 +708,165 @@ class KaderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memuat riwayat pasien: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/kader/patients/{id}/verify-medication
+     * Verifikasi lapangan konfirmasi minum obat untuk hari terlewat oleh Kader.
+     */
+    public function verifyMedication(Request $request, $id)
+    {
+        if ($errorResponse = $this->authorizeKaderAccess()) {
+            return $errorResponse;
+        }
+
+        $user = Auth::user();
+        $patient = Patient::with(['user', 'puskesmas'])->find($id);
+
+        if (!$patient) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        if (!$patient->isAccessibleBy($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki hak akses memverifikasi pasien di luar wilayah binaan Anda.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'date'   => 'required|date_format:Y-m-d|before_or_equal:today',
+            'action' => 'required|in:tidak_minum,minum_tanpa_konfirmasi',
+            'note'   => 'nullable|string|max:500',
+            'notes'  => 'nullable|string|max:500',
+        ], [
+            'date.required'        => 'Tanggal verifikasi wajib diisi.',
+            'date.date_format'     => 'Format tanggal harus YYYY-MM-DD.',
+            'date.before_or_equal' => 'Tanggal verifikasi tidak boleh di masa depan.',
+            'action.required'      => 'Tindakan verifikasi wajib dipilih.',
+            'action.in'            => 'Pilihan verifikasi harus salah satu dari: tidak_minum atau minum_tanpa_konfirmasi.',
+            'notes.max'            => 'Catatan maksimal 500 karakter.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $date = $request->input('date');
+        $action = $request->input('action');
+        $notes = $request->input('note') ?? $request->input('notes');
+
+        // Cari pengobatan aktif
+        $activeTreatment = $patient->treatments()
+            ->where('treatment_status', 'Berjalan')
+            ->orderByDesc('start_date')
+            ->first();
+
+        if (!$activeTreatment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pasien tidak memiliki data pengobatan aktif berstatus Berjalan.',
+            ], 422);
+        }
+
+        // Validasi tanggal tidak boleh mendahului tanggal mulai pengobatan
+        if ($activeTreatment->start_date && Carbon::parse($date)->lt(Carbon::parse($activeTreatment->start_date)->startOfDay())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tanggal verifikasi tidak boleh sebelum tanggal mulai pengobatan (' . $activeTreatment->start_date . ').',
+            ], 422);
+        }
+
+        $doseTime = substr($activeTreatment->medication_time ?? '08:00', 0, 5) . ':00';
+        $recordDateTime = Carbon::parse($date . ' ' . $doseTime, 'Asia/Jakarta');
+
+        DB::beginTransaction();
+        try {
+            // Cari apakah record pada tanggal tersebut sudah ada
+            $record = MedicationRecord::where('patient_treatment_id', $activeTreatment->id)
+                ->whereDate('created_at', $date)
+                ->first();
+
+            $status = ($action === 'minum_tanpa_konfirmasi') ? 'Diminum' : 'Terlewat';
+            $defaultNote = ($action === 'minum_tanpa_konfirmasi')
+                ? 'Dikonfirmasi langsung oleh Kader (Minum Obat Tanpa Konfirmasi)'
+                : 'Dikonfirmasi langsung oleh Kader (Pasien Tidak Minum Obat)';
+            $finalNote = !empty($notes) ? $notes : $defaultNote;
+
+            if ($record) {
+                $record->update([
+                    'status'              => $status,
+                    'is_verified'         => 1,
+                    'late'                => ($action === 'tidak_minum') ? 1 : $record->late,
+                    'confirmation_source' => 'kader',
+                    'verified_by'         => $user->id,
+                    'verified_at'         => Carbon::now('Asia/Jakarta'),
+                    'verification_note'   => $finalNote,
+                    'notes'               => $finalNote,
+                ]);
+            } else {
+                $record = MedicationRecord::create([
+                    'patient_treatment_id' => $activeTreatment->id,
+                    'photo'                => null,
+                    'is_verified'          => 1,
+                    'late'                 => ($action === 'tidak_minum') ? 1 : 0,
+                    'status'               => $status,
+                    'confirmation_source'  => 'kader',
+                    'verified_by'          => $user->id,
+                    'verified_at'          => Carbon::now('Asia/Jakarta'),
+                    'verification_note'    => $finalNote,
+                    'notes'                => $finalNote,
+                    'created_at'           => $recordDateTime,
+                    'updated_at'           => Carbon::now('Asia/Jakarta'),
+                ]);
+            }
+
+            DB::commit();
+
+            // Hitung ulang kepatuhan minum obat secara real-time
+            $detailedAdherence = $activeTreatment->fresh(['medicationRecords'])->calculateDetailedAdherence('all');
+            $adherenceSummary = [
+                'due_doses'            => $detailedAdherence['due_doses'] ?? 0,
+                'taken_doses'          => $detailedAdherence['taken_doses'] ?? 0,
+                'missed_doses'         => $detailedAdherence['total_missed_days'] ?? 0,
+                'adherence_percentage' => $detailedAdherence['percentage'] ?? 0.0,
+                'adherence_average'    => $detailedAdherence['percentage_str'] ?? '0%',
+                'status'               => $detailedAdherence['status'] ?? 'Belum ada data',
+            ];
+
+            return response()->json([
+                'success'   => true,
+                'message'   => ($action === 'minum_tanpa_konfirmasi')
+                    ? 'Berhasil mengonfirmasi pasien telah meminum obat.'
+                    : 'Berhasil mencatat pasien tidak meminum obat pada tanggal tersebut.',
+                'data'      => [
+                    'record_id'           => $record->id,
+                    'date'                => $date,
+                    'action'              => $action,
+                    'status'              => $status,
+                    'confirmation_source' => 'kader',
+                    'verified_by'         => $user->id,
+                    'verified_by_name'    => $user->name,
+                    'verified_at'         => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                    'verification_note'   => $finalNote,
+                    'adherence'           => $adherenceSummary,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('KaderController@verifyMedication Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan verifikasi minum obat: ' . $e->getMessage(),
             ], 500);
         }
     }
