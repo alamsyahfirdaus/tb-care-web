@@ -189,16 +189,25 @@ class KaderController extends Controller
                 $formattedName = NameFormatter::format($rawName);
 
                 if ($activeTreatment && $activeTreatment->visits) {
-                    // Cari jadwal kontrol khusus hari ini
+                    // Cari jadwal kontrol khusus hari ini (hanya yang belum lewat waktu pelaksanaan)
                     foreach ($activeTreatment->visits as $v) {
                         $st = strtolower(trim($v->visit_status ?? ''));
                         $vDate = !empty($v->visit_date) ? Carbon::parse($v->visit_date)->toDateString() : null;
-                        if ($vDate === $today && $st !== 'dibatalkan') {
+                        if ($vDate === $today && !in_array($st, ['dibatalkan', 'batal', 'selesai', 'hadir'])) {
                             $vTime = $v->visit_time ? substr($v->visit_time, 0, 5) : '08:00';
+
+                            // Sembunyikan jadwal kontrol hari ini jika waktu pelaksanaannya sudah terlewat
+                            $visitDateTime = Carbon::parse($vDate . ' ' . $vTime, 'Asia/Jakarta');
+                            if (Carbon::now('Asia/Jakarta')->greaterThan($visitDateTime)) {
+                                continue;
+                            }
+
                             $todayControlSchedules[] = [
                                 'id'                   => $v->id,
                                 'patient_id'           => $p->id,
                                 'patient_name'         => $formattedName,
+                                'nik'                  => $p->nik ?? '-',
+                                'patient_nik'          => $p->nik ?? '-',
                                 'short_address'        => $shortAddress,
                                 'village_name'         => $villageName,
                                 'subdistrict_name'     => $subdistrictName,
@@ -227,13 +236,17 @@ class KaderController extends Controller
                         }
                     }
 
-                    // Cari upcoming visit
+                    // Cari upcoming visit (hanya yang belum lewat waktu pelaksanaannya)
                     $upcomingVisit = $activeTreatment->visits
-                        ->filter(function ($v) use ($today) {
+                        ->filter(function ($v) {
                             $st = strtolower(trim($v->visit_status ?? ''));
-                            return in_array($st, ['terjadwal', 'belum hadir'])
-                                && !empty($v->visit_date)
-                                && Carbon::parse($v->visit_date)->gte(Carbon::today('Asia/Jakarta'));
+                            if (!in_array($st, ['terjadwal', 'belum hadir']) || empty($v->visit_date)) {
+                                return false;
+                            }
+                            $vDate = Carbon::parse($v->visit_date)->toDateString();
+                            $vTime = $v->visit_time ? substr($v->visit_time, 0, 5) : '08:00';
+                            $visitDateTime = Carbon::parse($vDate . ' ' . $vTime, 'Asia/Jakarta');
+                            return $visitDateTime->greaterThanOrEqualTo(Carbon::now('Asia/Jakarta'));
                         })
                         ->sortBy('visit_date')
                         ->first();
@@ -315,14 +328,32 @@ class KaderController extends Controller
                 }
             }
 
-            // Urutkan daftar Pasien Belum Minum Obat berdasarkan waktu minum obat paling awal
+            // Urutkan daftar Pasien Belum Minum Obat berdasarkan waktu minum obat paling awal (ascending)
             usort($unconfirmedPatients, function ($a, $b) {
-                return strcmp($a['medication_time'] ?? '', $b['medication_time'] ?? '');
+                $timeA = !empty($a['medication_time']) ? $a['medication_time'] : '99:99';
+                $timeB = !empty($b['medication_time']) ? $b['medication_time'] : '99:99';
+                $cmp = strcmp($timeA, $timeB);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+                return strcmp((string)($a['id'] ?? ''), (string)($b['id'] ?? ''));
             });
 
-            // Urutkan daftar Jadwal Kontrol Hari Ini berdasarkan waktu kontrol paling awal
+            // Urutkan daftar Jadwal Kontrol Hari Ini berdasarkan waktu kontrol paling awal (ascending)
             usort($todayControlSchedules, function ($a, $b) {
-                return strcmp($a['visit_time'] ?? '', $b['visit_time'] ?? '');
+                $dateA = $a['visit_date'] ?? '';
+                $timeA = !empty($a['visit_time']) ? $a['visit_time'] : '99:99';
+                $dtA = trim($dateA . ' ' . $timeA);
+
+                $dateB = $b['visit_date'] ?? '';
+                $timeB = !empty($b['visit_time']) ? $b['visit_time'] : '99:99';
+                $dtB = trim($dateB . ' ' . $timeB);
+
+                $cmp = strcmp($dtA, $dtB);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+                return strcmp((string)($a['id'] ?? ''), (string)($b['id'] ?? ''));
             });
 
             // Hitung pasien unik dengan jadwal kontrol hari ini
@@ -399,9 +430,10 @@ class KaderController extends Controller
         $user = Auth::user();
 
         $validator = Validator::make($request->all(), [
-            'patient_id' => 'required|exists:patients,id',
-            'type'       => 'required|in:medication,visit',
-            'message'    => 'required|string|max:1000',
+            'patient_id'  => 'required|exists:patients,id',
+            'type'        => 'required|in:medication,visit',
+            'message'     => 'required|string|max:1000',
+            'schedule_id' => 'nullable|integer',
         ], [
             'patient_id.required' => 'Pasien tujuan wajib dipilih.',
             'patient_id.exists'   => 'Data pasien tidak ditemukan.',
@@ -435,21 +467,69 @@ class KaderController extends Controller
             ], 403);
         }
 
-        // Anti-Spam / Cooldown Protection: 5 menit untuk jenis pengingat yang sama ke pasien yang sama
-        if (Schema::hasTable('patient_reminders')) {
+        // Validasi khusus untuk Pengingat Kontrol (Jadwal Kunjungan Faskes)
+        if ($request->type === 'visit') {
+            $visitQuery = TreatmentVisit::whereHas('patientTreatment', function ($q) use ($patient) {
+                $q->where('patient_id', $patient->id);
+            });
+
+            if ($request->filled('schedule_id')) {
+                $visit = (clone $visitQuery)->find($request->schedule_id);
+                if (!$visit) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Jadwal kontrol yang dipilih tidak ditemukan untuk pasien ini.',
+                    ], 404);
+                }
+            } else {
+                $allVisits = (clone $visitQuery)->get();
+                if ($allVisits->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pasien tidak memiliki jadwal kontrol.',
+                    ], 422);
+                }
+
+                // Filter jadwal yang tidak dibatalkan
+                $validVisits = $allVisits->filter(function ($v) {
+                    $st = strtolower(trim($v->visit_status ?? ''));
+                    return !in_array($st, ['dibatalkan', 'batal']);
+                });
+
+                if ($validVisits->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Jadwal kontrol telah dibatalkan.',
+                    ], 422);
+                }
+
+                $visit = $validVisits->sortBy('visit_date')->first();
+            }
+
+            $st = strtolower(trim($visit->visit_status ?? ''));
+            if (in_array($st, ['dibatalkan', 'batal'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jadwal kontrol telah dibatalkan.',
+                ], 422);
+            }
+        }
+
+        // Anti-Spam / Cooldown Protection:
+        // Khusus pengingat minum obat, gunakan proteksi debounce singkat (30 detik) agar tidak terjadi pengiriman ganda akibat tombol ditekan berkali-kali.
+        // Untuk jadwal kontrol, pengingat dapat dikirim berulang kali tanpa cooldown.
+        if ($request->type === 'medication' && Schema::hasTable('patient_reminders')) {
             $recentReminder = PatientReminder::where('sender_id', $user->id)
                 ->where('patient_id', $patient->id)
-                ->where('type', $request->type)
-                ->where('created_at', '>=', Carbon::now()->subMinutes(5))
+                ->where('type', 'medication')
+                ->where('created_at', '>=', Carbon::now()->subSeconds(30))
                 ->first();
 
             if ($recentReminder) {
-                $diffMinutes = 5 - Carbon::now()->diffInMinutes($recentReminder->created_at);
-                $diffMinutes = max(1, $diffMinutes);
                 return response()->json([
                     'success' => false,
                     'code'    => 'RATE_LIMITED',
-                    'message' => "Pengingat {$request->type} baru saja dikirimkan ke {$patient->user->name}. Mohon tunggu sekitar {$diffMinutes} menit sebelum mengirim pengingat kembali.",
+                    'message' => "Pengingat minum obat baru saja dikirimkan ke {$patient->user->name}. Mohon tunggu sejenak sebelum mengirim pengingat kembali.",
                 ], 429);
             }
         }
@@ -564,19 +644,24 @@ class KaderController extends Controller
             }
         }
 
-        $statusLabel = match ($status) {
-            'sent'     => 'Pengingat berhasil dikirim ke perangkat pasien.',
-            'no_token' => 'Pengingat dicatat, namun pasien belum mengaktifkan notifikasi / belum login.',
-            'failed'   => 'Gagal mengirim push notification ke perangkat pasien.',
-            default    => 'Pengingat diproses.',
-        };
+        $successMessage = ($request->type === 'visit')
+            ? 'Pengingat kontrol berhasil dikirim kepada pasien.'
+            : 'Pengingat minum obat berhasil dikirim kepada pasien.';
 
         return response()->json([
-            'success'      => ($status === 'sent' || $status === 'no_token'),
+            'success'      => true,
+            'message'      => $successMessage,
             'status'       => $status,
-            'message'      => $statusLabel,
             'error_reason' => $errorReason,
-            'data'         => $reminderRecord,
+            'data'         => [
+                'reminder_id'     => $reminderRecord?->id,
+                'patient_id'      => (int) $patient->id,
+                'type'            => $request->type,
+                'delivery_status' => $status,
+                'status'          => $status,
+                'error_reason'    => $errorReason,
+                'reminder_record' => $reminderRecord,
+            ],
         ], 200);
     }
 
@@ -709,14 +794,21 @@ class KaderController extends Controller
                 ];
             }
 
-            // Cari 1 Jadwal Kunjungan Puskesmas Berikutnya yang terdekat dan masih aktif
+            // Cari 1 Jadwal Kunjungan Puskesmas Berikutnya yang terdekat dan masih aktif (belum lewat waktu)
             $todayStr = Carbon::today('Asia/Jakarta')->format('Y-m-d');
-            $nextVisit = TreatmentVisit::whereIn('patient_treatment_id', $treatmentIds)
+            $candidateVisits = TreatmentVisit::whereIn('patient_treatment_id', $treatmentIds)
                 ->where('visit_date', '>=', $todayStr)
                 ->whereNotIn('visit_status', ['Dibatalkan', 'Batal', 'Selesai', 'Hadir'])
                 ->orderBy('visit_date', 'asc')
                 ->orderBy('visit_time', 'asc')
-                ->first();
+                ->get();
+
+            $nextVisit = $candidateVisits->first(function ($v) {
+                $vDate = Carbon::parse($v->visit_date)->toDateString();
+                $vTime = $v->visit_time ? substr($v->visit_time, 0, 5) : '08:00';
+                $visitDateTime = Carbon::parse($vDate . ' ' . $vTime, 'Asia/Jakarta');
+                return $visitDateTime->greaterThanOrEqualTo(Carbon::now('Asia/Jakarta'));
+            });
 
             $nextVisitFormatted = $nextVisit ? [
                 'id'                => $nextVisit->id,

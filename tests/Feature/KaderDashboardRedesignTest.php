@@ -187,7 +187,7 @@ class KaderDashboardRedesignTest extends TestCase
         $this->assertEquals('Anes Maulida Sukmara', $schedule['patient_name']);
         $this->assertEquals('09:00', $schedule['visit_time']);
         $this->assertEquals('09:00 WIB', $schedule['visit_time_formatted']);
-        $this->assertEquals('Puskesmas Tamansari', $schedule['puskesmas_name']);
+        $this->assertEquals($puskesmas->name, $schedule['puskesmas_name']);
         $this->assertEquals('Terjadwal', $schedule['visit_status']);
     }
 
@@ -334,5 +334,263 @@ class KaderDashboardRedesignTest extends TestCase
         $this->assertEquals(0, $resp2->json('statistics.belum_minum_obat'));
         $this->assertEquals(1, $resp2->json('statistics.sudah_minum'));
         $this->assertCount(0, $resp2->json('unconfirmed_patients'));
+    }
+
+    public function test_unconfirmed_patients_are_sorted_by_medication_time_ascending(): void
+    {
+        $province = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $district = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $province->id]);
+        $subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
+        $village1 = Village::first() ?? Village::create(['name' => 'Sukahurip', 'subdistrict_id' => $subdistrict->id]);
+        $puskesmas = Puskesmas::first() ?? Puskesmas::create(['name' => 'Puskesmas Tamansari', 'subdistrict_id' => $subdistrict->id]);
+
+        $kaderUser = User::create([
+            'user_type_id' => 3,
+            'name'         => 'Kader Pengurut Waktu',
+            'username'     => 'kader_time_' . uniqid(),
+            'email'        => 'kader_time_' . uniqid() . '@kader.id',
+            'password'     => bcrypt('password'),
+            'is_active'    => true,
+        ]);
+
+        $officer = Officer::create([
+            'user_id'         => $kaderUser->id,
+            'officer_type_id' => 4,
+            'puskesmas_id'    => $puskesmas->id,
+            'district_id'     => $district->id,
+        ]);
+
+        KaderArea::create([
+            'officer_id'     => $officer->id,
+            'subdistrict_id' => $subdistrict->id,
+            'village_id'     => $village1->id,
+            'rw'             => '01',
+            'rt'             => '01',
+        ]);
+
+        // Buat 3 pasien belum minum obat:
+        // Yopi Mulyawan (05:00)
+        // Ahmad Dahlan (07:00)
+        // Budi Santoso (09:00)
+        // Pengurutan berdasarkan waktu harus menghasilkan: Yopi (05:00), Ahmad (07:00), Budi (09:00)
+        // Buktikan bahwa urutan TIDAK alfabetis A-Z (Yopi adalah 'Y' namun muncul pertama karena waktu paling awal).
+        $names = ['Budi Santoso', 'Yopi Mulyawan', 'Ahmad Dahlan'];
+        $medTimes = ['09:00:00', '05:00:00', '07:00:00'];
+
+        foreach ($names as $idx => $name) {
+            $u = User::create([
+                'user_type_id' => 2,
+                'name'         => $name,
+                'username'     => 'patient_' . $idx . '_' . uniqid(),
+                'email'        => 'patient_' . $idx . '_' . uniqid() . '@mail.id',
+                'password'     => bcrypt('password'),
+                'is_active'    => true,
+            ]);
+            $p = Patient::create([
+                'user_id'      => $u->id,
+                'puskesmas_id' => $puskesmas->id,
+                'village_id'   => $village1->id,
+                'nik'          => '3278010099' . $idx . rand(10, 99),
+            ]);
+            PatientTreatment::create([
+                'patient_id'       => $p->id,
+                'treatment_status' => 'Berjalan',
+                'start_date'       => '2026-10-01',
+                'treatment_days'   => 180,
+                'medication_time'  => $medTimes[$idx],
+            ]);
+        }
+
+        $resp = $this->actingAs($kaderUser)->getJson('/api/kader/dashboard');
+        $resp->assertStatus(200);
+
+        $unconfirmed = $resp->json('unconfirmed_patients');
+        $this->assertCount(3, $unconfirmed);
+        // Urutan 1: Yopi (05:00)
+        $this->assertEquals('Yopi Mulyawan', $unconfirmed[0]['name']);
+        $this->assertEquals('05:00', $unconfirmed[0]['medication_time']);
+        // Urutan 2: Ahmad (07:00)
+        $this->assertEquals('Ahmad Dahlan', $unconfirmed[1]['name']);
+        $this->assertEquals('07:00', $unconfirmed[1]['medication_time']);
+        // Urutan 3: Budi (09:00)
+        $this->assertEquals('Budi Santoso', $unconfirmed[2]['name']);
+        $this->assertEquals('09:00', $unconfirmed[2]['medication_time']);
+    }
+
+    public function test_passed_control_schedules_are_excluded_from_today_schedules(): void
+    {
+        // TestNow: 2026-11-08 08:30:00 WIB
+        $province = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $district = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $province->id]);
+        $subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
+        $village1 = Village::first() ?? Village::create(['name' => 'Sukahurip', 'subdistrict_id' => $subdistrict->id]);
+        $puskesmas = Puskesmas::first() ?? Puskesmas::create(['name' => 'Puskesmas Tamansari', 'subdistrict_id' => $subdistrict->id]);
+
+        $kaderUser = User::create([
+            'user_type_id' => 3,
+            'name'         => 'Kader Kontrol',
+            'username'     => 'kader_ctrl_' . uniqid(),
+            'email'        => 'kader_ctrl_' . uniqid() . '@kader.id',
+            'password'     => bcrypt('password'),
+            'is_active'    => true,
+        ]);
+
+        $officer = Officer::create([
+            'user_id'         => $kaderUser->id,
+            'officer_type_id' => 4,
+            'puskesmas_id'    => $puskesmas->id,
+            'district_id'     => $district->id,
+        ]);
+
+        KaderArea::create([
+            'officer_id'     => $officer->id,
+            'subdistrict_id' => $subdistrict->id,
+            'village_id'     => $village1->id,
+            'rw'             => '01',
+            'rt'             => '01',
+        ]);
+
+        // Pasien dengan 2 kunjungan:
+        // 1. Hari ini pukul 07:30 (sudah lewat karena TestNow adalah 08:30) -> HARUS DISEMBUNYIKAN
+        // 2. Hari ini pukul 10:00 (belum lewat) -> HARUS TETAP DITAMPILKAN
+        $u = User::create([
+            'user_type_id' => 2,
+            'name'         => 'Pasien Jadwal',
+            'username'     => 'pt_jadwal_' . uniqid(),
+            'email'        => 'pt_jadwal_' . uniqid() . '@mail.id',
+            'password'     => bcrypt('password'),
+            'is_active'    => true,
+        ]);
+        $p = Patient::create([
+            'user_id'      => $u->id,
+            'puskesmas_id' => $puskesmas->id,
+            'village_id'   => $village1->id,
+            'nik'          => '3278010088' . rand(10, 99),
+        ]);
+        $t = PatientTreatment::create([
+            'patient_id'       => $p->id,
+            'treatment_status' => 'Berjalan',
+            'start_date'       => '2026-10-01',
+            'treatment_days'   => 180,
+            'medication_time'  => '08:00:00',
+        ]);
+
+        TreatmentVisit::create([
+            'patient_treatment_id' => $t->id,
+            'visit_date'           => '2026-11-08',
+            'visit_time'           => '07:30:00',
+            'visit_status'         => 'Terjadwal',
+        ]);
+
+        TreatmentVisit::create([
+            'patient_treatment_id' => $t->id,
+            'visit_date'           => '2026-11-08',
+            'visit_time'           => '10:00:00',
+            'visit_status'         => 'Terjadwal',
+        ]);
+
+        $resp = $this->actingAs($kaderUser)->getJson('/api/kader/dashboard');
+        $resp->assertStatus(200);
+
+        $schedules = $resp->json('today_control_schedules');
+        $this->assertCount(1, $schedules);
+        $this->assertEquals('10:00', $schedules[0]['visit_time']);
+
+        // Periksa juga patient history
+        $historyResp = $this->actingAs($kaderUser)->getJson("/api/kader/patients/{$p->id}/history");
+        $historyResp->assertStatus(200);
+        $nextVisit = $historyResp->json('data.next_visit');
+        $this->assertNotNull($nextVisit);
+        $this->assertEquals('10:00:00', $nextVisit['visit_time']);
+    }
+
+    public function test_today_control_schedules_are_sorted_by_visit_time_ascending(): void
+    {
+        // TestNow: 2026-11-08 08:30:00 WIB
+        $province = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $district = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $province->id]);
+        $subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
+        $village1 = Village::first() ?? Village::create(['name' => 'Sukahurip', 'subdistrict_id' => $subdistrict->id]);
+        $puskesmas = Puskesmas::first() ?? Puskesmas::create(['name' => 'Puskesmas Tamansari', 'subdistrict_id' => $subdistrict->id]);
+
+        $kaderUser = User::create([
+            'user_type_id' => 3,
+            'name'         => 'Kader Jadwal Sort',
+            'username'     => 'kader_jsort_' . uniqid(),
+            'email'        => 'kader_jsort_' . uniqid() . '@kader.id',
+            'password'     => bcrypt('password'),
+            'is_active'    => true,
+        ]);
+
+        $officer = Officer::create([
+            'user_id'         => $kaderUser->id,
+            'officer_type_id' => 4,
+            'puskesmas_id'    => $puskesmas->id,
+            'district_id'     => $district->id,
+        ]);
+
+        KaderArea::create([
+            'officer_id'     => $officer->id,
+            'subdistrict_id' => $subdistrict->id,
+            'village_id'     => $village1->id,
+            'rw'             => '01',
+            'rt'             => '01',
+        ]);
+
+        // Buat 3 pasien dengan jadwal kontrol hari ini:
+        // Ahmad Dahlan (11:00)
+        // Dede Sumiati (13:00)
+        // Yopi Mulyawan (09:30)
+        // Urutan ascending berdasarkan waktu kontrol: Yopi (09:30) -> Ahmad (11:00) -> Dede (13:00)
+        $patientsInfo = [
+            ['name' => 'Ahmad Dahlan', 'time' => '11:00:00'],
+            ['name' => 'Dede Sumiati', 'time' => '13:00:00'],
+            ['name' => 'Yopi Mulyawan', 'time' => '09:30:00'],
+        ];
+
+        foreach ($patientsInfo as $info) {
+            $u = User::create([
+                'user_type_id' => 2,
+                'name'         => $info['name'],
+                'username'     => 'pt_' . uniqid(),
+                'email'        => 'pt_' . uniqid() . '@mail.id',
+                'password'     => bcrypt('password'),
+                'is_active'    => true,
+            ]);
+            $p = Patient::create([
+                'user_id'      => $u->id,
+                'puskesmas_id' => $puskesmas->id,
+                'village_id'   => $village1->id,
+                'nik'          => '3278010077' . rand(10, 99),
+            ]);
+            $t = PatientTreatment::create([
+                'patient_id'       => $p->id,
+                'treatment_status' => 'Berjalan',
+                'start_date'       => '2026-10-01',
+                'treatment_days'   => 180,
+                'medication_time'  => '08:00:00',
+            ]);
+            TreatmentVisit::create([
+                'patient_treatment_id' => $t->id,
+                'visit_date'           => '2026-11-08',
+                'visit_time'           => $info['time'],
+                'visit_status'         => 'Terjadwal',
+            ]);
+        }
+
+        $resp = $this->actingAs($kaderUser)->getJson('/api/kader/dashboard');
+        $resp->assertStatus(200);
+
+        $schedules = $resp->json('today_control_schedules');
+        $this->assertCount(3, $schedules);
+        // Urutan 1: Yopi (09:30)
+        $this->assertEquals('Yopi Mulyawan', $schedules[0]['patient_name']);
+        $this->assertEquals('09:30', $schedules[0]['visit_time']);
+        // Urutan 2: Ahmad (11:00)
+        $this->assertEquals('Ahmad Dahlan', $schedules[1]['patient_name']);
+        $this->assertEquals('11:00', $schedules[1]['visit_time']);
+        // Urutan 3: Dede (13:00)
+        $this->assertEquals('Dede Sumiati', $schedules[2]['patient_name']);
+        $this->assertEquals('13:00', $schedules[2]['visit_time']);
     }
 }
