@@ -39,7 +39,7 @@ class KaderVerificationAndProfileTerritoryTest extends TestCase
         $subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
         $this->village = Village::first() ?? Village::create(['name' => 'Sukahurip', 'subdistrict_id' => $subdistrict->id]);
         $puskesmas = Puskesmas::first() ?? Puskesmas::create(['name' => 'Puskesmas Tamansari', 'subdistrict_id' => $subdistrict->id]);
-        $treatmentType = TreatmentType::first() ?? TreatmentType::create(['treatment_type' => 'Kategori 1', 'treatment_duration' => 6, 'duration_unit' => 'bulan']);
+        $treatmentType = TreatmentType::first() ?? TreatmentType::create(['treatment_type' => 'Kategori 1', 'treatment_duration' => 6, 'duration_unit' => 'month']);
 
         // Kader User & Officer
         $this->kaderUser = User::create([
@@ -219,5 +219,120 @@ class KaderVerificationAndProfileTerritoryTest extends TestCase
         ]);
 
         $res->assertStatus(403);
+    }
+
+    /**
+     * Test: Multi-desa Kader profile consolidates multiple assigned villages.
+     */
+    public function test_multi_desa_kader_profile_consolidates_villages()
+    {
+        $officer = $this->kaderUser->officer;
+        $subdistrictId = $this->village->subdistrict_id;
+
+        $secondVillage = Village::create([
+            'name'           => 'Setiawargi',
+            'subdistrict_id' => $subdistrictId,
+        ]);
+
+        KaderArea::create([
+            'officer_id'     => $officer->id,
+            'subdistrict_id' => $subdistrictId,
+            'village_id'     => $secondVillage->id,
+        ]);
+
+        Sanctum::actingAs($this->kaderUser, ['*']);
+
+        $res = $this->getJson('/api/profile/show');
+        $res->assertStatus(200);
+
+        $territory = $res->json('data.kader_territory');
+        $this->assertNotNull($territory);
+        $this->assertStringContainsString($this->village->name, $territory['village_name']);
+        $this->assertStringContainsString($secondVillage->name, $territory['village_name']);
+        $this->assertContains($this->village->name, $territory['villages']);
+        $this->assertContains($secondVillage->name, $territory['villages']);
+
+        // Assert Kader can access patient from both villages
+        $secondPatientUser = User::create([
+            'name'         => 'anes maulida sukmara',
+            'username'     => 'anes_' . uniqid(),
+            'phone'        => '0822' . rand(10000000, 99999999),
+            'email'        => 'anes_' . uniqid() . '@test.com',
+            'password'     => bcrypt('secret123'),
+            'user_type_id' => 2,
+            'gender'       => 'P',
+        ]);
+
+        $secondPatient = Patient::create([
+            'user_id'              => $secondPatientUser->id,
+            'nik'                  => '3278075912184000',
+            'puskesmas_id'         => $officer->puskesmas_id,
+            'village_id'           => $secondVillage->id,
+            'subdistrict_id'       => $subdistrictId,
+            'address'              => 'RT 02 / RW 03',
+            'treatment_start_date' => Carbon::today('Asia/Jakarta')->subDays(5)->format('Y-m-d'),
+        ]);
+
+        $this->assertTrue($secondPatient->isAccessibleBy($this->kaderUser));
+    }
+
+    /**
+     * Test: Kader verify medication without note succeeds (note is strictly optional).
+     */
+    public function test_kader_verify_medication_without_note_succeeds()
+    {
+        Sanctum::actingAs($this->kaderUser, ['*']);
+
+        $targetDate = Carbon::today('Asia/Jakarta')->subDays(4)->format('Y-m-d');
+
+        $res = $this->postJson("/api/kader/patients/{$this->patient->id}/verify-medication", [
+            'date'   => $targetDate,
+            'action' => 'minum_tanpa_konfirmasi',
+            // No note or notes provided
+        ]);
+
+        $res->assertStatus(200);
+        $res->assertJsonPath('success', true);
+        $res->assertJsonPath('data.status', 'Diminum');
+        $this->assertNotEmpty($res->json('data.verification_note'));
+    }
+
+    /**
+     * Test: Global Title Case standardization for User and CloseContact names.
+     */
+    public function test_name_standardization_to_title_case()
+    {
+        // 1. Lowercase user name
+        $user1 = User::create([
+            'name'         => 'anes maulida sukmara',
+            'username'     => 'anes_' . uniqid(),
+            'phone'        => '0812' . rand(10000000, 99999999),
+            'email'        => 'anes1_' . uniqid() . '@test.com',
+            'password'     => bcrypt('secret123'),
+            'user_type_id' => 2,
+        ]);
+        $this->assertEquals('Anes Maulida Sukmara', $user1->name);
+
+        // 2. Uppercase user name with irregular spaces
+        $user2 = User::create([
+            'name'         => '  ALAMSYAH   FIRDAUS  ',
+            'username'     => 'alamsyah_' . uniqid(),
+            'phone'        => '0813' . rand(10000000, 99999999),
+            'email'        => 'alam_' . uniqid() . '@test.com',
+            'password'     => bcrypt('secret123'),
+            'user_type_id' => 2,
+        ]);
+        $this->assertEquals('Alamsyah Firdaus', $user2->name);
+
+        // 3. Hyphenated and apostrophe names
+        $user3 = User::create([
+            'name'         => "dewi-ayu sa'diyah",
+            'username'     => 'dewi_' . uniqid(),
+            'phone'        => '0814' . rand(10000000, 99999999),
+            'email'        => 'dewi_' . uniqid() . '@test.com',
+            'password'     => bcrypt('secret123'),
+            'user_type_id' => 2,
+        ]);
+        $this->assertEquals("Dewi-Ayu Sa'diyah", $user3->name);
     }
 }

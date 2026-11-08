@@ -164,4 +164,20 @@ class User extends Authenticatable
         }
         return optional($this->role)->name ?? 'Pengguna';
     }
+
+    /**
+     * Standardize user full name to Title Case upon setting.
+     */
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = \App\Helpers\NameFormatter::format($value);
+    }
+
+    /**
+     * Standardize user full name to Title Case upon retrieval.
+     */
+    public function getNameAttribute($value)
+    {
+        return \App\Helpers\NameFormatter::format($value ?? ($this->attributes['name'] ?? null));
+    }
 }

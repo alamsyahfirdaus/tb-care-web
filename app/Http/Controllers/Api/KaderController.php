@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\NameFormatter;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\MedicationRecord;
@@ -130,18 +131,27 @@ class KaderController extends Controller
             }
             $activeTreatmentIds = array_unique($activeTreatmentIds);
 
-            // Cek bukti minum obat hari ini (menggunakan kolom created_at aktual)
+            // Cek bukti minum obat hari ini (menggunakan kolom created_at aktual, kecuali yang diverifikasi 'Terlewat')
             $todayTakenTreatmentIds = [];
             if (!empty($activeTreatmentIds)) {
                 $todayTakenTreatmentIds = DB::table('medication_records')
                     ->whereIn('patient_treatment_id', $activeTreatmentIds)
                     ->whereDate('created_at', $today)
+                    ->where(function ($q) {
+                        $q->whereNull('status')
+                            ->orWhere('status', '!=', 'Terlewat');
+                    })
                     ->pluck('patient_treatment_id')
                     ->flip()
                     ->all();
             }
 
             $patientList = [];
+            $unconfirmedPatients = [];
+            $todayControlSchedules = [];
+
+            $confirmedTodayCount = 0;
+            $unconfirmedTodayCount = 0;
 
             foreach ($patients as $p) {
                 $activeTreatment = $p->treatments->firstWhere('treatment_status', 'Berjalan');
@@ -160,14 +170,64 @@ class KaderController extends Controller
                 $todayMedicationTaken = false;
                 if ($activeTreatment && isset($todayTakenTreatmentIds[$activeTreatment->id])) {
                     $todayMedicationTaken = true;
+                    $confirmedTodayCount++;
+                } elseif ($hasActiveTreatment) {
+                    $unconfirmedTodayCount++;
                 }
 
-                // Cari kunjungan berikutnya yang terjadwal
+                // Cari kunjungan berikutnya yang terjadwal & periksa jadwal kontrol hari ini
                 $nextVisit = null;
                 $hasUpcomingVisit = false;
                 $hasVisitNear = false;
 
+                $villageName = optional($p->village)->name ?? '-';
+                $subdistrictName = optional($p->subdistrict)->name ?? optional(optional($p->village)->subdistrict)->name ?? '-';
+                $shortAddress = 'Desa ' . $villageName . ', ' . $subdistrictName;
+
+                // Format nama Title Case
+                $rawName = optional($p->user)->name ?? 'Pasien TB';
+                $formattedName = NameFormatter::format($rawName);
+
                 if ($activeTreatment && $activeTreatment->visits) {
+                    // Cari jadwal kontrol khusus hari ini
+                    foreach ($activeTreatment->visits as $v) {
+                        $st = strtolower(trim($v->visit_status ?? ''));
+                        $vDate = !empty($v->visit_date) ? Carbon::parse($v->visit_date)->toDateString() : null;
+                        if ($vDate === $today && $st !== 'dibatalkan') {
+                            $vTime = $v->visit_time ? substr($v->visit_time, 0, 5) : '08:00';
+                            $todayControlSchedules[] = [
+                                'id'                   => $v->id,
+                                'patient_id'           => $p->id,
+                                'patient_name'         => $formattedName,
+                                'short_address'        => $shortAddress,
+                                'village_name'         => $villageName,
+                                'subdistrict_name'     => $subdistrictName,
+                                'visit_date'           => $v->visit_date,
+                                'visit_time'           => $vTime,
+                                'visit_time_formatted' => $vTime . ' WIB',
+                                'puskesmas_name'       => optional($p->puskesmas)->name ?? 'Puskesmas',
+                                'visit_status'         => $v->visit_status ?? 'Terjadwal',
+                                'notes'                => $v->notes,
+                                'patient'              => [
+                                    'id'                     => $p->id,
+                                    'user_id'                => $p->user_id,
+                                    'name'                   => $formattedName,
+                                    'username'               => optional($p->user)->username ?? '',
+                                    'nik'                    => $p->nik ?? '-',
+                                    'phone'                  => optional($p->user)->phone ?? '-',
+                                    'gender'                 => optional($p->user)->gender ?? '-',
+                                    'village_name'           => $villageName,
+                                    'subdistrict_name'       => $subdistrictName,
+                                    'puskesmas_name'         => optional($p->puskesmas)->name ?? 'Puskesmas',
+                                    'treatment_status'       => 'Berjalan',
+                                    'medication_time'        => $medicationTime,
+                                    'today_medication_taken' => $todayMedicationTaken,
+                                ],
+                            ];
+                        }
+                    }
+
+                    // Cari upcoming visit
                     $upcomingVisit = $activeTreatment->visits
                         ->filter(function ($v) use ($today) {
                             $st = strtolower(trim($v->visit_status ?? ''));
@@ -218,14 +278,7 @@ class KaderController extends Controller
                     }
                 }
 
-                $villageName = optional($p->village)->name ?? '-';
-                $subdistrictName = optional($p->subdistrict)->name ?? optional(optional($p->village)->subdistrict)->name ?? '-';
-
-                // Format nama Title Case
-                $rawName = optional($p->user)->name ?? 'Pasien TB';
-                $formattedName = ucwords(strtolower(trim($rawName)));
-
-                $patientList[] = [
+                $patientEntry = [
                     'id'                     => $p->id,
                     'user_id'                => $p->user_id,
                     'name'                   => $formattedName,
@@ -233,6 +286,7 @@ class KaderController extends Controller
                     'nik'                    => $p->nik ?? '-',
                     'phone'                  => optional($p->user)->phone ?? '-',
                     'gender'                 => optional($p->user)->gender ?? '-',
+                    'short_address'          => $shortAddress,
                     'village_name'           => $villageName,
                     'subdistrict_name'       => $subdistrictName,
                     'puskesmas_name'         => optional($p->puskesmas)->name ?? 'Puskesmas',
@@ -249,7 +303,30 @@ class KaderController extends Controller
                     'needs_reminder'         => $needsReminder,
                     'fcm_ready'              => !empty($p->user?->fcm_token),
                 ];
+
+                $patientList[] = $patientEntry;
+
+                // Jika pengobatan aktif dan belum minum obat hari ini, masukkan ke daftar unconfirmed
+                if ($hasActiveTreatment && !$todayMedicationTaken) {
+                    $unconfirmedPatients[] = array_merge($patientEntry, [
+                        'status_text'               => 'Belum konfirmasi minum obat',
+                        'medication_time_formatted' => $medicationTime . ' WIB',
+                    ]);
+                }
             }
+
+            // Urutkan daftar Pasien Belum Minum Obat berdasarkan waktu minum obat paling awal
+            usort($unconfirmedPatients, function ($a, $b) {
+                return strcmp($a['medication_time'] ?? '', $b['medication_time'] ?? '');
+            });
+
+            // Urutkan daftar Jadwal Kontrol Hari Ini berdasarkan waktu kontrol paling awal
+            usort($todayControlSchedules, function ($a, $b) {
+                return strcmp($a['visit_time'] ?? '', $b['visit_time'] ?? '');
+            });
+
+            // Hitung pasien unik dengan jadwal kontrol hari ini
+            $controlPatientsTodayCount = count(array_unique(array_column($todayControlSchedules, 'patient_id')));
 
             // Info wilayah penugasan Kader
             $assignedVillages = [];
@@ -270,13 +347,23 @@ class KaderController extends Controller
                     'villages'          => $assignedVillages,
                 ],
                 'statistics' => [
-                    'total_patients'    => $totalPatients,
-                    'active_treatments' => $activeTreatmentsCount,
-                    'need_reminders'    => $needRemindersCount,
-                    'upcoming_visits'   => $upcomingVisitsCount,
+                    'total_patients'           => $totalPatients,
+                    'active_treatments'        => $activeTreatmentsCount,
+                    'need_reminders'           => $needRemindersCount,
+                    'upcoming_visits'          => $upcomingVisitsCount,
+                    'belum_minum_obat'         => $unconfirmedTodayCount,
+                    'unconfirmed_today'        => $unconfirmedTodayCount,
+                    'sudah_minum'              => $confirmedTodayCount,
+                    'confirmed_today'          => $confirmedTodayCount,
+                    'jadwal_kontrol'           => $controlPatientsTodayCount,
+                    'control_schedules_today'  => $controlPatientsTodayCount,
                 ],
-                'patients' => $patientList,
-                'data'     => $patientList,
+                'unconfirmed_patients'         => $unconfirmedPatients,
+                'unconfirmed_patients_today'   => $unconfirmedPatients,
+                'today_control_schedules'      => $todayControlSchedules,
+                'control_schedules_today'      => $todayControlSchedules,
+                'patients'                     => $patientList,
+                'data'                         => $patientList,
             ]);
         } catch (\Throwable $e) {
             Log::error('KaderController@dashboard Error: ' . $e->getMessage(), [

@@ -34,17 +34,15 @@ class LiveChatAndReminderTest extends TestCase
     {
         parent::setUp();
 
-        $this->subdistrict = Subdistrict::first();
-        $this->district    = $this->subdistrict ? $this->subdistrict->district : District::first();
-        $this->province    = $this->district ? $this->district->province : Province::first();
+        $this->province    = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $this->district    = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $this->province->id]);
+        $this->subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $this->district->id]);
 
-        $villages = Village::take(2)->get();
-        $this->village1 = $villages[0] ?? Village::first();
-        $this->village2 = $villages[1] ?? Village::orderBy('id', 'desc')->first();
+        $this->village1 = Village::first() ?? Village::create(['name' => 'Sukahurip', 'subdistrict_id' => $this->subdistrict->id]);
+        $this->village2 = Village::where('id', '!=', $this->village1->id)->first() ?? Village::create(['name' => 'Setiamulya', 'subdistrict_id' => $this->subdistrict->id]);
 
-        $puskesmasList = Puskesmas::take(2)->get();
-        $this->puskesmas1 = $puskesmasList[0] ?? Puskesmas::first();
-        $this->puskesmas2 = $puskesmasList[1] ?? Puskesmas::orderBy('id', 'desc')->first();
+        $this->puskesmas1 = Puskesmas::first() ?? Puskesmas::create(['name' => 'Puskesmas Tamansari', 'subdistrict_id' => $this->subdistrict->id]);
+        $this->puskesmas2 = Puskesmas::where('id', '!=', $this->puskesmas1->id)->first() ?? Puskesmas::create(['name' => 'Puskesmas Cihideung', 'subdistrict_id' => $this->subdistrict->id]);
     }
 
     protected function createUser(array $attributes = []): User
@@ -753,7 +751,9 @@ class LiveChatAndReminderTest extends TestCase
         $this->assertNotNull($kaderItem);
         $this->assertStringContainsString('Kader', $kaderItem['sub_info']);
 
-        $pjtbItem = $data->firstWhere('name', 'Agus PJTB');
+        $pjtbItem = $data->first(function ($i) {
+            return strcasecmp($i['name'] ?? '', 'Agus PJTB') === 0;
+        });
         $this->assertNotNull($pjtbItem);
         $this->assertStringContainsString('PJTB', $pjtbItem['sub_info']);
     }

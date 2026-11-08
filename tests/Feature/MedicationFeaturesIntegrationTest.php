@@ -8,6 +8,7 @@ use App\Models\MedicationRecord;
 use App\Models\Officer;
 use App\Models\Patient;
 use App\Models\PatientTreatment;
+use App\Models\Province;
 use App\Models\Puskesmas;
 use App\Models\Subdistrict;
 use App\Models\TreatmentType;
@@ -28,23 +29,24 @@ class MedicationFeaturesIntegrationTest extends TestCase
     protected function setupFullTestEnvironment(int $daysSub = 10)
     {
         // 1. Master Data
-        $district = District::first();
-        $subdistrict = Subdistrict::first();
+        $province = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $district = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $province->id]);
+        $subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
         $puskesmas = Puskesmas::first() ?? Puskesmas::create([
             'name'           => 'Puskesmas Cihideung',
             'address'        => 'Jl. Cihideung No. 1',
-            'subdistrict_id' => $subdistrict ? $subdistrict->id : null,
+            'subdistrict_id' => $subdistrict->id,
         ]);
 
         $village = Village::first() ?? Village::create([
-            'subdistrict_id' => $subdistrict ? $subdistrict->id : 1,
+            'subdistrict_id' => $subdistrict->id,
             'name'           => 'Tuguraja',
         ]);
 
         $puskesmasLain = Puskesmas::create([
             'name'           => 'Puskesmas Tawang Lain ' . uniqid(),
             'address'        => 'Jl. Tawang No. 99',
-            'subdistrict_id' => $subdistrict ? $subdistrict->id : null,
+            'subdistrict_id' => $subdistrict->id,
         ]);
 
         // 2. Petugas PJTB (officer_type_id = 3)

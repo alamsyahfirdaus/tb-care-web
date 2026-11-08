@@ -2,19 +2,38 @@
 
 namespace Tests\Feature;
 
+use App\Models\District;
 use App\Models\Patient;
 use App\Models\PatientTreatment;
-use App\Models\TreatmentVisit;
-use App\Models\TreatmentType;
-use App\Models\User;
+use App\Models\Province;
 use App\Models\Puskesmas;
+use App\Models\Subdistrict;
+use App\Models\TreatmentType;
+use App\Models\TreatmentVisit;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class TreatmentVisitApiTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private function createPatientWithTreatment(): array
     {
+        $province = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $district = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $province->id]);
+        $subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
+        $puskesmas = Puskesmas::first() ?? Puskesmas::create([
+            'name'           => 'Puskesmas Tamansari',
+            'subdistrict_id' => $subdistrict->id,
+        ]);
+        $treatmentType = TreatmentType::first() ?? TreatmentType::create([
+            'treatment_type'     => 'Kategori 1',
+            'treatment_duration' => 6,
+            'duration_unit'      => 'month',
+        ]);
+
         $uniquePhone = '0813' . str_pad((string) rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
         $uniqueNik = '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT);
 
@@ -28,21 +47,16 @@ class TreatmentVisitApiTest extends TestCase
             'is_active'    => true,
         ]);
 
-        $puskesmas = Puskesmas::first();
-        $puskesmasId = $puskesmas ? $puskesmas->id : 1;
-
         $patient = Patient::create([
             'user_id'              => $user->id,
             'nik'                  => $uniqueNik,
-            'puskesmas_id'         => $puskesmasId,
+            'puskesmas_id'         => $puskesmas->id,
             'treatment_start_date' => Carbon::today()->format('Y-m-d'),
         ]);
 
-        $treatmentTypeId = TreatmentType::value('id') ?? 1;
-
         $treatment = PatientTreatment::create([
             'patient_id'         => $patient->id,
-            'treatment_type_id'  => $treatmentTypeId,
+            'treatment_type_id'  => $treatmentType->id,
             'diagnosis_date'     => null,
             'start_date'         => Carbon::today()->format('Y-m-d'),
             'medication_time'    => '07:00:00',

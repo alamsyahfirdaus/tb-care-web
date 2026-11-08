@@ -6,6 +6,7 @@ use App\Models\District;
 use App\Models\KaderArea;
 use App\Models\Officer;
 use App\Models\Patient;
+use App\Models\Province;
 use App\Models\Puskesmas;
 use App\Models\Subdistrict;
 use App\Models\User;
@@ -28,6 +29,7 @@ class KaderDataScopingTest extends TestCase
     protected $villageB;
     protected $adminUser;
     protected $kaderUser;
+    protected $treatmentType;
     protected $kaderOfficer;
     protected $pjtbUser;
     protected $pjtbOfficer;
@@ -46,12 +48,14 @@ class KaderDataScopingTest extends TestCase
         parent::setUp();
 
         // 1. Master Data
-        $district = District::first();
-        $this->subdistrict = Subdistrict::find(44) ?? Subdistrict::first();
-        $this->puskesmasA = Puskesmas::find(1) ?? Puskesmas::first();
-        $this->puskesmasB = Puskesmas::find(2) ?? Puskesmas::orderBy('id', 'desc')->first();
-        $this->villageA = Village::find(1) ?? Village::first();
-        $this->villageB = Village::find(2) ?? Village::orderBy('id', 'desc')->first();
+        $province = Province::first() ?? Province::create(['name' => 'Jawa Barat']);
+        $district = District::first() ?? District::create(['name' => 'Kota Tasikmalaya', 'province_id' => $province->id]);
+        $this->subdistrict = Subdistrict::first() ?? Subdistrict::create(['name' => 'Tamansari', 'district_id' => $district->id]);
+        $this->villageA = Village::first() ?? Village::create(['name' => 'Sukahurip', 'subdistrict_id' => $this->subdistrict->id]);
+        $this->villageB = Village::where('id', '!=', $this->villageA->id)->first() ?? Village::create(['name' => 'Setiamulya', 'subdistrict_id' => $this->subdistrict->id]);
+        $this->puskesmasA = Puskesmas::first() ?? Puskesmas::create(['name' => 'Puskesmas Tamansari', 'subdistrict_id' => $this->subdistrict->id]);
+        $this->puskesmasB = Puskesmas::where('id', '!=', $this->puskesmasA->id)->first() ?? Puskesmas::create(['name' => 'Puskesmas Cihideung', 'subdistrict_id' => $this->subdistrict->id]);
+        $this->treatmentType = TreatmentType::first() ?? TreatmentType::create(['treatment_type' => 'Kategori 1', 'treatment_duration' => 6, 'duration_unit' => 'month']);
 
         // 2. Setup Admin User (user_type_id = 1)
         $this->adminUser = User::create([
@@ -393,7 +397,7 @@ class KaderDataScopingTest extends TestCase
      */
     public function test_tc10_treatment_patient_outside_scope_denied()
     {
-        $treatmentType = TreatmentType::first();
+        $treatmentType = $this->treatmentType;
 
         // Treatment in scope
         $treatmentInScope = PatientTreatment::create([
@@ -441,7 +445,7 @@ class KaderDataScopingTest extends TestCase
      */
     public function test_tc11_treatment_visit_patient_outside_scope_denied()
     {
-        $treatmentType = TreatmentType::first();
+        $treatmentType = $this->treatmentType;
 
         $treatmentOutOfScope = PatientTreatment::create([
             'patient_id'        => $this->patientDiffVillage->id,
@@ -493,7 +497,7 @@ class KaderDataScopingTest extends TestCase
      */
     public function test_tc13_adherence_scoped_pass()
     {
-        $treatmentType = TreatmentType::first();
+        $treatmentType = $this->treatmentType;
 
         // In-scope patient active treatment
         PatientTreatment::create([

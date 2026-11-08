@@ -10,6 +10,7 @@ class Province extends Model
     use HasFactory;
 
     protected $table = 'provinces';
+    public $timestamps = false;
     protected $guarded = [];
 
     public function districts()

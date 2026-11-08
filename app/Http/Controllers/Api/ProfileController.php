@@ -89,7 +89,25 @@ class ProfileController extends Controller
                 }
 
                 $userData['kader_territories'] = $territoryList;
-                $userData['kader_territory'] = !empty($territoryList) ? $territoryList[0] : null;
+                if (!empty($territoryList)) {
+                    $uniqueVillages = collect($territoryList)
+                        ->pluck('village_name')
+                        ->filter(fn($v) => !empty($v) && $v !== '-')
+                        ->unique()
+                        ->values()
+                        ->all();
+                    $firstTerritory = $territoryList[0];
+                    $userData['kader_territory'] = [
+                        'village_name'      => !empty($uniqueVillages) ? implode(', ', $uniqueVillages) : ($firstTerritory['village_name'] ?? '-'),
+                        'villages'          => $uniqueVillages,
+                        'subdistrict_name'  => $firstTerritory['subdistrict_name'] ?? '-',
+                        'district_name'     => $firstTerritory['district_name'] ?? '-',
+                        'province_name'     => $firstTerritory['province_name'] ?? '-',
+                        'formatted_address' => $firstTerritory['formatted_address'] ?? '-',
+                    ];
+                } else {
+                    $userData['kader_territory'] = null;
+                }
                 $userData['kader_territory_formatted'] = !empty($formattedAddresses)
                     ? implode("\n", $formattedAddresses)
                     : ($user->officer->scope_description ?? 'Wilayah Kader belum diatur');

@@ -11,6 +11,7 @@ class Village extends Model
     use HasFactory, HasEncryptedId;
 
     protected $table = 'villages';
+    public $timestamps = false;
 
     protected $guarded = [];
 
