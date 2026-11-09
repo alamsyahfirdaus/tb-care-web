@@ -47,7 +47,7 @@ Sistem pengiriman pengingat 1-on-1 dari Kader ke Pasien menggunakan endpoint `/a
       "patient_id": 105,
       "patient_user_id": 88,
       "type": "visit",
-      "title": "Pengingat Jadwal Kunjungan TB",
+      "title": "Pengingat Jadwal Kontrol",
       "message": "Pengingat jadwal kontrol...",
       "status": "sent",
       "channel": "fcm",

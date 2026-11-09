@@ -18,7 +18,7 @@ class TreatmentVisitController extends Controller
         // Kader and Patient strictly forbidden from creating or updating visit schedules
         if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang untuk mengatur jadwal kunjungan.'
+                'message' => 'Anda tidak memiliki wewenang untuk mengatur jadwal kontrol.'
             ], 403);
         }
 
@@ -31,21 +31,21 @@ class TreatmentVisitController extends Controller
             'visit_status'         => 'nullable|in:Terjadwal,Selesai,Hadir,Tidak Hadir,Dibatalkan',
             'notes'                => 'nullable|string',
         ], [
-            'id.exists'                     => 'Data kunjungan tidak ditemukan.',
+            'id.exists'                     => 'Data jadwal kontrol tidak ditemukan.',
             'patient_treatment_id.required' => 'ID pengobatan pasien wajib diisi.',
             'patient_treatment_id.exists'   => 'Data pengobatan tidak ditemukan.',
-            'visit_date.required'           => 'Tanggal kunjungan wajib diisi.',
-            'visit_date.after_or_equal'     => 'Tanggal kunjungan tidak boleh sebelum hari ini.',
-            'visit_date.date'               => 'Tanggal kunjungan harus berupa format tanggal yang valid.',
-            'visit_time.date_format'        => 'Format waktu kunjungan harus dalam format HH:ii (contoh: 08:30).',
-            'visit_status.in'               => 'Status kunjungan harus salah satu dari: Terjadwal, Selesai, Hadir, Tidak Hadir, atau Dibatalkan.',
+            'visit_date.required'           => 'Tanggal kontrol wajib diisi.',
+            'visit_date.after_or_equal'     => 'Tanggal kontrol tidak boleh sebelum hari ini.',
+            'visit_date.date'               => 'Tanggal kontrol harus berupa format tanggal yang valid.',
+            'visit_time.date_format'        => 'Format waktu kontrol harus dalam format HH:ii (contoh: 08:30).',
+            'visit_status.in'               => 'Status jadwal kontrol harus salah satu dari: Terjadwal, Selesai, Hadir, Tidak Hadir, atau Dibatalkan.',
             'notes.string'                  => 'Catatan harus berupa teks.',
         ]);
 
         // Validasi tambahan: jika sedang update, maka visit_status wajib diisi
         if ($request->filled('id') && !$request->filled('visit_status')) {
             $validator->after(function ($validator) {
-                $validator->errors()->add('visit_status', 'Status kunjungan wajib diisi.');
+                $validator->errors()->add('visit_status', 'Status jadwal kontrol wajib diisi.');
             });
         }
 
@@ -60,11 +60,11 @@ class TreatmentVisitController extends Controller
         if ($request->filled('id')) {
             $existingVisit = TreatmentVisit::with('patientTreatment.patient')->find($request->id);
             if (!$existingVisit) {
-                return response()->json(['message' => 'Data kunjungan tidak ditemukan.'], 404);
+                return response()->json(['message' => 'Data jadwal kontrol tidak ditemukan.'], 404);
             }
             if (!$existingVisit->isAccessibleBy($user)) {
                 return response()->json([
-                    'message' => 'Anda tidak memiliki wewenang mengubah data kunjungan ini.'
+                    'message' => 'Anda tidak memiliki wewenang mengubah data jadwal kontrol ini.'
                 ], 403);
             }
             $visit = $existingVisit;
@@ -80,7 +80,7 @@ class TreatmentVisitController extends Controller
 
         if (!$treatment->patient->isAccessibleBy($user)) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang mencatat kunjungan untuk pasien di luar wilayah binaan Anda.'
+                'message' => 'Anda tidak memiliki wewenang mencatat jadwal kontrol untuk pasien di luar wilayah binaan Anda.'
             ], 403);
         }
 
@@ -94,8 +94,8 @@ class TreatmentVisitController extends Controller
 
         return response()->json([
             'message' => $request->filled('id')
-                ? 'Data kunjungan berhasil diperbarui.'
-                : 'Kunjungan berhasil ditambahkan.',
+                ? 'Data jadwal kontrol berhasil diperbarui.'
+                : 'Jadwal kontrol berhasil ditambahkan.',
             'data'    => $visit
         ], $request->filled('id') ? 200 : 201);
     }
@@ -107,7 +107,7 @@ class TreatmentVisitController extends Controller
         // Kader and Patient strictly forbidden from deleting visit schedules
         if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang untuk menghapus data kunjungan.'
+                'message' => 'Anda tidak memiliki wewenang untuk menghapus data jadwal kontrol.'
             ], 403);
         }
 
@@ -115,21 +115,21 @@ class TreatmentVisitController extends Controller
 
         if (!$visit) {
             return response()->json([
-                'message' => 'Data kunjungan tidak ditemukan.'
+                'message' => 'Data jadwal kontrol tidak ditemukan.'
             ], 404);
         }
 
         $user = Auth::user();
         if (!$visit->isAccessibleBy($user)) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang menghapus data kunjungan pasien di luar wilayah binaan Anda.'
+                'message' => 'Anda tidak memiliki wewenang menghapus data jadwal kontrol pasien di luar wilayah binaan Anda.'
             ], 403);
         }
 
         $visit->delete();
 
         return response()->json([
-            'message' => 'Kunjungan berhasil dihapus.'
+            'message' => 'Jadwal kontrol berhasil dihapus.'
         ]);
     }
 
@@ -140,7 +140,7 @@ class TreatmentVisitController extends Controller
         // Kader and Patient strictly forbidden from cancelling visit schedules
         if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang untuk membatalkan jadwal kunjungan.'
+                'message' => 'Anda tidak memiliki wewenang untuk membatalkan jadwal kontrol.'
             ], 403);
         }
 
@@ -148,14 +148,14 @@ class TreatmentVisitController extends Controller
 
         if (!$visit) {
             return response()->json([
-                'message' => 'Data kunjungan tidak ditemukan.'
+                'message' => 'Data jadwal kontrol tidak ditemukan.'
             ], 404);
         }
 
         $user = Auth::user();
         if (!$visit->isAccessibleBy($user)) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang membatalkan jadwal kunjungan pasien di luar wilayah binaan Anda.'
+                'message' => 'Anda tidak memiliki wewenang membatalkan jadwal kontrol pasien di luar wilayah binaan Anda.'
             ], 403);
         }
 
@@ -167,7 +167,7 @@ class TreatmentVisitController extends Controller
         $visit->save();
 
         return response()->json([
-            'message' => 'Jadwal kunjungan berhasil dibatalkan.',
+            'message' => 'Jadwal kontrol berhasil dibatalkan.',
             'data'    => $visit
         ]);
     }
@@ -178,16 +178,16 @@ class TreatmentVisitController extends Controller
 
         $patient = null;
         if ($user->user_type_id == 2) {
-            $patient = $user->patient;
+            $patient = $user->patient ? \App\Models\Patient::with('puskesmas.subdistrict.district')->find($user->patient->id) : null;
         } elseif ($request->filled('patient_id')) {
-            $patient = \App\Models\Patient::with('puskesmas')->find($request->patient_id);
+            $patient = \App\Models\Patient::with('puskesmas.subdistrict.district')->find($request->patient_id);
             if ($patient && !$patient->isAccessibleBy($user)) {
                 return response()->json([
                     'message' => 'Anda tidak memiliki wewenang mengakses data pasien ini.'
                 ], 403);
             }
         } else {
-            $patient = $user->patient;
+            $patient = $user->patient ? \App\Models\Patient::with('puskesmas.subdistrict.district')->find($user->patient->id) : null;
         }
 
         if (!$patient) {
@@ -201,13 +201,16 @@ class TreatmentVisitController extends Controller
             ->orderByDesc('start_date')
             ->first();
 
-        $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+        $puskesmas = $patient->puskesmas;
+        $puskesmasName = optional($puskesmas)->name ?? 'Puskesmas';
+        $puskesmasLocation = $puskesmas?->full_address ?? $puskesmasName;
 
         if (!$treatment) {
             return response()->json([
-                'message'        => 'Belum ada data pengobatan.',
-                'puskesmas_name' => $puskesmasName,
-                'data'           => []
+                'message'            => 'Belum ada data pengobatan.',
+                'puskesmas_name'     => $puskesmasLocation,
+                'puskesmas_location' => $puskesmasLocation,
+                'data'               => []
             ], 200);
         }
 
@@ -215,7 +218,7 @@ class TreatmentVisitController extends Controller
             ->orderBy('visit_date', 'asc')
             ->orderBy('visit_time', 'asc')
             ->get()
-            ->map(function ($visit) use ($puskesmasName) {
+            ->map(function ($visit) use ($puskesmasLocation) {
                 return [
                     'id'                   => $visit->id,
                     'patient_treatment_id' => $visit->patient_treatment_id,
@@ -223,41 +226,45 @@ class TreatmentVisitController extends Controller
                     'visit_time'           => $visit->visit_time,
                     'visit_status'         => $visit->visit_status,
                     'notes'                => $visit->notes,
-                    'puskesmas_name'       => $puskesmasName,
+                    'puskesmas_name'       => $puskesmasLocation,
+                    'puskesmas_location'   => $puskesmasLocation,
                     'created_at'           => $visit->created_at,
                     'updated_at'           => $visit->updated_at,
                 ];
             });
 
         return response()->json([
-            'message'        => 'Daftar jadwal kunjungan berhasil diambil.',
-            'puskesmas_name' => $puskesmasName,
-            'data'           => $visits
+            'message'            => 'Daftar jadwal kontrol berhasil diambil.',
+            'puskesmas_name'     => $puskesmasLocation,
+            'puskesmas_location' => $puskesmasLocation,
+            'data'               => $visits
         ]);
     }
 
     public function show($id)
     {
-        $visit = TreatmentVisit::with(['patientTreatment.patient.puskesmas'])->find($id);
+        $visit = TreatmentVisit::with(['patientTreatment.patient.puskesmas.subdistrict.district'])->find($id);
 
         if (!$visit) {
             return response()->json([
-                'message' => 'Data kunjungan tidak ditemukan.'
+                'message' => 'Data jadwal kontrol tidak ditemukan.'
             ], 404);
         }
 
         $user = Auth::user();
         if (!$visit->isAccessibleBy($user)) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang mengakses data kunjungan ini.'
+                'message' => 'Anda tidak memiliki wewenang mengakses data jadwal kontrol ini.'
             ], 403);
         }
 
         $patient = $visit->patientTreatment?->patient;
-        $puskesmasName = optional($patient?->puskesmas)->name ?? 'Puskesmas';
+        $puskesmas = $patient?->puskesmas;
+        $puskesmasName = optional($puskesmas)->name ?? 'Puskesmas';
+        $puskesmasLocation = $puskesmas?->full_address ?? $puskesmasName;
 
         return response()->json([
-            'message' => 'Detail jadwal kunjungan berhasil diambil.',
+            'message' => 'Detail jadwal kontrol berhasil diambil.',
             'data'    => [
                 'id'                   => $visit->id,
                 'patient_treatment_id' => $visit->patient_treatment_id,
@@ -265,7 +272,8 @@ class TreatmentVisitController extends Controller
                 'visit_time'           => $visit->visit_time,
                 'visit_status'         => $visit->visit_status,
                 'notes'                => $visit->notes,
-                'puskesmas_name'       => $puskesmasName,
+                'puskesmas_name'       => $puskesmasLocation,
+                'puskesmas_location'   => $puskesmasLocation,
                 'created_at'           => $visit->created_at,
                 'updated_at'           => $visit->updated_at,
             ]

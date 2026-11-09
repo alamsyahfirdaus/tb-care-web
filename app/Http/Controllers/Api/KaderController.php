@@ -536,7 +536,7 @@ class KaderController extends Controller
 
         $patientUser = $patient->user;
         $title = ($request->type === 'visit')
-            ? 'Pengingat Jadwal Kunjungan TB'
+            ? 'Pengingat Jadwal Kontrol TB'
             : 'Pengingat Minum Obat TB';
         $body = trim($request->message);
 
@@ -717,7 +717,7 @@ class KaderController extends Controller
                 'patient_name' => optional($p?->user)->name ?? ($r->metadata['patient_name'] ?? 'Pasien TB'),
                 'village_name' => optional($p?->village)->name ?? '-',
                 'type'         => $r->type,
-                'type_label'   => $r->type === 'visit' ? 'Kunjungan Puskesmas' : 'Minum Obat',
+                'type_label'   => $r->type === 'visit' ? 'Jadwal Kontrol Puskesmas' : 'Minum Obat',
                 'title'        => $r->title,
                 'message'      => $r->message,
                 'status'       => $r->status,

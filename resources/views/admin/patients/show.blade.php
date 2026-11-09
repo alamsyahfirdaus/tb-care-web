@@ -291,15 +291,15 @@
 
                                         <!-- Visits Subtable -->
                                         <div class="mt-3">
-                                            <h6 class="font-weight-bold text-sm text-dark mb-2"><i class="fas fa-calendar-check mr-1 text-primary"></i> Jadwal Kunjungan & Kontrol Puskesmas:</h6>
+                                            <h6 class="font-weight-bold text-sm text-dark mb-2"><i class="fas fa-calendar-check mr-1 text-primary"></i> Jadwal Kontrol Puskesmas:</h6>
                                             @if($tr->visits->count() > 0)
                                                 <div class="table-responsive">
                                                     <table id="patientVisitsTable-{{ $loop->iteration }}" class="table table-sm table-bordered table-hover data-table">
                                                         <thead class="bg-light">
                                                             <tr>
-                                                                <th>Tanggal Kunjungan</th>
+                                                                <th>Tanggal Kontrol</th>
                                                                 <th>Jam</th>
-                                                                <th>Status Kunjungan</th>
+                                                                <th>Status Kontrol</th>
                                                                 <th>Catatan Petugas</th>
                                                             </tr>
                                                         </thead>
@@ -324,7 +324,7 @@
                                                     </table>
                                                 </div>
                                             @else
-                                                <span class="text-xs text-muted">Belum ada jadwal kunjungan kontrol khusus yang dicatat.</span>
+                                                <span class="text-xs text-muted">Belum ada jadwal kontrol khusus yang dicatat.</span>
                                             @endif
                                         </div>
                                     </div>

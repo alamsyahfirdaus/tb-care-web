@@ -182,7 +182,7 @@ class TreatmentController extends Controller
         $treatment = PatientTreatment::findOrFail($request->patient_treatment_id);
 
         if (!$treatment->isAccessibleBy(auth()->user())) {
-            abort(403, 'Anda tidak memiliki hak akses mencatat kunjungan untuk pengobatan ini.');
+            abort(403, 'Anda tidak memiliki hak akses mencatat jadwal kontrol untuk pengobatan ini.');
         }
 
         TreatmentVisit::create($request->only([
@@ -193,7 +193,7 @@ class TreatmentController extends Controller
             'notes',
         ]));
 
-        return redirect()->back()->with('success', 'Jadwal kunjungan kontrol berhasil ditambahkan.');
+        return redirect()->back()->with('success', 'Jadwal kontrol berhasil ditambahkan.');
     }
 
     public function destroy($id)

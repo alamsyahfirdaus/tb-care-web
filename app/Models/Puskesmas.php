@@ -21,6 +21,22 @@ class Puskesmas extends Model
         return $this->belongsTo(Subdistrict::class, 'subdistrict_id');
     }
 
+    public function getFullAddressAttribute()
+    {
+        $parts = [];
+        $name = trim($this->name ?? '');
+        if ($name !== '') {
+            $parts[] = preg_match('/^puskesmas/i', $name) ? $name : 'Puskesmas ' . $name;
+        }
+        if ($this->subdistrict && !empty(trim($this->subdistrict->name))) {
+            $parts[] = trim($this->subdistrict->name);
+        }
+        if ($this->subdistrict?->district && !empty(trim($this->subdistrict->district->name))) {
+            $parts[] = trim($this->subdistrict->district->name);
+        }
+        return !empty($parts) ? implode(', ', $parts) : ($name ?: 'Puskesmas');
+    }
+
     public function officers()
     {
         return $this->hasMany(Officer::class, 'puskesmas_id');

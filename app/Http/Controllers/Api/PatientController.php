@@ -935,10 +935,12 @@ class PatientController extends Controller
         // Eager load relasi penting
         $patient->loadMissing([
             'user:id,name,phone,gender,photo',
-            'puskesmas:id,name'
+            'puskesmas.subdistrict.district'
         ]);
 
-        $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+        $puskesmas = $patient->puskesmas;
+        $puskesmasName = optional($puskesmas)->name ?? 'Puskesmas';
+        $puskesmasLocation = $puskesmas?->full_address ?? $puskesmasName;
 
         // 1. Info Pasien
         $patientData = [
@@ -950,7 +952,8 @@ class PatientController extends Controller
             'gender'               => optional($patient->user)->gender,
             'photo'                => optional($patient->user)->photo ? url('/api/image/' . $patient->user->photo) : null,
             'puskesmas_id'         => $patient->puskesmas_id,
-            'puskesmas_name'       => $puskesmasName,
+            'puskesmas_name'       => $puskesmasLocation,
+            'puskesmas_location'   => $puskesmasLocation,
             'treatment_start_date' => $patient->treatment_start_date ? Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
         ];
 
@@ -1031,23 +1034,25 @@ class PatientController extends Controller
         $nextVisit = (clone $visitsQuery)->first();
         if ($nextVisit) {
             $nextVisitData = [
-                'id'             => $nextVisit->id,
-                'visit_date'     => $nextVisit->visit_date ? Carbon::parse($nextVisit->visit_date)->format('Y-m-d') : null,
-                'visit_time'     => $nextVisit->visit_time ? substr($nextVisit->visit_time, 0, 5) : null,
-                'visit_status'   => $nextVisit->visit_status,
-                'notes'          => $nextVisit->notes,
-                'puskesmas_name' => $puskesmasName,
+                'id'                 => $nextVisit->id,
+                'visit_date'         => $nextVisit->visit_date ? Carbon::parse($nextVisit->visit_date)->format('Y-m-d') : null,
+                'visit_time'         => $nextVisit->visit_time ? substr($nextVisit->visit_time, 0, 5) : null,
+                'visit_status'       => $nextVisit->visit_status,
+                'notes'              => $nextVisit->notes,
+                'puskesmas_name'     => $puskesmasLocation,
+                'puskesmas_location' => $puskesmasLocation,
             ];
         }
 
-        $upcomingVisits = $visitsQuery->take(3)->get()->map(function ($v) use ($puskesmasName) {
+        $upcomingVisits = $visitsQuery->take(3)->get()->map(function ($v) use ($puskesmasLocation) {
             return [
-                'id'             => $v->id,
-                'visit_date'     => $v->visit_date ? Carbon::parse($v->visit_date)->format('Y-m-d') : null,
-                'visit_time'     => $v->visit_time ? substr($v->visit_time, 0, 5) : null,
-                'visit_status'   => $v->visit_status,
-                'notes'          => $v->notes,
-                'puskesmas_name' => $puskesmasName,
+                'id'                 => $v->id,
+                'visit_date'         => $v->visit_date ? Carbon::parse($v->visit_date)->format('Y-m-d') : null,
+                'visit_time'         => $v->visit_time ? substr($v->visit_time, 0, 5) : null,
+                'visit_status'       => $v->visit_status,
+                'notes'              => $v->notes,
+                'puskesmas_name'     => $puskesmasLocation,
+                'puskesmas_location' => $puskesmasLocation,
             ];
         });
 

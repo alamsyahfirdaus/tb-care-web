@@ -475,7 +475,7 @@ class TreatmentController extends Controller
 
     public function getVisitsByTreatment($treatmentId)
     {
-        $treatment = PatientTreatment::with('patient.puskesmas')->find($treatmentId);
+        $treatment = PatientTreatment::with('patient.puskesmas.subdistrict.district')->find($treatmentId);
 
         if (!$treatment) {
             return response()->json(['message' => 'Data pengobatan tidak ditemukan.'], 404);
@@ -484,17 +484,19 @@ class TreatmentController extends Controller
         $user = Auth::user();
         if ($treatment->patient && !$treatment->patient->isAccessibleBy($user)) {
             return response()->json([
-                'message' => 'Anda tidak memiliki wewenang mengakses data kunjungan pengobatan ini.'
+                'message' => 'Anda tidak memiliki wewenang mengakses data jadwal kontrol pengobatan ini.'
             ], 403);
         }
 
-        $puskesmasName = optional($treatment->patient?->puskesmas)->name ?? 'Puskesmas';
+        $puskesmas = $treatment->patient?->puskesmas;
+        $puskesmasName = optional($puskesmas)->name ?? 'Puskesmas';
+        $puskesmasLocation = $puskesmas?->full_address ?? $puskesmasName;
 
         $visits = TreatmentVisit::where('patient_treatment_id', $treatmentId)
             ->orderBy('visit_date', 'asc')
             ->orderBy('visit_time', 'asc')
             ->get()
-            ->map(function ($visit) use ($puskesmasName) {
+            ->map(function ($visit) use ($puskesmasLocation) {
                 return [
                     'id'                   => $visit->id,
                     'patient_treatment_id' => $visit->patient_treatment_id,
@@ -502,16 +504,18 @@ class TreatmentController extends Controller
                     'visit_time'           => $visit->visit_time,
                     'visit_status'         => $visit->visit_status,
                     'notes'                => $visit->notes,
-                    'puskesmas_name'       => $puskesmasName,
+                    'puskesmas_name'       => $puskesmasLocation,
+                    'puskesmas_location'   => $puskesmasLocation,
                     'created_at'           => $visit->created_at,
                     'updated_at'           => $visit->updated_at,
                 ];
             });
 
         return response()->json([
-            'message'        => 'Daftar kunjungan berhasil diambil.',
-            'puskesmas_name' => $puskesmasName,
-            'data'           => $visits
+            'message'            => 'Daftar jadwal kontrol berhasil diambil.',
+            'puskesmas_name'     => $puskesmasLocation,
+            'puskesmas_location' => $puskesmasLocation,
+            'data'               => $visits
         ]);
     }
 

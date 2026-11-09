@@ -168,7 +168,7 @@ class PatientAuthorizationSecurityTest extends TestCase
             ]);
 
         $responseCreate->assertStatus(403);
-        $responseCreate->assertJsonPath('message', 'Anda tidak memiliki wewenang untuk mengatur jadwal kunjungan.');
+        $responseCreate->assertJsonPath('message', 'Anda tidak memiliki wewenang untuk mengatur jadwal kontrol.');
 
         // Update visit
         $responseUpdate = $this->actingAs($env['patientUser'], 'sanctum')
@@ -193,14 +193,14 @@ class PatientAuthorizationSecurityTest extends TestCase
             ]);
 
         $responseCancel->assertStatus(403);
-        $responseCancel->assertJsonPath('message', 'Anda tidak memiliki wewenang untuk membatalkan jadwal kunjungan.');
+        $responseCancel->assertJsonPath('message', 'Anda tidak memiliki wewenang untuk membatalkan jadwal kontrol.');
 
         // Delete visit
         $responseDelete = $this->actingAs($env['patientUser'], 'sanctum')
             ->deleteJson('/api/visits/' . $env['visit']->id . '/delete');
 
         $responseDelete->assertStatus(403);
-        $responseDelete->assertJsonPath('message', 'Anda tidak memiliki wewenang untuk menghapus data kunjungan.');
+        $responseDelete->assertJsonPath('message', 'Anda tidak memiliki wewenang untuk menghapus data jadwal kontrol.');
     }
 
     public function test_patient_cannot_delete_patient_master_record()
