@@ -35,6 +35,16 @@ class PatientTreatment extends Model
         return $this->hasMany(MedicationRecord::class, 'patient_treatment_id');
     }
 
+    /**
+     * Memeriksa apakah pasien sudah mencatat minum obat untuk hari ini.
+     */
+    public function isTakenToday(): bool
+    {
+        return $this->medicationRecords()
+            ->whereDate('created_at', \Carbon\Carbon::today('Asia/Jakarta'))
+            ->exists();
+    }
+
     public static function getPatientTreatments($filters = [])
     {
         $query = self::with(['patient.user', 'patient.puskesmas', 'treatmentType']);

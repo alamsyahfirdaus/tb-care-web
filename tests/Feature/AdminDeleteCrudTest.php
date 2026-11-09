@@ -346,8 +346,9 @@ class AdminDeleteCrudTest extends TestCase
         }
 
         // B. Standalone Subdistrict
+        $district = \App\Models\District::first() ?? \App\Models\District::create(['name' => 'Kota Tasikmalaya', 'province_id' => 1]);
         $standaloneSub = Subdistrict::create([
-            'district_id' => 1,
+            'district_id' => $district->id,
             'name' => 'Kecamatan Uji Hapus ' . time(),
         ]);
         $subId = $standaloneSub->id;
@@ -358,8 +359,9 @@ class AdminDeleteCrudTest extends TestCase
         $this->assertNull(Subdistrict::find($subId));
 
         // C. Standalone Village
+        $subdistrictForVil = Subdistrict::first() ?? Subdistrict::create(['district_id' => $district->id, 'name' => 'Kecamatan Induk ' . time()]);
         $standaloneVil = Village::create([
-            'subdistrict_id' => 1,
+            'subdistrict_id' => $subdistrictForVil->id,
             'name' => 'Desa Uji Hapus ' . time(),
         ]);
         $vilId = $standaloneVil->id;

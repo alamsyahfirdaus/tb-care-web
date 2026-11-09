@@ -66,6 +66,8 @@ Route::prefix('screening')->group(function () {
     Route::post('/questions', [ScreeningController::class, 'getQuestions']);
     // Kirim jawaban untuk proses skrining
     Route::post('/submit', [ScreeningController::class, 'submitAnswers']);
+    // Riwayat skrining mandiri / kontak serumah untuk pengguna
+    Route::get('/history', [ScreeningController::class, 'history']);
     // Detail data skrining
     Route::get('/{id}', [ScreeningController::class, 'show']);
 });

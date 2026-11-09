@@ -15,10 +15,10 @@ class TreatmentVisitController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from creating or updating visit schedules
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from creating or updating visit schedules
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk mengatur jadwal kunjungan.'
+                'message' => 'Anda tidak memiliki wewenang untuk mengatur jadwal kunjungan.'
             ], 403);
         }
 
@@ -104,10 +104,10 @@ class TreatmentVisitController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from deleting visit schedules
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from deleting visit schedules
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk menghapus data kunjungan.'
+                'message' => 'Anda tidak memiliki wewenang untuk menghapus data kunjungan.'
             ], 403);
         }
 
@@ -137,10 +137,10 @@ class TreatmentVisitController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from cancelling visit schedules
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from cancelling visit schedules
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk membatalkan jadwal kunjungan.'
+                'message' => 'Anda tidak memiliki wewenang untuk membatalkan jadwal kunjungan.'
             ], 403);
         }
 

@@ -21,10 +21,10 @@ class TreatmentController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from creating or modifying treatments
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from creating or modifying treatments
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk menambah atau mengubah data pengobatan.'
+                'message' => 'Anda tidak memiliki wewenang untuk menambah atau mengubah data pengobatan.'
             ], 403);
         }
 
@@ -157,10 +157,10 @@ class TreatmentController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from deleting treatments
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from deleting treatments
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk menghapus data pengobatan.'
+                'message' => 'Anda tidak memiliki wewenang untuk menghapus data pengobatan.'
             ], 403);
         }
 
@@ -198,10 +198,10 @@ class TreatmentController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from updating treatment status
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from updating treatment status
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk mengubah status pengobatan.'
+                'message' => 'Anda tidak memiliki wewenang untuk mengubah status pengobatan.'
             ], 403);
         }
 
@@ -304,7 +304,9 @@ class TreatmentController extends Controller
         $record = MedicationRecord::create([
             'patient_treatment_id' => $request->patient_treatment_id,
             'photo'                => $fileName,
-            'is_verified'          => true,
+            'is_verified'          => false,
+            'status'               => 'Diminum',
+            'confirmation_source'  => 'patient',
             'late'                 => $isLate,
             'notes'                => $request->notes,
         ]);
@@ -412,11 +414,62 @@ class TreatmentController extends Controller
             ? $adherence['daily_records']
             : $history;
 
+        // Filter catatan jika parameter filter dikirimkan
+        $filter = request()->query('filter', 'all');
+        $filteredHistory = collect($unifiedHistory);
+
+        if ($filter === 'verified') {
+            $filteredHistory = $filteredHistory->filter(function ($item) {
+                return (isset($item['is_verified']) && (int) $item['is_verified'] === 1)
+                    || (isset($item['verification_status']) && str_contains(strtolower($item['verification_status']), 'terverifikasi'));
+            })->values();
+        } elseif ($filter === 'pending') {
+            $filteredHistory = $filteredHistory->filter(function ($item) {
+                return (isset($item['is_verified']) && (int) $item['is_verified'] === 0)
+                    || (isset($item['verification_status']) && str_contains(strtolower($item['verification_status']), 'menunggu'));
+            })->values();
+        } elseif ($filter === 'late') {
+            $filteredHistory = $filteredHistory->filter(function ($item) {
+                return isset($item['late']) && (int) $item['late'] === 1;
+            })->values();
+        } elseif ($filter === 'missed') {
+            $filteredHistory = $filteredHistory->filter(function ($item) {
+                return (isset($item['status_key']) && $item['status_key'] === 'missed')
+                    || (isset($item['status']) && $item['status'] === 'Terlewat');
+            })->values();
+        }
+
+        $totalRecords = $filteredHistory->count();
+        $isTakenToday = $activeTreatment ? $activeTreatment->isTakenToday() : false;
+
+        // Paginasi jika request meminta page/per_page (seperti pada Flutter mobile)
+        if (request()->has('page')) {
+            $page = max(1, (int) request()->query('page', 1));
+            $perPage = max(1, (int) request()->query('per_page', 10));
+            $offset = ($page - 1) * $perPage;
+            $pagedHistory = $filteredHistory->slice($offset, $perPage)->values()->all();
+            $lastPage = (int) ceil($totalRecords / $perPage);
+
+            return response()->json([
+                'message'        => 'Riwayat minum obat pasien berhasil diambil.',
+                'data'           => $pagedHistory,
+                'raw_records'    => $history,
+                'adherence'      => $adherence,
+                'total'          => $totalRecords,
+                'current_page'   => $page,
+                'per_page'       => $perPage,
+                'last_page'      => $lastPage,
+                'is_taken_today' => $isTakenToday,
+            ]);
+        }
+
         return response()->json([
-            'message'     => 'Riwayat minum obat pasien berhasil diambil.',
-            'data'        => $unifiedHistory,
-            'raw_records' => $history,
-            'adherence'   => $adherence,
+            'message'        => 'Riwayat minum obat pasien berhasil diambil.',
+            'data'           => $filteredHistory->values()->all(),
+            'raw_records'    => $history,
+            'adherence'      => $adherence,
+            'total'          => $totalRecords,
+            'is_taken_today' => $isTakenToday,
         ]);
     }
 
@@ -498,10 +551,10 @@ class TreatmentController extends Controller
 
         $user = Auth::user();
 
-        // Kader strictly forbidden from verifying medication proof
-        if ($user && $user->isKader()) {
+        // Only authorized officers (PJTB, Admin) can verify medication proof. Kader and Patient are strictly forbidden.
+        if (!$user || $user->isKader() || $user->isPatient()) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang memverifikasi bukti minum obat.'
+                'message' => 'Anda tidak memiliki wewenang memverifikasi bukti minum obat.'
             ], 403);
         }
 
@@ -512,11 +565,13 @@ class TreatmentController extends Controller
             ], 403);
         }
 
-        if (!$record->is_verified) {
-            $record->is_verified = true;
+        $record->is_verified = true;
+        $record->status = 'Terverifikasi';
+        $record->verified_by = $user->id;
+        $record->verified_at = now();
+        if ($request->filled('notes')) {
+            $record->verification_note = $request->notes;
         }
-
-        $record->notes = $request->notes ?? $record->notes;
         $record->save();
 
         return response()->json([

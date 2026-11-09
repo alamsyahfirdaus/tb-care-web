@@ -384,4 +384,69 @@ class ScreeningController extends Controller
             ],
         ], 200);
     }
+
+    /**
+     * GET /api/screening/history
+     * Mengambil riwayat skrining mandiri atau kontak serumah untuk pengguna / pasien yang sedang login.
+     */
+    public function history(Request $request)
+    {
+        $user = auth('sanctum')->user() ?? auth()->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Autentikasi diperlukan untuk mengakses riwayat skrining.',
+            ], 401);
+        }
+
+        $patient = Patient::where('user_id', $user->id)->first();
+        $patientId = $patient ? $patient->id : null;
+
+        $query = Screening::query()
+            ->with(['category:id,name', 'closeContact:id,name,relation'])
+            ->where(function ($q) use ($user, $patientId) {
+                $q->where('user_id', $user->id);
+                if ($patientId) {
+                    $q->orWhere('patient_id', $patientId);
+                }
+            })
+            ->orderByDesc('screened_at');
+
+        $perPage = max(1, min(50, (int) $request->input('per_page', 15)));
+        $screenings = $query->paginate($perPage);
+
+        $items = collect($screenings->items())->map(function ($screening) {
+            return [
+                'id'                    => $screening->id,
+                'code'                  => $screening->code,
+                'person_name'           => $screening->person_name,
+                'tb_classification'     => $screening->tb_classification ?? 'TB Paru',
+                'extrapulmonary_organ'  => $screening->extrapulmonary_organ,
+                'close_contact_id'      => $screening->close_contact_id,
+                'close_contact'         => $screening->closeContact ? [
+                    'id'       => $screening->closeContact->id,
+                    'name'     => $screening->closeContact->name,
+                    'relation' => $screening->closeContact->relation,
+                ] : null,
+                'category_name'         => optional($screening->category)->name,
+                'risk_level'            => $screening->risk_level,
+                'status'                => $screening->status,
+                'total_score'           => $screening->total_score,
+                'symptoms_count'        => $screening->symptoms_count,
+                'has_critical_symptom'  => (bool) $screening->has_critical_symptom,
+                'recommendation'        => $screening->recommendation,
+                'screened_at'           => $screening->screened_at ? $screening->screened_at->format('Y-m-d H:i') : null,
+                'screened_at_formatted' => $screening->screened_at ? $screening->screened_at->isoFormat('D MMMM Y') : null,
+            ];
+        });
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Riwayat skrining berhasil dimuat.',
+            'data'         => $items,
+            'total'        => $screenings->total(),
+            'current_page' => $screenings->currentPage(),
+            'last_page'    => $screenings->lastPage(),
+        ], 200);
+    }
 }

@@ -170,10 +170,10 @@ class PatientController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from adding or editing patient data
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from adding or editing patient master/clinical data
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk menambah atau mengubah data pasien.'
+                'message' => 'Anda tidak memiliki wewenang untuk menambah atau mengubah data master pasien.'
             ], 403);
         }
 
@@ -478,10 +478,10 @@ class PatientController extends Controller
     {
         $user = Auth::user();
 
-        // Kader strictly forbidden from deleting patient data
-        if ($user && $user->isKader()) {
+        // Kader and Patient strictly forbidden from deleting patient data
+        if ($user && ($user->isKader() || $user->isPatient())) {
             return response()->json([
-                'message' => 'Kader tidak memiliki wewenang untuk menghapus data pasien.'
+                'message' => 'Anda tidak memiliki wewenang untuk menghapus data pasien.'
             ], 403);
         }
 
@@ -948,7 +948,7 @@ class PatientController extends Controller
             'nik'                  => $patient->nik,
             'phone'                => optional($patient->user)->phone,
             'gender'               => optional($patient->user)->gender,
-            'photo'                => optional($patient->user)->photo ? asset('images/' . $patient->user->photo) : null,
+            'photo'                => optional($patient->user)->photo ? url('/api/image/' . $patient->user->photo) : null,
             'puskesmas_id'         => $patient->puskesmas_id,
             'puskesmas_name'       => $puskesmasName,
             'treatment_start_date' => $patient->treatment_start_date ? Carbon::parse($patient->treatment_start_date)->format('Y-m-d') : null,
@@ -968,7 +968,7 @@ class PatientController extends Controller
             $endDate = $treatment->end_date ? Carbon::parse($treatment->end_date) : null;
             $totalDays = $treatment->treatment_days ?: ($startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 180);
 
-            $now = Carbon::today();
+            $now = Carbon::today('Asia/Jakarta');
             $currentDay = 0;
             if ($startDate) {
                 if ($now->greaterThanOrEqualTo($startDate)) {
@@ -1004,14 +1004,27 @@ class PatientController extends Controller
             ];
         }
 
-        // 3. Jadwal Kunjungan Terdekat (Next Visit) & Upcoming Visits
+        // 3. Jadwal Kunjungan Terdekat (Next Visit) & Upcoming Visits (Hanya jadwal mendatang yang valid)
         $nextVisitData = null;
         $upcomingVisits = [];
+        $nowJakarta = Carbon::now('Asia/Jakarta');
+        $todayJakarta = $nowJakarta->toDateString();
+        $currentTimeJakarta = $nowJakarta->toTimeString();
+
         $visitsQuery = TreatmentVisit::whereHas('patientTreatment', function ($q) use ($patient) {
                 $q->where('patient_id', $patient->id);
             })
-            ->where('visit_status', '!=', 'Batal')
-            ->whereDate('visit_date', '>=', Carbon::today())
+            ->whereNotIn('visit_status', ['Batal', 'Dibatalkan', 'Selesai'])
+            ->where(function ($q) use ($todayJakarta, $currentTimeJakarta) {
+                $q->where('visit_date', '>', $todayJakarta)
+                  ->orWhere(function ($sub) use ($todayJakarta, $currentTimeJakarta) {
+                      $sub->where('visit_date', $todayJakarta)
+                          ->where(function ($timeQ) use ($currentTimeJakarta) {
+                              $timeQ->whereNull('visit_time')
+                                    ->orWhere('visit_time', '>=', $currentTimeJakarta);
+                          });
+                  });
+            })
             ->orderBy('visit_date', 'asc')
             ->orderBy('visit_time', 'asc');
 
@@ -1044,7 +1057,7 @@ class PatientController extends Controller
         $todayRecord = MedicationRecord::whereHas('patientTreatment', function ($q) use ($patient) {
                 $q->where('patient_id', $patient->id);
             })
-            ->whereDate('created_at', Carbon::today())
+            ->whereDate('created_at', Carbon::today('Asia/Jakarta'))
             ->latest()
             ->first();
 
@@ -1054,7 +1067,7 @@ class PatientController extends Controller
                 'id'           => $todayRecord->id,
                 'is_verified'  => (bool) $todayRecord->is_verified,
                 'submitted_at' => $todayRecord->created_at ? $todayRecord->created_at->format('Y-m-d H:i:s') : null,
-                'photo'        => $todayRecord->photo ? asset('images/' . $todayRecord->photo) : null,
+                'photo'        => $todayRecord->photo ? url('/api/image/' . $todayRecord->photo) : null,
             ];
         }
 
