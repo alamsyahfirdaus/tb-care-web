@@ -362,6 +362,8 @@ class PatientTreatment extends Model
                         // Dosis sudah diminum (konfirmasi mandiri atau verifikasi kader)
                         $takenAt = \Carbon\Carbon::parse($rec->created_at)->timezone($tz);
 
+                        $isKaderVerified = ($rec->is_verified && ($rec->confirmation_source === 'kader' || !empty($rec->verified_by)));
+
                         $takenItem = [
                             'id'                  => $rec->id,
                             'record_id'           => $rec->id,
@@ -377,7 +379,7 @@ class PatientTreatment extends Model
                             'color'               => '#10B981',
                             'badge_class'         => 'badge-success',
                             'is_verified'         => (int) $rec->is_verified,
-                            'verification_status' => $rec->is_verified ? 'Terverifikasi' : 'Menunggu Verifikasi',
+                            'verification_status' => $isKaderVerified ? 'Terverifikasi' : 'Sudah Minum',
                             'verification_note'   => $rec->verification_note ?? null,
                             'confirmation_source' => $rec->confirmation_source ?? 'patient',
                             'verified_by'         => $rec->verified_by,
@@ -402,8 +404,9 @@ class PatientTreatment extends Model
                     if ($isToday) {
                         // Hari ini: periksa apakah jam minum obat sudah lewat
                         if ($now->greaterThanOrEqualTo($timeCarbonToday)) {
-                            // Sudah melewati jadwal minum obat hari ini -> Terlewat
-                            $missedItem = [
+                            // Sudah melewati jadwal minum obat hari ini tetapi belum melewati batas akhir hari (cutoff 23:59:59 WIB)
+                            // Jangan tetapkan Terlewat secara prematur -> Status: Belum Konfirmasi
+                            $unconfirmedItem = [
                                 'id'                  => null,
                                 'record_id'           => null,
                                 'patient_treatment_id'=> $this->id,
@@ -413,15 +416,15 @@ class PatientTreatment extends Model
                                 'scheduled_time'      => substr($doseTime, 0, 5) . ' WIB',
                                 'time_taken'          => null,
                                 'time_taken_formatted'=> null,
-                                'status'              => 'Terlewat',
-                                'status_key'          => 'missed',
-                                'color'               => '#EF4444',
-                                'badge_class'         => 'badge-danger',
+                                'status'              => 'Belum Konfirmasi',
+                                'status_key'          => 'not_confirmed',
+                                'color'               => '#F59E0B',
+                                'badge_class'         => 'badge-warning',
                                 'is_verified'         => null,
                                 'verification_status' => null,
                                 'verification_note'   => null,
-                                'late'                => 1,
-                                'notes'               => 'Belum ada bukti minum obat pada tanggal ini.',
+                                'late'                => 0,
+                                'notes'               => 'Belum ada bukti minum obat hari ini. Batas konfirmasi sampai pukul 23:59 WIB.',
                                 'photo'               => null,
                                 'photo_url'           => null,
                                 'photo_raw'           => null,
@@ -429,10 +432,8 @@ class PatientTreatment extends Model
                                 'submitted_relative'  => null,
                                 'has_proof'           => false,
                             ];
-                            $missedDays[] = $missedItem;
-                            $dailyRecords[] = $missedItem;
-                            $scheduledDosesCount++;
-                            $missedDosesCount++;
+                            $dailyRecords[] = $unconfirmedItem;
+                            // Hari ini yang belum konfirmasi tidak dianggap terlewat
                         } else {
                             // Belum jamnya hari ini -> Belum jatuh tempo
                             $dailyRecords[] = [

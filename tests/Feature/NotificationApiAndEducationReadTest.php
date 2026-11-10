@@ -105,9 +105,14 @@ class NotificationApiAndEducationReadTest extends TestCase
 
     private function getOrCreateTerritory(): array
     {
+        $prov = \App\Models\Province::firstOrCreate(
+            ['id' => 1],
+            ['name' => 'Jawa Barat']
+        );
+
         $dist = District::firstOrCreate(
             ['name' => 'Kecamatan Test Pusat'],
-            ['province_id' => 1]
+            ['province_id' => $prov->id]
         );
 
         $sub = Subdistrict::firstOrCreate(

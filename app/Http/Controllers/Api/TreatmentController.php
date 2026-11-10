@@ -374,15 +374,28 @@ class TreatmentController extends Controller
             ], 403);
         }
 
-        $treatments = PatientTreatment::where('patient_id', $patientId)->pluck('id');
+        $patientTreatmentId = request()->query('treatment_id', request()->query('patient_treatment_id'));
 
-        if ($treatments->isEmpty()) {
+        if ($patientTreatmentId) {
+            $targetTreatment = PatientTreatment::where('patient_id', $patientId)
+                ->where('id', $patientTreatmentId)
+                ->first();
+        } else {
+            $targetTreatment = PatientTreatment::where('patient_id', $patientId)
+                ->where('treatment_status', 'Berjalan')
+                ->latest('start_date')
+                ->first()
+                ?? PatientTreatment::where('patient_id', $patientId)->latest('id')->first();
+        }
+
+        if (!$targetTreatment) {
             return response()->json([
                 'message' => 'Data pengobatan pasien tidak ditemukan.'
             ], 404);
         }
 
-        $records = MedicationRecord::whereIn('patient_treatment_id', $treatments)
+        // Catatan minum obat hanya untuk episode pengobatan yang dipilih/aktif (mencegah pencampuran data antar-episode)
+        $records = MedicationRecord::where('patient_treatment_id', $targetTreatment->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -399,15 +412,10 @@ class TreatmentController extends Controller
             ];
         });
 
-        // Hitung statistik kepatuhan dan daftar hari terlewat untuk pengobatan aktif pasien
+        // Hitung statistik kepatuhan dan daftar hari terlewat untuk episode pengobatan ini
         $period = request()->query('period', 'all');
-        $activeTreatment = PatientTreatment::where('patient_id', $patientId)
-            ->where('treatment_status', 'Berjalan')
-            ->latest('start_date')
-            ->first()
-            ?? PatientTreatment::where('patient_id', $patientId)->latest('id')->first();
-
-        $adherence = $activeTreatment ? $activeTreatment->calculateDetailedAdherence($period) : null;
+        $activeTreatment = $targetTreatment;
+        $adherence = $activeTreatment->calculateDetailedAdherence($period);
 
         // Satu daftar riwayat minum obat kronologis (terbaru ke terlama)
         $unifiedHistory = ($adherence && !empty($adherence['daily_records']))
@@ -452,6 +460,7 @@ class TreatmentController extends Controller
 
             return response()->json([
                 'message'        => 'Riwayat minum obat pasien berhasil diambil.',
+                'treatment_id'   => $targetTreatment->id,
                 'data'           => $pagedHistory,
                 'raw_records'    => $history,
                 'adherence'      => $adherence,
@@ -465,6 +474,7 @@ class TreatmentController extends Controller
 
         return response()->json([
             'message'        => 'Riwayat minum obat pasien berhasil diambil.',
+            'treatment_id'   => $targetTreatment->id,
             'data'           => $filteredHistory->values()->all(),
             'raw_records'    => $history,
             'adherence'      => $adherence,

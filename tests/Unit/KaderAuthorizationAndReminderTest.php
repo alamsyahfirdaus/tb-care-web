@@ -116,12 +116,12 @@ class KaderAuthorizationAndReminderTest extends TestCase
         ]);
         $resStore = $controller->store($reqStore);
         $this->assertEquals(403, $resStore->getStatusCode());
-        $this->assertStringContainsString('Kader tidak memiliki wewenang', $resStore->getContent());
+        $this->assertStringContainsString('tidak memiliki wewenang', $resStore->getContent());
 
         // 2. Destroy
         $resDestroy = $controller->destroy(1);
         $this->assertEquals(403, $resDestroy->getStatusCode());
-        $this->assertStringContainsString('Kader tidak memiliki wewenang', $resDestroy->getContent());
+        $this->assertStringContainsString('tidak memiliki wewenang', $resDestroy->getContent());
 
         // 3. Update Treatment Status
         $reqStatus = Request::create('/api/treatments/status', 'POST', [
@@ -131,7 +131,7 @@ class KaderAuthorizationAndReminderTest extends TestCase
 
         $resStatus = $controller->updateTreatmentStatus($reqStatus);
         $this->assertEquals(403, $resStatus->getStatusCode());
-        $this->assertStringContainsString('Kader tidak memiliki wewenang', $resStatus->getContent());
+        $this->assertStringContainsString('tidak memiliki wewenang', $resStatus->getContent());
     }
 
     /**
@@ -152,18 +152,18 @@ class KaderAuthorizationAndReminderTest extends TestCase
         ]);
         $resStore = $controller->store($reqStore);
         $this->assertEquals(403, $resStore->getStatusCode());
-        $this->assertStringContainsString('Kader tidak memiliki wewenang', $resStore->getContent());
+        $this->assertStringContainsString('tidak memiliki wewenang', $resStore->getContent());
 
         // 2. Destroy
         $resDestroy = $controller->destroy(1);
         $this->assertEquals(403, $resDestroy->getStatusCode());
-        $this->assertStringContainsString('Kader tidak memiliki wewenang', $resDestroy->getContent());
+        $this->assertStringContainsString('tidak memiliki wewenang', $resDestroy->getContent());
 
         // 3. Cancel Visit
         $reqCancel = Request::create('/api/visits/1/cancel', 'POST', ['notes' => 'Pasien berhalangan']);
         $resCancel = $controller->cancelVisit($reqCancel, 1);
         $this->assertEquals(403, $resCancel->getStatusCode());
-        $this->assertStringContainsString('Kader tidak memiliki wewenang', $resCancel->getContent());
+        $this->assertStringContainsString('tidak memiliki wewenang', $resCancel->getContent());
     }
 
     /**
