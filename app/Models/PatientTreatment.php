@@ -350,7 +350,7 @@ class PatientTreatment extends Model
                             'photo_url'           => null,
                             'photo_raw'           => null,
                             'submitted_at'        => $rec->created_at ? $rec->created_at->format('Y-m-d H:i:s') : null,
-                            'submitted_relative'  => $rec->created_at ? $rec->created_at->diffForHumans() : null,
+                            'submitted_relative'  => $rec->created_at ? $rec->created_at->locale('id')->diffForHumans() : null,
                             'has_proof'           => false,
                         ];
 
@@ -390,7 +390,7 @@ class PatientTreatment extends Model
                             'photo_url'           => $rec->photo ? url('/api/image/' . $rec->photo) : null,
                             'photo_raw'           => $rec->photo ?: null,
                             'submitted_at'        => $rec->created_at ? $rec->created_at->format('Y-m-d H:i:s') : null,
-                            'submitted_relative'  => $rec->created_at ? $rec->created_at->diffForHumans() : null,
+                            'submitted_relative'  => $rec->created_at ? $rec->created_at->locale('id')->diffForHumans() : null,
                             'has_proof'           => !empty($rec->photo),
                         ];
 

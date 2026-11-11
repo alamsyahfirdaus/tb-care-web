@@ -65,7 +65,7 @@ class NotificationController extends Controller
                 'is_read'      => $n->read_at !== null,
                 'read_at'      => $n->read_at ? $n->read_at->timezone('Asia/Jakarta')->toIso8601String() : null,
                 'created_at'   => $createdAt->toIso8601String(),
-                'time_ago'     => $createdAt->diffForHumans(),
+                'time_ago'     => $createdAt ? $createdAt->locale('id')->diffForHumans() : null,
                 'payload'      => $nData,
             ];
         });

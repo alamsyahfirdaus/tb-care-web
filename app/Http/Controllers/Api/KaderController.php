@@ -724,7 +724,7 @@ class KaderController extends Controller
                 'channel'      => $r->channel,
                 'error_reason' => $r->error_reason,
                 'created_at'   => $r->created_at ? $r->created_at->format('Y-m-d H:i:s') : null,
-                'time_ago'     => $r->created_at ? $r->created_at->diffForHumans() : null,
+                'time_ago'     => $r->created_at ? $r->created_at->locale('id')->diffForHumans() : null,
             ];
         });
 

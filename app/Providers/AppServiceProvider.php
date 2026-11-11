@@ -23,6 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        \Carbon\Carbon::setLocale('id');
+        if (class_exists(\Illuminate\Support\Carbon::class)) {
+            \Illuminate\Support\Carbon::setLocale('id');
+        }
     }
 }

@@ -408,7 +408,7 @@ class TreatmentController extends Controller
                 'late'                 => $record->late,
                 'notes'                => $record->notes,
                 'submitted_at'         => $record->created_at->format('Y-m-d H:i:s'),
-                'submitted_relative'   => $record->created_at->diffForHumans(),
+                'submitted_relative'   => $record->created_at ? $record->created_at->locale('id')->diffForHumans() : null,
             ];
         });
 
