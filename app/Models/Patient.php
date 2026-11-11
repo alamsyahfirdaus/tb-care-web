@@ -17,6 +17,8 @@ class Patient extends Model
 
     protected $casts = [
         'treatment_start_date' => 'date',
+        'height'               => 'float',
+        'weight'               => 'float',
     ];
 
     public function user()

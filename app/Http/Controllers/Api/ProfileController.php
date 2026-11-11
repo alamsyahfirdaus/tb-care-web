@@ -159,6 +159,10 @@ class ProfileController extends Controller
             $userData['rw'] = $p->rw;
             $userData['address'] = $p->address;
             $userData['comorbidities'] = $p->comorbidities;
+            $userData['height'] = $p->height !== null ? (float)$p->height : null;
+            $userData['weight'] = $p->weight !== null ? (float)$p->weight : null;
+            $userData['blood_type'] = $p->blood_type;
+            $userData['occupation'] = $p->occupation;
         }
 
         // Kembalikan data profil dalam format JSON
@@ -201,6 +205,10 @@ class ProfileController extends Controller
             $rules['rt']             = ['sometimes', 'required', 'string', 'max:10'];
             $rules['rw']             = ['sometimes', 'required', 'string', 'max:10'];
             $rules['address']        = ['sometimes', 'nullable', 'string', 'max:1000'];
+            $rules['height']         = ['sometimes', 'nullable', 'numeric', 'min:30', 'max:250'];
+            $rules['weight']         = ['sometimes', 'nullable', 'numeric', 'min:2', 'max:300'];
+            $rules['blood_type']     = ['sometimes', 'nullable', 'string', 'in:A,B,AB,O'];
+            $rules['occupation']     = ['sometimes', 'nullable', 'string', 'max:150'];
         }
 
         $messages = [
@@ -226,6 +234,14 @@ class ProfileController extends Controller
             'village_id.exists'     => 'Desa/Kelurahan yang dipilih tidak valid.',
             'rt.required'           => 'RT wajib diisi.',
             'rw.required'           => 'RW wajib diisi.',
+            'height.numeric'        => 'Tinggi badan harus berupa angka.',
+            'height.min'            => 'Tinggi badan minimal 30 cm.',
+            'height.max'            => 'Tinggi badan maksimal 250 cm.',
+            'weight.numeric'        => 'Berat badan harus berupa angka.',
+            'weight.min'            => 'Berat badan minimal 2 kg.',
+            'weight.max'            => 'Berat badan maksimal 300 kg.',
+            'blood_type.in'         => 'Golongan darah harus salah satu dari A, B, AB, atau O.',
+            'occupation.max'        => 'Pekerjaan maksimal 150 karakter.',
         ];
 
         $validator = Validator::make($request->all(), $rules, $messages);
@@ -312,48 +328,75 @@ class ProfileController extends Controller
             $userUpdate['photo'] = $fileName;
         }
 
-        $user->update($userUpdate);
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $user->update($userUpdate);
 
-        // Update / Create data Patient jika role Pasien (user_type_id == 2)
-        if ($isPatient) {
-            $patientUpdate = [];
-            if ($request->has('nik')) {
-                $nik = trim((string)$request->input('nik'));
-                $patientUpdate['nik'] = !empty($nik) ? $nik : null;
-            }
-            if ($request->has('puskesmas_id')) {
-                $patientUpdate['puskesmas_id'] = $request->input('puskesmas_id') ?: null;
-            }
-            if ($request->has('village_id')) {
-                $villageId = $request->input('village_id');
-                $patientUpdate['village_id'] = $villageId ?: null;
-                // Selalu sinkronkan subdistrict_id langsung dari relasi village
-                $village = Village::find($villageId);
-                if ($village && $village->subdistrict_id) {
-                    $patientUpdate['subdistrict_id'] = $village->subdistrict_id;
+            // Update / Create data Patient jika role Pasien (user_type_id == 2)
+            if ($isPatient) {
+                $patientUpdate = [];
+                if ($request->has('nik')) {
+                    $nik = trim((string)$request->input('nik'));
+                    $patientUpdate['nik'] = !empty($nik) ? $nik : null;
                 }
-            } elseif ($request->has('subdistrict_id')) {
-                $patientUpdate['subdistrict_id'] = $request->input('subdistrict_id') ?: null;
-            }
-            if ($request->has('rt')) {
-                $patientUpdate['rt'] = $request->input('rt') !== null ? trim((string)$request->input('rt')) : null;
-            }
-            if ($request->has('rw')) {
-                $patientUpdate['rw'] = $request->input('rw') !== null ? trim((string)$request->input('rw')) : null;
-            }
-            if ($request->has('address')) {
-                $patientUpdate['address'] = $request->input('address') !== null ? trim((string)$request->input('address')) : null;
-            }
-            if ($request->has('comorbidities')) {
-                $patientUpdate['comorbidities'] = $request->input('comorbidities') !== null ? trim((string)$request->input('comorbidities')) : null;
+                if ($request->has('puskesmas_id')) {
+                    $patientUpdate['puskesmas_id'] = $request->input('puskesmas_id') ?: null;
+                }
+                if ($request->has('village_id')) {
+                    $villageId = $request->input('village_id');
+                    $patientUpdate['village_id'] = $villageId ?: null;
+                    // Selalu sinkronkan subdistrict_id langsung dari relasi village
+                    $village = Village::find($villageId);
+                    if ($village && $village->subdistrict_id) {
+                        $patientUpdate['subdistrict_id'] = $village->subdistrict_id;
+                    }
+                } elseif ($request->has('subdistrict_id')) {
+                    $patientUpdate['subdistrict_id'] = $request->input('subdistrict_id') ?: null;
+                }
+                if ($request->has('rt')) {
+                    $patientUpdate['rt'] = $request->input('rt') !== null ? trim((string)$request->input('rt')) : null;
+                }
+                if ($request->has('rw')) {
+                    $patientUpdate['rw'] = $request->input('rw') !== null ? trim((string)$request->input('rw')) : null;
+                }
+                if ($request->has('address')) {
+                    $patientUpdate['address'] = $request->input('address') !== null ? trim((string)$request->input('address')) : null;
+                }
+                if ($request->has('comorbidities')) {
+                    $patientUpdate['comorbidities'] = $request->input('comorbidities') !== null ? trim((string)$request->input('comorbidities')) : null;
+                }
+                if ($request->has('height')) {
+                    $h = $request->input('height');
+                    $patientUpdate['height'] = ($h !== null && $h !== '') ? (float)$h : null;
+                }
+                if ($request->has('weight')) {
+                    $w = $request->input('weight');
+                    $patientUpdate['weight'] = ($w !== null && $w !== '') ? (float)$w : null;
+                }
+                if ($request->has('blood_type')) {
+                    $bt = strtoupper(trim((string)$request->input('blood_type')));
+                    $patientUpdate['blood_type'] = !empty($bt) ? $bt : null;
+                }
+                if ($request->has('occupation')) {
+                    $occ = trim((string)$request->input('occupation'));
+                    $patientUpdate['occupation'] = !empty($occ) ? $occ : null;
+                }
+
+                if ($patient) {
+                    $patient->update($patientUpdate);
+                } else {
+                    $patientUpdate['user_id'] = $user->id;
+                    $patient = Patient::create($patientUpdate);
+                }
             }
 
-            if ($patient) {
-                $patient->update($patientUpdate);
-            } else {
-                $patientUpdate['user_id'] = $user->id;
-                $patient = Patient::create($patientUpdate);
-            }
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan perubahan profil: ' . $e->getMessage(),
+            ], 500);
         }
 
         $user->refresh();
@@ -402,6 +445,10 @@ class ProfileController extends Controller
             $userData['rw'] = $p->rw;
             $userData['address'] = $p->address;
             $userData['comorbidities'] = $p->comorbidities;
+            $userData['height'] = $p->height !== null ? (float)$p->height : null;
+            $userData['weight'] = $p->weight !== null ? (float)$p->weight : null;
+            $userData['blood_type'] = $p->blood_type;
+            $userData['occupation'] = $p->occupation;
         }
 
         return response()->json([
