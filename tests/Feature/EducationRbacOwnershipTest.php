@@ -36,11 +36,14 @@ class EducationRbacOwnershipTest extends TestCase
             'is_active'    => true,
         ]);
 
+        $puskId = \App\Models\Puskesmas::first()?->id ?? 1;
+        $distId = \App\Models\District::first()?->id ?? 1;
+
         Officer::create([
             'user_id'         => $user->id,
             'officer_type_id' => 3, // PJTB
-            'puskesmas_id'    => 1,
-            'district_id'     => 1,
+            'puskesmas_id'    => $puskId,
+            'district_id'     => $distId,
         ]);
 
         return $user;
@@ -59,11 +62,14 @@ class EducationRbacOwnershipTest extends TestCase
             'is_active'    => true,
         ]);
 
+        $puskId = \App\Models\Puskesmas::first()?->id ?? 1;
+        $distId = \App\Models\District::first()?->id ?? 1;
+
         Officer::create([
             'user_id'         => $user->id,
             'officer_type_id' => 4, // Kader
-            'puskesmas_id'    => 1,
-            'district_id'     => 1,
+            'puskesmas_id'    => $puskId,
+            'district_id'     => $distId,
         ]);
 
         return $user;

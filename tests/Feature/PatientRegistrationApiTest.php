@@ -32,8 +32,12 @@ class PatientRegistrationApiTest extends TestCase
                 ]
             ]);
 
-        // 3. Subdistricts (Kota Tasikmalaya = 27)
-        $response = $this->getJson('/api/districts/27/subdistricts');
+        $subdistrict = \App\Models\Subdistrict::with('district.province')->first();
+        $districtId = $subdistrict?->district_id ?? 27;
+        $subdistrictId = $subdistrict?->id ?? 41;
+
+        // 3. Subdistricts
+        $response = $this->getJson("/api/districts/{$districtId}/subdistricts");
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
@@ -43,8 +47,8 @@ class PatientRegistrationApiTest extends TestCase
                 ]
             ]);
 
-        // 4. Villages (Kawalu = 41)
-        $response = $this->getJson('/api/subdistricts/41/villages');
+        // 4. Villages
+        $response = $this->getJson("/api/subdistricts/{$subdistrictId}/villages");
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'message',

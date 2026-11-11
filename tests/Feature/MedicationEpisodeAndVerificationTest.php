@@ -206,4 +206,30 @@ class MedicationEpisodeAndVerificationTest extends TestCase
         $this->assertEquals('Terverifikasi', $kaderRecord['verification_status']);
         $this->assertEquals(1, (int)$kaderRecord['is_verified']);
     }
+
+    /**
+     * Test treatment history endpoint returns newest episode first with chronological episode numbering.
+     */
+    public function test_treatment_history_orders_newest_first_with_chronological_episode_number()
+    {
+        $data = $this->createPatientWithMultipleEpisodes();
+
+        $response = $this->actingAs($data['user'], 'sanctum')
+            ->getJson("/api/patients/{$data['patient']->id}/treatments");
+
+        $response->assertStatus(200);
+        $treatments = $response->json('data');
+
+        $this->assertCount(2, $treatments);
+
+        // First item must be the newest episode (Episode 2, Berjalan)
+        $this->assertEquals($data['episode2']->id, $treatments[0]['id']);
+        $this->assertEquals(2, $treatments[0]['episode_number']);
+        $this->assertEquals('Berjalan', $treatments[0]['treatment_status']);
+
+        // Second item must be the older episode (Episode 1, Selesai)
+        $this->assertEquals($data['episode1']->id, $treatments[1]['id']);
+        $this->assertEquals(1, $treatments[1]['episode_number']);
+        $this->assertEquals('Selesai', $treatments[1]['treatment_status']);
+    }
 }

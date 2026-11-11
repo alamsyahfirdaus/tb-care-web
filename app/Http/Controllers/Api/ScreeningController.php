@@ -399,18 +399,54 @@ class ScreeningController extends Controller
             ], 401);
         }
 
-        $patient = Patient::where('user_id', $user->id)->first();
-        $patientId = $patient ? $patient->id : null;
-
         $query = Screening::query()
-            ->with(['category:id,name', 'closeContact:id,name,relation'])
-            ->where(function ($q) use ($user, $patientId) {
+            ->with(['category:id,name', 'closeContact:id,name,relation']);
+
+        if ($user->user_type_id == 2) {
+            // Pasien hanya dapat melihat skrining miliknya sendiri
+            $patient = Patient::where('user_id', $user->id)->first();
+            $patientId = $patient ? $patient->id : null;
+
+            $query->where(function ($q) use ($user, $patientId) {
                 $q->where('user_id', $user->id);
                 if ($patientId) {
                     $q->orWhere('patient_id', $patientId);
                 }
-            })
-            ->orderByDesc('screened_at');
+            });
+        } elseif ($request->filled('patient_id')) {
+            // Petugas / Admin mengakses skrining pasien tertentu dengan verifikasi wilayah
+            $targetPatient = Patient::find($request->patient_id);
+            if (!$targetPatient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data pasien tidak ditemukan.',
+                ], 404);
+            }
+
+            if (!$targetPatient->isAccessibleBy($user)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki wewenang mengakses data skrining pasien di luar wilayah binaan Anda.',
+                ], 403);
+            }
+
+            $query->where('patient_id', $targetPatient->id);
+        } else {
+            // Petugas / Admin melihat skrining dalam cakupan wilayah binaan
+            $query->accessibleBy($user);
+        }
+
+        // Filter status jika ada
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Filter tingkat risiko jika ada
+        if ($request->filled('risk_level')) {
+            $query->where('risk_level', $request->input('risk_level'));
+        }
+
+        $query->orderByDesc('screened_at');
 
         $perPage = max(1, min(50, (int) $request->input('per_page', 15)));
         $screenings = $query->paginate($perPage);

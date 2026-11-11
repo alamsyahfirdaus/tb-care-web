@@ -125,7 +125,7 @@ class PatientPolicy
                 return in_array($villageId, $assignedVillageIds);
             }
 
-            // Dinkes Kab/Kota (2): Puskesmas must belong to officer's district
+            // Dinkes Kab/Kota (2): Puskesmas and Village must belong to officer's district
             if ($officer->officer_type_id == 2) {
                 if ($puskesmasId) {
                     $pusk = \App\Models\Puskesmas::with('subdistrict')->find($puskesmasId);
@@ -133,16 +133,28 @@ class PatientPolicy
                         return false;
                     }
                 }
+                if ($villageId) {
+                    $vil = \App\Models\Village::with('subdistrict')->find($villageId);
+                    if ($vil && optional($vil->subdistrict)->district_id != $officer->district_id) {
+                        return false;
+                    }
+                }
                 return true;
             }
 
-            // Dinkes Provinsi (1): Puskesmas must belong to officer's province
+            // Dinkes Provinsi (1): Puskesmas and Village must belong to officer's province
             if ($officer->officer_type_id == 1) {
                 $dist = \App\Models\District::find($officer->district_id);
                 $provId = $dist ? $dist->province_id : null;
                 if ($puskesmasId && $provId) {
                     $pusk = \App\Models\Puskesmas::with('subdistrict.district')->find($puskesmasId);
                     if (!$pusk || optional(optional($pusk->subdistrict)->district)->province_id != $provId) {
+                        return false;
+                    }
+                }
+                if ($villageId && $provId) {
+                    $vil = \App\Models\Village::with('subdistrict.district')->find($villageId);
+                    if ($vil && optional(optional($vil->subdistrict)->district)->province_id != $provId) {
                         return false;
                     }
                 }

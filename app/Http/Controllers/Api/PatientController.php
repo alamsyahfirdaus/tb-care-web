@@ -171,7 +171,12 @@ class PatientController extends Controller
         $user = Auth::user();
 
         // Kader and Patient strictly forbidden from adding or editing patient master/clinical data
-        if ($user && ($user->isKader() || $user->isPatient())) {
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menambah atau mengubah data master pasien.'
+            ], 403);
+        }
+        if ($user && $user->isPatient()) {
             return response()->json([
                 'message' => 'Anda tidak memiliki wewenang untuk menambah atau mengubah data master pasien.'
             ], 403);
@@ -479,7 +484,12 @@ class PatientController extends Controller
         $user = Auth::user();
 
         // Kader and Patient strictly forbidden from deleting patient data
-        if ($user && ($user->isKader() || $user->isPatient())) {
+        if ($user && $user->isKader()) {
+            return response()->json([
+                'message' => 'Kader tidak memiliki wewenang untuk menghapus data pasien.'
+            ], 403);
+        }
+        if ($user && $user->isPatient()) {
             return response()->json([
                 'message' => 'Anda tidak memiliki wewenang untuk menghapus data pasien.'
             ], 403);
@@ -538,27 +548,41 @@ class PatientController extends Controller
             ], 403);
         }
 
+        // Ambil riwayat pengobatan secara kronologis untuk penomoran episode
         $treatments = PatientTreatment::with('treatmentType')
             ->where('patient_id', $id)
-            ->orderByDesc('start_date')
+            ->orderBy('start_date', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
-        $treatmentHistory = $treatments->map(function ($treatment) {
+        // Tetapkan nomor episode kronologis (1, 2, ... N)
+        $treatmentsWithEpisode = $treatments->values()->map(function ($treatment, $idx) {
+            $treatment->episode_number = $idx + 1;
+            return $treatment;
+        });
+
+        // Urutkan episode pengobatan terbaru di posisi paling atas (start_date descending, id descending)
+        $sortedTreatments = $treatmentsWithEpisode->sortByDesc(function ($treatment) {
+            return ($treatment->start_date ?? '1970-01-01') . '_' . str_pad($treatment->id, 10, '0', STR_PAD_LEFT);
+        })->values();
+
+        $treatmentHistory = $sortedTreatments->map(function ($treatment) {
             $normalizedMedications = $this->normalizePrescription($treatment->prescription, $treatment->medication_time);
             $normalizedNames = $this->normalizePrescriptionNames($treatment->prescription);
 
             return [
-                'id'               => $treatment->id,
-                'patient_id'       => $treatment->patient_id,
-                'treatment_type'   => optional($treatment->treatmentType)->treatment_type,
-                'start_date'       => $treatment->start_date,
-                'end_date'         => $treatment->end_date,
-                'treatment_days'   => $treatment->treatment_days,
-                'medication_time'  => $treatment->medication_time,
-                'treatment_status' => $treatment->treatment_status,
+                'id'                => $treatment->id,
+                'patient_id'        => $treatment->patient_id,
+                'episode_number'    => $treatment->episode_number,
+                'treatment_type'    => optional($treatment->treatmentType)->treatment_type,
+                'start_date'        => $treatment->start_date,
+                'end_date'          => $treatment->end_date,
+                'treatment_days'    => $treatment->treatment_days,
+                'medication_time'   => $treatment->medication_time,
+                'treatment_status'  => $treatment->treatment_status,
                 'treatment_outcome' => in_array($treatment->treatment_status, ['Sembuh', 'Pengobatan Lengkap', 'Gagal', 'Meninggal', 'Putus Berobat', 'Tidak Dievaluasi', 'Pindah']) ? $treatment->treatment_status : ($treatment->treatment_status == 'Selesai' ? 'Pengobatan Lengkap' : null),
-                'prescription'     => $normalizedNames,
-                'medications'      => $normalizedMedications,
+                'prescription'      => $normalizedNames,
+                'medications'       => $normalizedMedications,
             ];
         });
 

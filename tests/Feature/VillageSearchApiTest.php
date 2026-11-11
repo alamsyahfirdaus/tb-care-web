@@ -67,24 +67,31 @@ class VillageSearchApiTest extends TestCase
         $this->assertNotEmpty($data);
         $first = $data[0];
         $this->assertEquals('Talagasari', $first['name']);
-        $this->assertEquals(41, $first['subdistrict_id']);
-        $this->assertEquals(27, $first['district_id']);
-        $this->assertEquals(1, $first['province_id']);
+
+        $talagasari = \App\Models\Village::with('subdistrict.district')->where('name', 'Talagasari')->first();
+        if ($talagasari) {
+            $this->assertEquals($talagasari->subdistrict_id, $first['subdistrict_id']);
+            $this->assertEquals($talagasari->subdistrict?->district_id, $first['district_id']);
+            $this->assertEquals($talagasari->subdistrict?->district?->province_id, $first['province_id']);
+        }
     }
 
     /**
-     * Test 4: Backward compatibility with ?subdistrict_id=41
+     * Test 4: Backward compatibility with ?subdistrict_id=
      */
     public function test_villages_by_subdistrict_id()
     {
-        $response = $this->getJson('/api/villages?subdistrict_id=41');
+        $talagasari = \App\Models\Village::where('name', 'Talagasari')->first();
+        $subdistrictId = $talagasari ? $talagasari->subdistrict_id : 41;
+
+        $response = $this->getJson('/api/villages?subdistrict_id=' . $subdistrictId);
 
         $response->assertStatus(200);
         $data = $response->json('data');
 
         $this->assertNotEmpty($data);
         foreach ($data as $item) {
-            $this->assertEquals(41, $item['subdistrict_id']);
+            $this->assertEquals($subdistrictId, $item['subdistrict_id']);
         }
     }
 }
