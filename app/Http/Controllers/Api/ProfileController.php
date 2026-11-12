@@ -23,7 +23,18 @@ class ProfileController extends Controller
     {
         // Ambil data user yang sedang login
         $user = Auth::user();
+        $userData = $this->formatUserData($user);
 
+        // Kembalikan data profil dalam format JSON
+        return response()->json([
+            'success' => true,
+            'message' => 'Data profil berhasil diambil.',
+            'data'    => $userData,
+        ]);
+    }
+
+    private function formatUserData(User $user): array
+    {
         if ($user->user_type_id == 2) {
             $user->load([
                 'patient.puskesmas.subdistrict.district.province',
@@ -165,12 +176,7 @@ class ProfileController extends Controller
             $userData['occupation'] = $p->occupation;
         }
 
-        // Kembalikan data profil dalam format JSON
-        return response()->json([
-            'success' => true,
-            'message' => 'Data profil berhasil diambil.',
-            'data'    => $userData,
-        ]);
+        return $userData;
     }
 
     public function update(Request $request)
@@ -400,56 +406,7 @@ class ProfileController extends Controller
         }
 
         $user->refresh();
-        if ($user->user_type_id == 2) {
-            $user->load([
-                'patient.puskesmas.subdistrict.district.province',
-                'patient.village.subdistrict.district.province',
-                'patient.subdistrict.district.province',
-            ]);
-        }
-
-        $user->photo = $user->photo ?: null;
-
-        $userData = $user->toArray();
-        if ($user->patient) {
-            $p = $user->patient;
-            $subdistrict = $p->subdistrict ?? $p->village?->subdistrict;
-            $district = $subdistrict?->district;
-            $province = $district?->province;
-
-            $pusk = $p->puskesmas;
-            $puskSub = $pusk?->subdistrict?->name;
-            $puskDist = $pusk?->subdistrict?->district?->name;
-            $puskFormattedName = $pusk
-                ? ($puskSub ? $pusk->name . ' (' . $puskSub . ', ' . $puskDist . ')' : $pusk->name)
-                : null;
-
-            $userData['nik'] = $p->nik;
-            $userData['puskesmas_id'] = $p->puskesmas_id;
-            $userData['puskesmas_name'] = $pusk ? $pusk->name : null;
-            $userData['puskesmas_subdistrict_name'] = $puskSub;
-            $userData['puskesmas_district_name'] = $puskDist;
-            $userData['puskesmas_location'] = ($puskSub && $puskDist)
-                ? ($puskSub . ' - ' . $puskDist)
-                : ($puskSub ?: ($puskDist ?: null));
-            $userData['puskesmas_formatted_name'] = $puskFormattedName;
-            $userData['province_id'] = $province ? $province->id : null;
-            $userData['province_name'] = $province ? $province->name : null;
-            $userData['district_id'] = $district ? $district->id : null;
-            $userData['district_name'] = $district ? $district->name : null;
-            $userData['subdistrict_id'] = $subdistrict ? $subdistrict->id : null;
-            $userData['subdistrict_name'] = $subdistrict ? $subdistrict->name : null;
-            $userData['village_id'] = $p->village_id;
-            $userData['village_name'] = $p->village ? $p->village->name : null;
-            $userData['rt'] = $p->rt;
-            $userData['rw'] = $p->rw;
-            $userData['address'] = $p->address;
-            $userData['comorbidities'] = $p->comorbidities;
-            $userData['height'] = $p->height !== null ? (float)$p->height : null;
-            $userData['weight'] = $p->weight !== null ? (float)$p->weight : null;
-            $userData['blood_type'] = $p->blood_type;
-            $userData['occupation'] = $p->occupation;
-        }
+        $userData = $this->formatUserData($user);
 
         return response()->json([
             'success' => true,
