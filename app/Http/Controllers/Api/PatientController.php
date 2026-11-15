@@ -62,6 +62,8 @@ class PatientController extends Controller
                         $q->whereIn('treatment_status', ['Putus Berobat', 'Lost to Follow Up', 'Putus Obat']);
                     } elseif ($lower === 'tidak dievaluasi') {
                         $q->whereIn('treatment_status', ['Tidak Dievaluasi', 'Pindah']);
+                    } elseif ($lower === 'perlu_tindak_lanjut' || $lower === 'perlu tindak lanjut') {
+                        $q->whereIn('treatment_status', ['perlu_tindak_lanjut', 'Perlu Tindak Lanjut']);
                     } else {
                         $q->where('treatment_status', $treatmentStatus);
                     }
@@ -91,12 +93,45 @@ class PatientController extends Controller
             return strtolower(trim(optional($patient->user)->name ?? ''));
         }, SORT_NATURAL)->values();
 
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+
+        // Kumpulkan ID pengobatan aktif untuk pemeriksaan bukti minum obat hari ini (tanpa N+1 query)
+        $activeTreatmentIds = [];
+        foreach ($patients as $p) {
+            $activeTr = $p->treatments->firstWhere('treatment_status', 'Berjalan');
+            if ($activeTr) {
+                $activeTreatmentIds[] = $activeTr->id;
+            }
+        }
+        $activeTreatmentIds = array_unique($activeTreatmentIds);
+
+        $todayTakenTreatmentIds = [];
+        if (!empty($activeTreatmentIds)) {
+            $todayTakenTreatmentIds = DB::table('medication_records')
+                ->whereIn('patient_treatment_id', $activeTreatmentIds)
+                ->whereDate('created_at', $today)
+                ->where(function ($q) {
+                    $q->whereNull('status')
+                        ->orWhere('status', '!=', 'Terlewat');
+                })
+                ->pluck('patient_treatment_id')
+                ->flip()
+                ->all();
+        }
+
         // Mapping data pasien menjadi format array JSON
-        $patientsData = $patients->map(function ($patient) {
+        $patientsData = $patients->map(function ($patient) use ($todayTakenTreatmentIds) {
             $villageName     = optional($patient->village)->name;
             $subdistrictName = optional($patient->subdistrict)->name;
             $districtName    = optional($patient->subdistrict?->district)->name;
             $provinceName    = optional($patient->subdistrict?->district?->province)->name;
+
+            $activeTreatment = $patient->treatments->firstWhere('treatment_status', 'Berjalan');
+            $precomputedTodayTaken = $activeTreatment
+                ? isset($todayTakenTreatmentIds[$activeTreatment->id])
+                : false;
+
+            $monitoringSummary = $this->resolvePatientMonitoringSummary($patient, $precomputedTodayTaken);
 
             return [
                 'id'             => $patient->id,
@@ -130,7 +165,14 @@ class PatientController extends Controller
                 'date_of_birth'  => optional($patient->user)->date_of_birth,
                 'is_active'      => (bool) optional($patient->user)->is_active,
 
-                'puskesmas'      => optional($patient->puskesmas)->name,
+                'puskesmas'              => optional($patient->puskesmas)->name,
+                'today_medication_taken' => $monitoringSummary['today_medication_taken'],
+                'has_upcoming_visit'     => $monitoringSummary['has_upcoming_visit'],
+                'next_visit'             => $monitoringSummary['next_visit'],
+                'needs_reminder'         => $monitoringSummary['needs_reminder'],
+                'days_elapsed'           => $monitoringSummary['days_elapsed'],
+                'total_days'             => $monitoringSummary['total_days'],
+                'progress_percent'       => $monitoringSummary['progress_percent'],
 
                 'treatments'     => $patient->treatments ? $patient->treatments->map(function ($treatment) {
                     return [
@@ -402,6 +444,7 @@ class PatientController extends Controller
         $provinceName    = optional($patient->subdistrict?->district?->province)->name;
 
         $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+        $monitoringSummary = $this->resolvePatientMonitoringSummary($patient);
 
         $patientData = [
             'id'             => $patient->id,
@@ -439,7 +482,14 @@ class PatientController extends Controller
             'date_of_birth'  => optional($patient->user)->date_of_birth,
             'close_contacts_count' => $patient->closeContacts()->count(),
 
-            'puskesmas'      => $puskesmasName,
+            'puskesmas'              => $puskesmasName,
+            'today_medication_taken' => $monitoringSummary['today_medication_taken'],
+            'has_upcoming_visit'     => $monitoringSummary['has_upcoming_visit'],
+            'next_visit'             => $monitoringSummary['next_visit'],
+            'needs_reminder'         => $monitoringSummary['needs_reminder'],
+            'days_elapsed'           => $monitoringSummary['days_elapsed'],
+            'total_days'             => $monitoringSummary['total_days'],
+            'progress_percent'       => $monitoringSummary['progress_percent'],
 
             'medications'    => ($activeTreatment = $patient->treatments ? ($patient->treatments->firstWhere('treatment_status', 'Berjalan') ?? $patient->treatments->first()) : null)
                 ? $this->normalizePrescription($activeTreatment->prescription, $activeTreatment->medication_time)
@@ -692,6 +742,96 @@ class PatientController extends Controller
                 'adherence_average'    => $cohort['percentage_str'],
             ]
         ]);
+    }
+
+    /**
+     * Hitung ringkasan status pengingat harian, kunjungan berikutnya, dan progres pengobatan pasien.
+     */
+    private function resolvePatientMonitoringSummary(Patient $patient, ?bool $precomputedTodayTaken = null): array
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $tomorrow = Carbon::tomorrow('Asia/Jakarta')->toDateString();
+        $nowJakarta = Carbon::now('Asia/Jakarta');
+
+        $treatments = $patient->relationLoaded('treatments') ? $patient->treatments : collect();
+        $activeTreatment = $treatments->firstWhere('treatment_status', 'Berjalan');
+        $hasActiveTreatment = ($activeTreatment !== null);
+
+        if ($precomputedTodayTaken !== null) {
+            $todayMedicationTaken = $precomputedTodayTaken;
+        } elseif ($activeTreatment) {
+            $todayMedicationTaken = DB::table('medication_records')
+                ->where('patient_treatment_id', $activeTreatment->id)
+                ->whereDate('created_at', $today)
+                ->where(function ($q) {
+                    $q->whereNull('status')
+                        ->orWhere('status', '!=', 'Terlewat');
+                })
+                ->exists();
+        } else {
+            $todayMedicationTaken = false;
+        }
+
+        $nextVisit = null;
+        $hasUpcomingVisit = false;
+        $hasVisitNear = false;
+
+        if ($activeTreatment && $activeTreatment->relationLoaded('visits') && $activeTreatment->visits) {
+            $upcomingVisit = $activeTreatment->visits
+                ->filter(function ($v) use ($nowJakarta) {
+                    $st = strtolower(trim($v->visit_status ?? ''));
+                    if (!in_array($st, ['terjadwal', 'belum hadir']) || empty($v->visit_date)) {
+                        return false;
+                    }
+                    $vDate = Carbon::parse($v->visit_date)->toDateString();
+                    $vTime = $v->visit_time ? substr($v->visit_time, 0, 5) : '08:00';
+                    $visitDateTime = Carbon::parse($vDate . ' ' . $vTime, 'Asia/Jakarta');
+                    return $visitDateTime->greaterThanOrEqualTo($nowJakarta);
+                })
+                ->sortBy('visit_date')
+                ->first();
+
+            if ($upcomingVisit) {
+                $hasUpcomingVisit = true;
+                $vDate = Carbon::parse($upcomingVisit->visit_date)->toDateString();
+                if ($vDate === $today || $vDate === $tomorrow) {
+                    $hasVisitNear = true;
+                }
+
+                $nextVisit = [
+                    'id'             => $upcomingVisit->id,
+                    'visit_date'     => $upcomingVisit->visit_date,
+                    'visit_time'     => $upcomingVisit->visit_time ? substr($upcomingVisit->visit_time, 0, 5) : '08:00',
+                    'visit_status'   => $upcomingVisit->visit_status,
+                    'notes'          => $upcomingVisit->notes,
+                    'puskesmas_name' => optional($patient->puskesmas)->name ?? 'Puskesmas',
+                ];
+            }
+        }
+
+        $needsReminder = $hasActiveTreatment && (!$todayMedicationTaken || $hasVisitNear);
+
+        $progressPercent = 0.0;
+        $daysElapsed = 0;
+        $totalDays = $activeTreatment?->treatment_days ?? 180;
+        if ($activeTreatment && $activeTreatment->start_date) {
+            $start = Carbon::parse($activeTreatment->start_date, 'Asia/Jakarta')->startOfDay();
+            $diff = $start->diffInDays(Carbon::today('Asia/Jakarta'), false);
+            $daysElapsed = $diff >= 0 ? (int) $diff : 0;
+            if ($totalDays > 0) {
+                $progressPercent = min(100.0, round(($daysElapsed / $totalDays) * 100, 1));
+            }
+        }
+
+        return [
+            'today_medication_taken' => $todayMedicationTaken,
+            'has_upcoming_visit'     => $hasUpcomingVisit,
+            'next_visit'             => $nextVisit,
+            'needs_reminder'         => $needsReminder,
+            'days_elapsed'           => $daysElapsed,
+            'total_days'             => $totalDays,
+            'progress_percent'       => $progressPercent,
+        ];
     }
 
     /**

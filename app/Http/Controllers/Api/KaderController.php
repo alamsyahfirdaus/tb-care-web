@@ -95,6 +95,8 @@ class KaderController extends Controller
                             $tq->whereIn('treatment_status', ['Pengobatan Lengkap', 'Selesai']);
                         } elseif ($lower === 'putus berobat') {
                             $tq->whereIn('treatment_status', ['Putus Berobat', 'Lost to Follow Up', 'Putus Obat']);
+                        } elseif ($lower === 'perlu_tindak_lanjut' || $lower === 'perlu tindak lanjut') {
+                            $tq->whereIn('treatment_status', ['perlu_tindak_lanjut', 'Perlu Tindak Lanjut']);
                         } else {
                             $tq->where('treatment_status', $statusFilter);
                         }

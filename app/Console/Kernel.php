@@ -15,7 +15,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Pemeriksaan otomatis kedaluwarsa periode pengobatan pasien setiap hari pukul 00:01 WIB
+        $schedule->command('patients:check-treatment-expiration')
+            ->dailyAt('00:01')
+            ->timezone('Asia/Jakarta');
     }
 
     /**

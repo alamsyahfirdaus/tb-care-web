@@ -249,7 +249,7 @@ class PatientTreatment extends Model
         }
 
         // 2. Tentukan batas akhir perhitungan
-        $isFinished = in_array($this->treatment_status, ['Selesai', 'Sembuh', 'Pengobatan Lengkap', 'Gagal', 'Meninggal', 'Putus Berobat', 'Pindah']);
+        $isFinished = in_array($this->treatment_status, ['Selesai', 'Sembuh', 'Pengobatan Lengkap', 'Gagal', 'Meninggal', 'Putus Berobat', 'Pindah', 'perlu_tindak_lanjut', 'Perlu Tindak Lanjut']);
         if ($isFinished && !empty($this->end_date)) {
             $endDate = \Carbon\Carbon::parse($this->end_date, $tz)->startOfDay();
             $cutoffDate = $endDate->isBefore($today) ? $endDate : $today;

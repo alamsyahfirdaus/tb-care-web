@@ -148,7 +148,7 @@ class TreatmentController extends Controller
     {
         $id = decrypt_id($id);
         $request->validate([
-            'treatment_status' => 'required|in:Berjalan,Selesai,Sembuh,Pengobatan Lengkap,Gagal,Meninggal,Putus Berobat,Tidak Dievaluasi,Pindah',
+            'treatment_status' => 'required|in:Berjalan,Selesai,Sembuh,Pengobatan Lengkap,Gagal,Meninggal,Putus Berobat,Tidak Dievaluasi,Pindah,perlu_tindak_lanjut,Perlu Tindak Lanjut',
             'prescription'     => 'nullable|string',
         ]);
 

@@ -51,7 +51,11 @@ class PatientController extends Controller
 
         if ($statusFilter) {
             $query->whereHas('treatments', function($q) use ($statusFilter) {
-                $q->where('treatment_status', $statusFilter);
+                if (in_array(strtolower($statusFilter), ['perlu_tindak_lanjut', 'perlu tindak lanjut'])) {
+                    $q->whereIn('treatment_status', ['perlu_tindak_lanjut', 'Perlu Tindak Lanjut']);
+                } else {
+                    $q->where('treatment_status', $statusFilter);
+                }
             });
         }
 
