@@ -190,4 +190,35 @@ class PatientRegistrationApiTest extends TestCase
         $user->tokens()->delete();
         $user->delete();
     }
+
+    public function test_puskesmas_endpoint_provides_territory_and_location_data()
+    {
+        $response = $this->getJson('/api/puskesmas');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'message',
+                'data' => [
+                    '*' => [
+                        'id',
+                        'name',
+                        'raw_name',
+                        'subdistrict_id',
+                        'subdistrict_name',
+                        'district_id',
+                        'district_name',
+                        'location',
+                    ]
+                ]
+            ]);
+
+        $data = $response->json('data');
+        $this->assertNotEmpty($data);
+        $first = $data[0];
+        $this->assertArrayHasKey('id', $first);
+        $this->assertArrayHasKey('name', $first);
+        $this->assertArrayHasKey('subdistrict_name', $first);
+        $this->assertArrayHasKey('district_name', $first);
+        $this->assertArrayHasKey('location', $first);
+    }
 }

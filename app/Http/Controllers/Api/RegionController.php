@@ -117,7 +117,7 @@ class RegionController extends Controller
             $provName = $prov ? $prov->name : '';
 
             $parentParts = array_filter([$subName, $distName]);
-            $parentDisplay = implode(' • ', $parentParts);
+            $parentDisplay = implode(' - ', $parentParts);
 
             return [
                 'id'             => $village->id,

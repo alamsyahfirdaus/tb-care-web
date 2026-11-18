@@ -252,4 +252,198 @@ class PetugasAddPatientWizardTest extends TestCase
         $resUnique->assertStatus(422)->assertJsonValidationErrors(['nik']);
         $this->assertEquals('NIK sudah terdaftar.', $resUnique->json('errors.nik.0'));
     }
+
+    public function test_pjtb_automatically_assigns_puskesmas_without_puskesmas_id_in_request(): void
+    {
+        $setup = $this->createOfficerWithTerritory();
+        // Ensure officer is PJTB (officer_type_id = 3)
+        $setup['officer']->update(['officer_type_id' => 3]);
+        Sanctum::actingAs($setup['officerUser']);
+
+        $payload = [
+            'nik'                  => '3278' . rand(100000000000, 999999999999),
+            'name'                 => 'Pasien PJTB Auto',
+            'phone'                => '0823' . rand(10000000, 99999999),
+            'gender'               => 'P',
+            'place_of_birth'       => 'Tasikmalaya',
+            'date_of_birth'        => '1999-01-01',
+            'village_id'           => $setup['village']->id,
+            'subdistrict_id'       => $setup['subdistrict']->id,
+            // Omit puskesmas_id completely!
+            'treatment_start_date' => Carbon::now()->toDateString(),
+            'treatment_end_date'   => Carbon::now()->addMonths(9)->toDateString(),
+        ];
+
+        $response = $this->postJson('/api/patients/store', $payload);
+        $response->assertStatus(201);
+
+        $patientId = $response->json('data.id');
+        $patient = Patient::with('treatments')->find($patientId);
+        $this->assertNotNull($patient);
+        $this->assertEquals($setup['puskesmas']->id, $patient->puskesmas_id);
+
+        // Verify custom end date
+        $treatment = $patient->treatments->first();
+        $this->assertNotNull($treatment);
+        $this->assertEquals(Carbon::now()->addMonths(9)->toDateString(), $treatment->end_date);
+    }
+
+    public function test_edit_patient_with_new_password_updates_hash_and_protects_treatment(): void
+    {
+        $setup = $this->createOfficerWithTerritory(); // PJTB (officer_type_id = 3)
+        Sanctum::actingAs($setup['officerUser']);
+
+        $patientUser = User::create([
+            'name'           => 'Pasien Password Test',
+            'username'       => 'pasien_' . uniqid(),
+            'phone'          => '0812' . rand(10000000, 99999999),
+            'password'       => Hash::make('old_secret123'),
+            'user_type_id'   => 2,
+            'gender'         => 'L',
+            'place_of_birth' => 'Tasikmalaya',
+            'date_of_birth'  => '1995-05-05',
+            'is_active'      => true,
+        ]);
+
+        $treatmentType = TreatmentType::first() ?? TreatmentType::create([
+            'treatment_type'     => 'Kategori 1 Test',
+            'treatment_duration' => 6,
+            'duration_unit'      => 'Month',
+        ]);
+
+        $patient = Patient::create([
+            'user_id'              => $patientUser->id,
+            'nik'                  => '3278' . rand(100000000000, 999999999999),
+            'puskesmas_id'         => $setup['puskesmas']->id,
+            'subdistrict_id'       => $setup['subdistrict']->id,
+            'village_id'           => $setup['village']->id,
+            'treatment_start_date' => '2026-01-01',
+        ]);
+
+        $initialTreatment = PatientTreatment::create([
+            'patient_id'        => $patient->id,
+            'treatment_type_id' => $treatmentType->id,
+            'diagnosis_date'    => '2026-01-01',
+            'start_date'        => '2026-01-01',
+            'end_date'          => '2026-07-01',
+            'treatment_days'    => 181,
+            'medication_time'   => '08:00',
+            'treatment_status'  => 'Berjalan',
+        ]);
+
+        // Edit patient: Provide new password, change name & physical data, OMIT treatment fields
+        $payload = [
+            'patient_id'     => $patient->id,
+            'nik'            => $patient->nik,
+            'name'           => 'Pasien Password Updated',
+            'phone'          => $patientUser->phone,
+            'gender'         => 'L',
+            'place_of_birth' => 'Tasikmalaya',
+            'date_of_birth'  => '1995-05-05',
+            'height'         => 170.5,
+            'weight'         => 65.0,
+            'blood_type'     => 'AB',
+            'comorbidities'  => 'Hipertensi',
+            'village_id'     => $setup['village']->id,
+            'puskesmas_id'   => $setup['puskesmas']->id,
+            'password'       => 'new_secure_pwd_123',
+        ];
+
+        $response = $this->postJson('/api/patients/store', $payload);
+        $response->assertStatus(200);
+
+        // Verify password changed
+        $patientUserFresh = $patientUser->fresh();
+        $this->assertTrue(Hash::check('new_secure_pwd_123', $patientUserFresh->password));
+        $this->assertFalse(Hash::check('old_secret123', $patientUserFresh->password));
+        $this->assertEquals('Pasien Password Updated', $patientUserFresh->name);
+
+        // Verify treatment remained completely untouched
+        $treatmentFresh = $initialTreatment->fresh();
+        $this->assertEquals('2026-01-01', $treatmentFresh->start_date);
+        $this->assertEquals('2026-07-01', $treatmentFresh->end_date);
+        $this->assertStringStartsWith('08:00', $treatmentFresh->medication_time);
+        $this->assertEquals('Berjalan', $treatmentFresh->treatment_status);
+    }
+
+    public function test_edit_patient_without_password_keeps_existing_password(): void
+    {
+        $setup = $this->createOfficerWithTerritory();
+        Sanctum::actingAs($setup['officerUser']);
+
+        $patientUser = User::create([
+            'name'           => 'Pasien No Pwd Change',
+            'username'       => 'pasien_' . uniqid(),
+            'phone'          => '0812' . rand(10000000, 99999999),
+            'password'       => Hash::make('keep_this_pwd_always'),
+            'user_type_id'   => 2,
+            'gender'         => 'P',
+            'place_of_birth' => 'Tasikmalaya',
+            'date_of_birth'  => '1998-08-08',
+            'is_active'      => true,
+        ]);
+
+        $patient = Patient::create([
+            'user_id'              => $patientUser->id,
+            'nik'                  => '3278' . rand(100000000000, 999999999999),
+            'puskesmas_id'         => $setup['puskesmas']->id,
+            'subdistrict_id'       => $setup['subdistrict']->id,
+            'village_id'           => $setup['village']->id,
+            'treatment_start_date' => '2026-02-01',
+        ]);
+
+        $payload = [
+            'patient_id'     => $patient->id,
+            'nik'            => $patient->nik,
+            'name'           => 'Pasien Name Only Updated',
+            'phone'          => $patientUser->phone,
+            'gender'         => 'P',
+            'place_of_birth' => 'Tasikmalaya',
+            'date_of_birth'  => '1998-08-08',
+            'puskesmas_id'   => $setup['puskesmas']->id,
+            // Password key omitted
+        ];
+
+        $response = $this->postJson('/api/patients/store', $payload);
+        $response->assertStatus(200);
+
+        // Verify password remained the same
+        $patientUserFresh = $patientUser->fresh();
+        $this->assertTrue(Hash::check('keep_this_pwd_always', $patientUserFresh->password));
+        $this->assertEquals('Pasien Name Only Updated', $patientUserFresh->name);
+    }
+
+    public function test_delete_patient_removes_patient_and_user_atomically(): void
+    {
+        $setup = $this->createOfficerWithTerritory();
+        Sanctum::actingAs($setup['officerUser']);
+
+        $patientUser = User::create([
+            'name'           => 'Pasien To Delete',
+            'username'       => 'delete_me_' . uniqid(),
+            'phone'          => '0812' . rand(10000000, 99999999),
+            'password'       => Hash::make('123456'),
+            'user_type_id'   => 2,
+            'gender'         => 'L',
+            'place_of_birth' => 'Ciamis',
+            'date_of_birth'  => '1992-02-02',
+            'is_active'      => true,
+        ]);
+
+        $patient = Patient::create([
+            'user_id'              => $patientUser->id,
+            'nik'                  => '3278' . rand(100000000000, 999999999999),
+            'puskesmas_id'         => $setup['puskesmas']->id,
+            'subdistrict_id'       => $setup['subdistrict']->id,
+            'village_id'           => $setup['village']->id,
+            'treatment_start_date' => '2026-01-01',
+        ]);
+
+        $deleteRes = $this->deleteJson('/api/patients/' . $patient->id);
+        $deleteRes->assertStatus(200);
+        $deleteRes->assertJson(['message' => 'Data pasien berhasil dihapus.']);
+
+        $this->assertNull(Patient::find($patient->id));
+        $this->assertNull(User::find($patientUser->id));
+    }
 }

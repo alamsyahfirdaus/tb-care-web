@@ -61,6 +61,8 @@ class ProfileController extends Controller
             $userData['officer_type_id'] = $user->officer->officer_type_id;
             $userData['officer_type_name'] = $user->officer->officer_type_name;
             $userData['scope_description'] = $user->officer->scope_description;
+            $userData['puskesmas_id'] = $user->officer->puskesmas_id;
+            $userData['puskesmas_name'] = optional($user->officer->puskesmas)->name;
             $isKader = method_exists($user->officer, 'isKader') ? $user->officer->isKader() : ((int)$user->officer->officer_type_id === 4);
             $userData['is_kader'] = $isKader;
 

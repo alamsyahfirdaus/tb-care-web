@@ -823,22 +823,35 @@ class KaderController extends Controller
             ] : null;
 
             // Riwayat Minum Obat (menggunakan kolom aktual di tabel medication_records)
+            $medicationCols = ['id', 'photo', 'is_verified', 'late', 'notes', 'created_at'];
+            if (Schema::hasColumn('medication_records', 'status')) {
+                $medicationCols[] = 'status';
+            }
+            if (Schema::hasColumn('medication_records', 'verification_note')) {
+                $medicationCols[] = 'verification_note';
+            }
+
             $medicationRecords = DB::table('medication_records')
                 ->whereIn('patient_treatment_id', $treatmentIds)
-                ->select('id', 'photo', 'is_verified', 'late', 'notes', 'created_at')
+                ->select($medicationCols)
                 ->orderByDesc('created_at')
                 ->take(100)
                 ->get()
                 ->map(function ($r) {
+                    $status = isset($r->status) && !empty($r->status) ? $r->status : null;
+                    if (!$status || $status === 'Diminum') {
+                        $status = $r->is_verified ? 'Terverifikasi' : 'Menunggu Verifikasi';
+                    }
                     return [
-                        'id'          => $r->id,
-                        'taken_at'    => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : null,
-                        'is_verified' => (bool) $r->is_verified,
-                        'late'        => (bool) $r->late,
-                        'status'      => $r->is_verified ? 'Terverifikasi' : 'Menunggu Verifikasi',
-                        'notes'       => $r->notes,
-                        'photo_url'   => $r->photo ? url('/api/image/' . $r->photo) : null,
-                        'created_at'  => $r->created_at,
+                        'id'                => $r->id,
+                        'taken_at'          => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : null,
+                        'is_verified'       => (bool) $r->is_verified,
+                        'late'              => (bool) $r->late,
+                        'status'            => $status,
+                        'notes'             => $r->notes,
+                        'verification_note' => $r->verification_note ?? null,
+                        'photo_url'         => $r->photo ? url('/api/image/' . $r->photo) : null,
+                        'created_at'        => $r->created_at,
                     ];
                 });
 

@@ -295,6 +295,7 @@ class PatientController extends Controller
         }
 
         $existingUser = $existingPatient?->user;
+        $isPJTB = ($user && $user->user_type_id == 3 && optional($user->officer)->isPJTB());
 
         // 2. Validasi input
         $validated = $request->validate([
@@ -309,7 +310,7 @@ class PatientController extends Controller
             'gender'           => 'required|in:L,P',
             'place_of_birth'   => 'required|string|max:100',
             'date_of_birth'    => 'required|date',
-            'puskesmas_id'     => 'required|exists:puskesmas,id',
+            'puskesmas_id'     => $isPJTB ? 'nullable|exists:puskesmas,id' : 'required|exists:puskesmas,id',
             'subdistrict_id'   => 'nullable|exists:subdistricts,id',
             'village_id'       => 'nullable|exists:villages,id',
             'rw'               => 'nullable|string|max:5',
@@ -322,8 +323,11 @@ class PatientController extends Controller
             'comorbidities'    => 'nullable|string|max:1000',
             'diagnosis_date'   => 'nullable|date',
             'treatment_start_date' => 'nullable|date|before_or_equal:today',
+            'treatment_end_date'   => 'nullable|date|after_or_equal:treatment_start_date',
+            'end_date'             => 'nullable|date|after_or_equal:treatment_start_date',
             'treatment_type_id' => 'nullable|exists:treatment_types,id',
             'medication_time'  => 'nullable|string',
+            'password'         => 'sometimes|nullable|string|min:6',
         ], [
             'nik.required'             => 'NIK wajib diisi.',
             'nik.digits'               => 'NIK harus terdiri dari 16 digit.',
@@ -343,13 +347,27 @@ class PatientController extends Controller
             'treatment_start_date.required' => 'Tanggal mulai pengobatan wajib diisi.',
             'treatment_start_date.date'     => 'Format tanggal mulai pengobatan tidak valid.',
             'treatment_start_date.before_or_equal' => 'Tanggal mulai pengobatan tidak boleh di masa depan.',
+            'treatment_end_date.after_or_equal' => 'Tanggal selesai pengobatan harus sama atau setelah tanggal mulai.',
+            'end_date.after_or_equal'  => 'Tanggal selesai pengobatan harus sama atau setelah tanggal mulai.',
             'puskesmas_id.required'    => 'Puskesmas wajib dipilih.',
             'puskesmas_id.exists'      => 'Puskesmas tidak ditemukan.',
+            'password.min'             => 'Password baru minimal 6 karakter.',
         ]);
 
         // 3. Verifikasi Wilayah Wewenang untuk Petugas
         if ($user->user_type_id == 3 && $user->officer) {
-            if ($user->officer->isKader() || $user->officer->isPJTB()) {
+            if ($user->officer->isPJTB()) {
+                $pjtbPuskesmasId = $user->officer->puskesmas_id;
+                if (!$pjtbPuskesmasId && $existingPatient) {
+                    $pjtbPuskesmasId = $existingPatient->puskesmas_id;
+                }
+                if (!$pjtbPuskesmasId) {
+                    return response()->json([
+                        'message' => 'Akun PJTB Anda belum terhubung dengan Puskesmas. Silakan hubungi Administrator.'
+                    ], 422);
+                }
+                $validated['puskesmas_id'] = $pjtbPuskesmasId;
+            } elseif ($user->officer->isKader()) {
                 if ($user->officer->puskesmas_id) {
                     $validated['puskesmas_id'] = $user->officer->puskesmas_id;
                 }
@@ -407,6 +425,9 @@ class PatientController extends Controller
                 'user_type_id'   => 2, // 2 = Pasien
                 'is_active'      => true,
             ]);
+            if ($request->filled('password')) {
+                $existingUser->password = Hash::make($request->input('password'));
+            }
             $existingUser->save();
 
             // 6. Jika pasien belum ada, buat data pasien baru
@@ -444,28 +465,35 @@ class PatientController extends Controller
             ]);
             $existingPatient->save();
 
-            // 8. Jika create pasien baru dan ada treatment_start_date atau treatment_type_id, buat initial treatment
+            // 8. Pengelolaan Data Pengobatan (Baru maupun Update)
+            $startDate = $validated['treatment_start_date'] ?? null;
+            $treatmentTypeId = $request->input('treatment_type_id');
+            $customEndDate = $request->input('treatment_end_date') ?? $request->input('end_date');
+            $medicationTime = $request->input('medication_time') ?: '08:00';
+
+            // Hitung estimasi end_date otomatis jika custom end_date tidak diisi
+            $endDate = $customEndDate;
+            if (!$endDate && ($startDate || $treatmentTypeId)) {
+                $effTypeId = $treatmentTypeId ?? ($existingPatient->treatments()->latest('start_date')->first()?->treatment_type_id ?? TreatmentType::first()?->id ?? 1);
+                $effStartDate = $startDate ?? ($existingPatient->treatments()->latest('start_date')->first()?->start_date ?? now()->toDateString());
+                $treatmentType = TreatmentType::find($effTypeId);
+                if ($treatmentType && $treatmentType->treatment_duration && $treatmentType->duration_unit) {
+                    $startDateCarbon = Carbon::parse($effStartDate);
+                    $unit = strtolower($treatmentType->duration_unit);
+                    $endDate = match ($unit) {
+                        'day', 'days'     => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration)->toDateString(),
+                        'week', 'weeks'   => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration)->toDateString(),
+                        'month', 'months' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration)->toDateString(),
+                        'year', 'years'   => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration)->toDateString(),
+                        default           => null,
+                    };
+                }
+            }
+
             if (!$isUpdate) {
-                $startDate = $validated['treatment_start_date'] ?? null;
-                $treatmentTypeId = $request->input('treatment_type_id');
                 if ($startDate || $treatmentTypeId) {
                     $treatmentTypeId = $treatmentTypeId ?? (TreatmentType::first()?->id ?? 1);
                     $startDate = $startDate ?? now()->toDateString();
-                    $treatmentType = TreatmentType::find($treatmentTypeId);
-                    $medicationTime = $request->input('medication_time') ?: '08:00';
-
-                    $endDate = null;
-                    if ($treatmentType && $treatmentType->treatment_duration && $treatmentType->duration_unit) {
-                        $startDateCarbon = Carbon::parse($startDate);
-                        $unit = strtolower($treatmentType->duration_unit);
-                        $endDate = match ($unit) {
-                            'day', 'days'     => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration)->toDateString(),
-                            'week', 'weeks'   => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration)->toDateString(),
-                            'month', 'months' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration)->toDateString(),
-                            'year', 'years'   => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration)->toDateString(),
-                            default           => null,
-                        };
-                    }
 
                     PatientTreatment::create([
                         'patient_id'        => $existingPatient->id,
@@ -477,6 +505,33 @@ class PatientController extends Controller
                         'medication_time'   => $medicationTime,
                         'treatment_status'  => 'Berjalan',
                     ]);
+                }
+            } else {
+                // Update pengobatan berjalan hanya jika request secara eksplisit menyertakan data pengobatan
+                if ($request->hasAny(['treatment_type_id', 'treatment_start_date', 'treatment_end_date', 'end_date', 'medication_time'])) {
+                    $activeTreatment = $existingPatient->treatments()
+                        ->where('treatment_status', 'Berjalan')
+                        ->latest('start_date')
+                        ->first();
+
+                    if ($activeTreatment) {
+                        if ($treatmentTypeId) {
+                            $activeTreatment->treatment_type_id = $treatmentTypeId;
+                        }
+                        if ($startDate) {
+                            $activeTreatment->start_date = $startDate;
+                        }
+                        if ($endDate) {
+                            $activeTreatment->end_date = $endDate;
+                        }
+                        if ($activeTreatment->start_date && $activeTreatment->end_date) {
+                            $activeTreatment->treatment_days = Carbon::parse($activeTreatment->start_date)->diffInDays(Carbon::parse($activeTreatment->end_date));
+                        }
+                        if ($request->filled('medication_time')) {
+                            $activeTreatment->medication_time = $medicationTime;
+                        }
+                        $activeTreatment->save();
+                    }
                 }
             }
         });

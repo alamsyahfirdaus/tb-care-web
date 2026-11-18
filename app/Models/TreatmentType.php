@@ -26,10 +26,12 @@ class TreatmentType extends Model
         return self::all()
             ->map(function ($treatmentType) {
                 return [
-                    'id'             => $treatmentType->id,
-                    'treatment_type' => $treatmentType->treatment_type,
-                    'duration'       => $treatmentType->treatment_duration . ' ' . ucfirst($treatmentType->duration_unit),
-                    'description'    => $treatmentType->description,
+                    'id'                 => $treatmentType->id,
+                    'treatment_type'     => $treatmentType->treatment_type,
+                    'treatment_duration' => (int)$treatmentType->treatment_duration,
+                    'duration_unit'      => $treatmentType->duration_unit,
+                    'duration'           => $treatmentType->treatment_duration . ' ' . ucfirst($treatmentType->duration_unit),
+                    'description'        => $treatmentType->description,
                 ];
             })
             ->toArray();

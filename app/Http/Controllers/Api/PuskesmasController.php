@@ -29,13 +29,12 @@ class PuskesmasController extends Controller
             return [
                 'id'   => $item->id,
 
-                // Nama Puskesmas + (Kecamatan, Kabupaten/Kota)
-                'name' => $subdistrictName
-                    ? $item->name . ' (' . $subdistrictName . ', ' . $districtName . ')'
-                    : $item->name,
-
+                // Nama Puskesmas murni tanpa pengulangan wilayah dalam kurung
+                'name'             => $item->name,
                 'raw_name'         => $item->name,
+                'subdistrict_id'   => $item->subdistrict_id,
                 'subdistrict_name' => $subdistrictName,
+                'district_id'      => optional($item->subdistrict)->district_id,
                 'district_name'    => $districtName,
                 'location'         => ($subdistrictName && $districtName)
                     ? ($subdistrictName . ' - ' . $districtName)
