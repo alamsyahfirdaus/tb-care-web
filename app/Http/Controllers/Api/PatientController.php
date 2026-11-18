@@ -7,6 +7,7 @@ use App\Models\Officer;
 use App\Models\Patient;
 use App\Models\PatientMedicationSchedule;
 use App\Models\PatientTreatment;
+use App\Models\TreatmentType;
 use App\Models\TreatmentVisit;
 use App\Models\MedicationRecord;
 use App\Models\Conversation;
@@ -50,7 +51,7 @@ class PatientController extends Controller
             })
             ->with([
             'user',
-            'puskesmas',
+            'puskesmas.subdistrict.district',
             'village',
             'subdistrict.district.province',
             'treatments' => function ($query) use ($treatmentStatus) {
@@ -133,11 +134,29 @@ class PatientController extends Controller
 
             $monitoringSummary = $this->resolvePatientMonitoringSummary($patient, $precomputedTodayTaken);
 
+            $puskesmas = $patient->puskesmas;
+            $puskesmasName = optional($puskesmas)->name ?? 'Puskesmas';
+            $puskesmasSubdistrict = optional($puskesmas?->subdistrict)->name;
+            $puskesmasDistrict = optional($puskesmas?->subdistrict?->district)->name;
+
+            $pParts = [];
+            if ($puskesmas && !empty(trim($puskesmas->name ?? ''))) {
+                $pParts[] = trim($puskesmas->name);
+            }
+            if ($puskesmasSubdistrict && !empty(trim($puskesmasSubdistrict))) {
+                $pParts[] = trim($puskesmasSubdistrict);
+            }
+            if ($puskesmasDistrict && !empty(trim($puskesmasDistrict))) {
+                $pParts[] = trim($puskesmasDistrict);
+            }
+            $puskesmasFull = !empty($pParts) ? implode(', ', $pParts) : $puskesmasName;
+
             return [
                 'id'             => $patient->id,
                 'user_id'        => $patient->user_id,
                 'nik'            => $patient->nik,
                 'address'        => $patient->address,
+                'formatted_address' => $patient->formatted_address,
                 'puskesmas_id'   => $patient->puskesmas_id,
                 'subdistrict_id' => $patient->subdistrict_id,
                 'village_id'     => $patient->village_id,
@@ -158,6 +177,7 @@ class PatientController extends Controller
                     : null,
 
                 'name'           => optional($patient->user)->name,
+                'username'       => optional($patient->user)->username,
                 'email'          => optional($patient->user)->email,
                 'phone'          => optional($patient->user)->phone,
                 'gender'         => optional($patient->user)->gender,
@@ -165,7 +185,11 @@ class PatientController extends Controller
                 'date_of_birth'  => optional($patient->user)->date_of_birth,
                 'is_active'      => (bool) optional($patient->user)->is_active,
 
-                'puskesmas'              => optional($patient->puskesmas)->name,
+                'puskesmas'              => $puskesmasFull,
+                'puskesmas_name'         => $puskesmasName,
+                'puskesmas_full'         => $puskesmasFull,
+                'puskesmas_subdistrict'  => $puskesmasSubdistrict,
+                'puskesmas_district'     => $puskesmasDistrict,
                 'today_medication_taken' => $monitoringSummary['today_medication_taken'],
                 'has_upcoming_visit'     => $monitoringSummary['has_upcoming_visit'],
                 'next_visit'             => $monitoringSummary['next_visit'],
@@ -205,6 +229,27 @@ class PatientController extends Controller
         return response()->json([
             'message' => 'Data pasien berhasil diambil.',
             'data'    => $patientsData
+        ]);
+    }
+
+    public function generateUsername(Request $request)
+    {
+        $name = $request->query('name', $request->input('name', ''));
+        $base = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)$name));
+        $baseUsername = $base ?: 'pasien';
+        $username = $baseUsername;
+        $counter = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $username = $baseUsername . $counter++;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'username'         => $username,
+                'default_password' => '123456',
+            ]
         ]);
     }
 
@@ -254,7 +299,7 @@ class PatientController extends Controller
         // 2. Validasi input
         $validated = $request->validate([
             'nik' => [
-                'nullable',
+                'required',
                 'digits:16',
                 Rule::unique('patients', 'nik')->ignore($existingPatient ? $existingPatient->id : null),
             ],
@@ -271,12 +316,14 @@ class PatientController extends Controller
             'rt'               => 'nullable|string|max:5',
             'address'          => 'nullable|string',
             'occupation'       => 'nullable|string',
-            'height'           => 'nullable|integer',
-            'weight'           => 'nullable|integer',
-            'blood_type'       => 'nullable|string|max:3',
+            'height'           => 'nullable|numeric|gt:0',
+            'weight'           => 'nullable|numeric|gt:0',
+            'blood_type'       => 'nullable|string|max:5|in:A,B,AB,O',
             'comorbidities'    => 'nullable|string|max:1000',
             'diagnosis_date'   => 'nullable|date',
             'treatment_start_date' => 'nullable|date|before_or_equal:today',
+            'treatment_type_id' => 'nullable|exists:treatment_types,id',
+            'medication_time'  => 'nullable|string',
         ], [
             'nik.required'             => 'NIK wajib diisi.',
             'nik.digits'               => 'NIK harus terdiri dari 16 digit.',
@@ -324,16 +371,19 @@ class PatientController extends Controller
             }
         }
 
-        // 4-7. Simpan user dan pasien dalam satu transaksi database atomik
+        // 4-8. Simpan user dan pasien dalam satu transaksi database atomik
         DB::transaction(function () use (
             &$existingUser,
             &$existingPatient,
-            $validated
+            $validated,
+            $request,
+            $isUpdate
         ) {
             // 4. Jika user akun pasien belum ada, buat user baru
             if (!$existingUser) {
-                $baseUsername = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $validated['email'] ?? $validated['phone'])[0]);
-                $username = $baseUsername ?: 'user';
+                $rawBase = $request->input('username') ?: $validated['name'];
+                $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)$rawBase));
+                $username = $baseUsername ?: 'pasien';
                 $counter = 1;
 
                 while (User::where('username', $username)->exists()) {
@@ -342,7 +392,7 @@ class PatientController extends Controller
 
                 $existingUser = new User([
                     'username' => $username,
-                    'password' => Hash::make($username),
+                    'password' => Hash::make('123456'),
                 ]);
             }
 
@@ -393,6 +443,42 @@ class PatientController extends Controller
                 'puskesmas_id'    => $validated['puskesmas_id'],
             ]);
             $existingPatient->save();
+
+            // 8. Jika create pasien baru dan ada treatment_start_date atau treatment_type_id, buat initial treatment
+            if (!$isUpdate) {
+                $startDate = $validated['treatment_start_date'] ?? null;
+                $treatmentTypeId = $request->input('treatment_type_id');
+                if ($startDate || $treatmentTypeId) {
+                    $treatmentTypeId = $treatmentTypeId ?? (TreatmentType::first()?->id ?? 1);
+                    $startDate = $startDate ?? now()->toDateString();
+                    $treatmentType = TreatmentType::find($treatmentTypeId);
+                    $medicationTime = $request->input('medication_time') ?: '08:00';
+
+                    $endDate = null;
+                    if ($treatmentType && $treatmentType->treatment_duration && $treatmentType->duration_unit) {
+                        $startDateCarbon = Carbon::parse($startDate);
+                        $unit = strtolower($treatmentType->duration_unit);
+                        $endDate = match ($unit) {
+                            'day', 'days'     => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration)->toDateString(),
+                            'week', 'weeks'   => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration)->toDateString(),
+                            'month', 'months' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration)->toDateString(),
+                            'year', 'years'   => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration)->toDateString(),
+                            default           => null,
+                        };
+                    }
+
+                    PatientTreatment::create([
+                        'patient_id'        => $existingPatient->id,
+                        'treatment_type_id' => $treatmentTypeId,
+                        'diagnosis_date'    => $validated['diagnosis_date'] ?? $startDate,
+                        'start_date'        => $startDate,
+                        'end_date'          => $endDate,
+                        'treatment_days'    => ($startDate && $endDate) ? Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) : 0,
+                        'medication_time'   => $medicationTime,
+                        'treatment_status'  => 'Berjalan',
+                    ]);
+                }
+            }
         });
 
         $message = $isUpdate
@@ -401,7 +487,7 @@ class PatientController extends Controller
 
         return response()->json([
             'message' => $message,
-            'data'    => $existingPatient->load(['user', 'village', 'subdistrict', 'puskesmas']),
+            'data'    => $existingPatient->load(['user', 'village', 'subdistrict', 'puskesmas', 'treatments']),
         ], $isUpdate ? 200 : 201);
     }
 
@@ -412,7 +498,7 @@ class PatientController extends Controller
         // Ambil data pasien berdasarkan ID beserta relasi terkait
         $patient = Patient::with([
             'user',
-            'puskesmas',
+            'puskesmas.subdistrict.district',
             'village',
             'subdistrict.district.province',
             'treatments' => function ($query) {
@@ -443,7 +529,23 @@ class PatientController extends Controller
         $districtName    = optional($patient->subdistrict?->district)->name;
         $provinceName    = optional($patient->subdistrict?->district?->province)->name;
 
-        $puskesmasName = optional($patient->puskesmas)->name ?? 'Puskesmas';
+        $puskesmas = $patient->puskesmas;
+        $puskesmasName = optional($puskesmas)->name ?? 'Puskesmas';
+        $puskesmasSubdistrict = optional($puskesmas?->subdistrict)->name;
+        $puskesmasDistrict = optional($puskesmas?->subdistrict?->district)->name;
+
+        $pParts = [];
+        if ($puskesmas && !empty(trim($puskesmas->name ?? ''))) {
+            $pParts[] = trim($puskesmas->name);
+        }
+        if ($puskesmasSubdistrict && !empty(trim($puskesmasSubdistrict))) {
+            $pParts[] = trim($puskesmasSubdistrict);
+        }
+        if ($puskesmasDistrict && !empty(trim($puskesmasDistrict))) {
+            $pParts[] = trim($puskesmasDistrict);
+        }
+        $puskesmasFull = !empty($pParts) ? implode(', ', $pParts) : $puskesmasName;
+
         $monitoringSummary = $this->resolvePatientMonitoringSummary($patient);
 
         $patientData = [
@@ -451,6 +553,7 @@ class PatientController extends Controller
             'user_id'        => $patient->user_id,
             'nik'            => $patient->nik,
             'address'        => $patient->address,
+            'formatted_address' => $patient->formatted_address,
             'puskesmas_id'   => $patient->puskesmas_id,
             'subdistrict_id' => $patient->subdistrict_id,
             'village_id'     => $patient->village_id,
@@ -482,7 +585,11 @@ class PatientController extends Controller
             'date_of_birth'  => optional($patient->user)->date_of_birth,
             'close_contacts_count' => $patient->closeContacts()->count(),
 
-            'puskesmas'              => $puskesmasName,
+            'puskesmas'              => $puskesmasFull,
+            'puskesmas_name'         => $puskesmasName,
+            'puskesmas_full'         => $puskesmasFull,
+            'puskesmas_subdistrict'  => $puskesmasSubdistrict,
+            'puskesmas_district'     => $puskesmasDistrict,
             'today_medication_taken' => $monitoringSummary['today_medication_taken'],
             'has_upcoming_visit'     => $monitoringSummary['has_upcoming_visit'],
             'next_visit'             => $monitoringSummary['next_visit'],
@@ -623,8 +730,10 @@ class PatientController extends Controller
             return [
                 'id'                => $treatment->id,
                 'patient_id'        => $treatment->patient_id,
+                'treatment_type_id' => $treatment->treatment_type_id,
                 'episode_number'    => $treatment->episode_number,
                 'treatment_type'    => optional($treatment->treatmentType)->treatment_type,
+                'diagnosis_date'    => $treatment->diagnosis_date,
                 'start_date'        => $treatment->start_date,
                 'end_date'          => $treatment->end_date,
                 'treatment_days'    => $treatment->treatment_days,

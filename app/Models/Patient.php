@@ -91,6 +91,81 @@ class Patient extends Model
     }
 
     /**
+     * Format alamat lengkap terpadu:
+     * [Alamat Jalan], RT [rt]/RW [rw], Desa/Kel. [village], Kec. [subdistrict], [district], [province]
+     */
+    public function getFormattedAddressAttribute(): string
+    {
+        $parts = [];
+
+        $street = trim($this->address ?? '');
+        $village = $this->village;
+        $subdistrict = $this->subdistrict ?? $village?->subdistrict;
+        $district = $subdistrict?->district;
+        $province = $district?->province;
+
+        $villageName = $village?->name;
+        $subdistrictName = $subdistrict?->name;
+        $districtName = $district?->name;
+        $provinceName = $province?->name;
+
+        // Bersihkan street jika mengandung duplikasi teks administratif
+        if (!empty($street) && $street !== '-') {
+            $cleanStreet = preg_replace('/,?\s*(Desa\/Kel\.|Kel\.|Desa\s+|Kec\.)\s+.*$/i', '', $street);
+            $cleanStreet = trim($cleanStreet ?? '');
+            if (!empty($cleanStreet)) {
+                $parts[] = $cleanStreet;
+            } elseif (preg_match('/\b(jl|jalan|gang|gg|kp|kampung|blok|dusun|komplek|no)\b/i', $street)) {
+                $parts[] = $street;
+            }
+        }
+
+        // RT / RW
+        $rt = trim($this->rt ?? '');
+        $rw = trim($this->rw ?? '');
+        $hasRt = !empty($rt) && $rt !== '-';
+        $hasRw = !empty($rw) && $rw !== '-';
+
+        if ($hasRt && $hasRw) {
+            $cleanRt = stripos($rt, 'RT') === 0 ? trim(substr($rt, 2)) : $rt;
+            $cleanRw = stripos($rw, 'RW') === 0 ? trim(substr($rw, 2)) : $rw;
+            $parts[] = "RT $cleanRt/RW $cleanRw";
+        } elseif ($hasRt) {
+            $parts[] = stripos($rt, 'RT') === 0 ? $rt : "RT $rt";
+        } elseif ($hasRw) {
+            $parts[] = stripos($rw, 'RW') === 0 ? $rw : "RW $rw";
+        }
+
+        // Desa / Kelurahan
+        if (!empty($villageName) && $villageName !== '-') {
+            $cleanV = preg_replace('/^(Desa\/Kel\.|Kel\.|Desa)\s*/i', '', trim($villageName));
+            if (!empty($cleanV)) {
+                $parts[] = "Desa/Kel. $cleanV";
+            }
+        }
+
+        // Kecamatan
+        if (!empty($subdistrictName) && $subdistrictName !== '-') {
+            $cleanS = preg_replace('/^Kec\.\s*/i', '', trim($subdistrictName));
+            if (!empty($cleanS)) {
+                $parts[] = "Kec. $cleanS";
+            }
+        }
+
+        // Kabupaten / Kota
+        if (!empty($districtName) && $districtName !== '-') {
+            $parts[] = trim($districtName);
+        }
+
+        // Provinsi
+        if (!empty($provinceName) && $provinceName !== '-') {
+            $parts[] = trim($provinceName);
+        }
+
+        return !empty($parts) ? implode(', ', $parts) : '-';
+    }
+
+    /**
      * Centralized patient access scope for all roles.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query

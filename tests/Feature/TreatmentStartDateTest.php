@@ -86,6 +86,7 @@ class TreatmentStartDateTest extends TestCase
         $today = Carbon::today()->format('Y-m-d');
 
         $response = $this->postJson('/api/patients/store', [
+            'nik'                  => '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT),
             'name'                 => 'Pasien Hari Ini',
             'phone'                => '0821' . rand(10000000, 99999999),
             'gender'               => 'L',
@@ -118,6 +119,7 @@ class TreatmentStartDateTest extends TestCase
         $pastDate = Carbon::today()->subDays(30)->format('Y-m-d');
 
         $response = $this->postJson('/api/patients/store', [
+            'nik'                  => '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT),
             'name'                 => 'Pasien 30 Hari Lalu',
             'phone'                => '0822' . rand(10000000, 99999999),
             'gender'               => 'P',
@@ -170,6 +172,7 @@ class TreatmentStartDateTest extends TestCase
         $treatmentDate = Carbon::today()->subDays(10)->format('Y-m-d');
 
         $response = $this->postJson('/api/patients/store', [
+            'nik'                  => '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT),
             'name'                 => 'Pasien Beda Tanggal',
             'phone'                => '0824' . rand(10000000, 99999999),
             'gender'               => 'P',
@@ -253,6 +256,7 @@ class TreatmentStartDateTest extends TestCase
 
         $response = $this->postJson('/api/patients/store', [
             'patient_id'           => $patient->id,
+            'nik'                  => '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT),
             'name'                 => $user->name,
             'phone'                => $user->phone,
             'gender'               => 'L',
@@ -296,6 +300,7 @@ class TreatmentStartDateTest extends TestCase
 
         $response = $this->postJson('/api/patients/store', [
             'patient_id'           => $patient->id,
+            'nik'                  => '3278' . str_pad((string) rand(100000000000, 999999999999), 12, '0', STR_PAD_LEFT),
             'name'                 => $user->name,
             'phone'                => $user->phone,
             'gender'               => 'L',

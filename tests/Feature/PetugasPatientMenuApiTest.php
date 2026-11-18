@@ -204,10 +204,18 @@ class PetugasPatientMenuApiTest extends TestCase
 
         $this->assertFalse($rows[$p4->id]['needs_reminder']);
 
+        // Check username and puskesmas_full in index response
+        $this->assertSame($u1->username, $rows[$p1->id]['username']);
+        $this->assertStringContainsString('Puskesmas Khusus Menu', $rows[$p1->id]['puskesmas_full']);
+        $this->assertStringContainsString($subdistrict->name, $rows[$p1->id]['puskesmas_full']);
+        $this->assertStringContainsString($district->name, $rows[$p1->id]['puskesmas_full']);
+
         // Also check Petugas access to /show, /history, and /screening/history
-        $this->getJson("/api/patients/{$p1->id}/show")
+        $showRes = $this->getJson("/api/patients/{$p1->id}/show")
             ->assertStatus(200)
             ->assertJsonPath('data.needs_reminder', true);
+        $this->assertSame($u1->username, $showRes->json('data.username'));
+        $this->assertStringContainsString('Puskesmas Khusus Menu', $showRes->json('data.puskesmas_full'));
 
         $this->getJson("/api/kader/patients/{$p1->id}/history")
             ->assertStatus(200)

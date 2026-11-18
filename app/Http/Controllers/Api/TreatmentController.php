@@ -11,6 +11,7 @@ use App\Models\TreatmentVisit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -33,8 +34,9 @@ class TreatmentController extends Controller
             'id'                => 'nullable|exists:patient_treatments,id',
             'patient_id'        => 'required|exists:patients,id',
             'treatment_type_id' => 'required|exists:treatment_types,id',
+            'start_date'        => 'required|date',
+            'end_date'          => 'required|date|after_or_equal:start_date',
             'diagnosis_date'    => 'nullable|date',
-            'start_date'        => 'nullable|date|after_or_equal:diagnosis_date',
             'medication_time'   => 'required|date_format:H:i',
             'prescription'      => 'nullable|array',
             'treatment_status'  => 'required|in:Berjalan,Selesai,Sembuh,Pengobatan Lengkap,Gagal,Meninggal,Putus Berobat,Tidak Dievaluasi,Pindah,perlu_tindak_lanjut,Perlu Tindak Lanjut',
@@ -44,9 +46,12 @@ class TreatmentController extends Controller
             'patient_id.exists'           => 'Pasien tidak ditemukan dalam sistem.',
             'treatment_type_id.required'  => 'Jenis pengobatan wajib dipilih.',
             'treatment_type_id.exists'    => 'Jenis pengobatan tidak valid.',
+            'start_date.required'         => 'Tanggal mulai pengobatan wajib diisi.',
+            'start_date.date'             => 'Format tanggal mulai harus berupa tanggal yang valid.',
+            'end_date.required'           => 'Tanggal selesai pengobatan wajib diisi.',
+            'end_date.date'               => 'Format tanggal selesai harus berupa tanggal yang valid.',
+            'end_date.after_or_equal'     => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai pengobatan.',
             'diagnosis_date.date'         => 'Tanggal diagnosis harus berupa tanggal yang valid.',
-            'start_date.date'             => 'Tanggal mulai harus berupa tanggal yang valid.',
-            'start_date.after_or_equal'   => 'Tanggal mulai tidak boleh sebelum tanggal diagnosis.',
             'medication_time.required'    => 'Waktu minum obat wajib diisi.',
             'medication_time.date_format' => 'Format waktu minum obat harus dalam format HH:ii (contoh: 07:00).',
             'prescription.array'          => 'Resep harus dalam format array.',
@@ -84,16 +89,24 @@ class TreatmentController extends Controller
                 return response()->json(['message' => 'Anda tidak memiliki wewenang mengubah pengobatan pasien ini.'], 403);
             }
         } else {
+            // Validasi: Tidak dapat menambah pengobatan baru jika status pasien meninggal
+            if ($patient && strtolower($patient->status ?? '') === 'meninggal') {
+                return response()->json([
+                    'message' => 'Tidak dapat menambahkan periode pengobatan untuk pasien dengan status meninggal.'
+                ], 422);
+            }
             $treatment = new PatientTreatment();
         }
 
-        // 4. Tetapkan tanggal diagnosis dan tanggal mulai
-        $diagnosisDate = $request->diagnosis_date ?? now()->toDateString();
-        $startDate     = $request->start_date ?? $diagnosisDate;
+        // 4. Tetapkan tanggal mulai dan tanggal diagnosis
+        $startDate     = $request->start_date ?? ($request->diagnosis_date ?? now()->toDateString());
+        $diagnosisDate = $request->diagnosis_date ?? $startDate;
 
-        // 5. Hitung tanggal selesai pengobatan
-        $endDate = null;
-        if (!$isUpdate || $request->hasAny(['treatment_type_id', 'start_date'])) {
+        // 5. Hitung / tetapkan tanggal selesai pengobatan (utamakan tanggal selesai input Petugas)
+        if ($request->filled('end_date')) {
+            $endDate = $request->end_date;
+        } else {
+            $endDate = null;
             $treatmentType = TreatmentType::find($request->treatment_type_id);
 
             if ($treatmentType && $treatmentType->treatment_duration && $treatmentType->duration_unit) {
@@ -101,26 +114,69 @@ class TreatmentController extends Controller
                 $unit = strtolower($treatmentType->duration_unit);
 
                 $endDate = match ($unit) {
-                    'day', 'days'     => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration),
-                    'week', 'weeks'   => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration),
-                    'month', 'months' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration),
-                    'year', 'years'   => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration),
+                    'day', 'days'     => $startDateCarbon->copy()->addDays($treatmentType->treatment_duration)->toDateString(),
+                    'week', 'weeks'   => $startDateCarbon->copy()->addWeeks($treatmentType->treatment_duration)->toDateString(),
+                    'month', 'months' => $startDateCarbon->copy()->addMonths($treatmentType->treatment_duration)->toDateString(),
+                    'year', 'years'   => $startDateCarbon->copy()->addYears($treatmentType->treatment_duration)->toDateString(),
                     default           => null,
                 };
             }
         }
 
-        // 6. Simpan data ke dalam database
-        $treatment->patient_id        = $request->patient_id;
-        $treatment->treatment_type_id = $request->treatment_type_id;
-        $treatment->diagnosis_date    = $diagnosisDate;
-        $treatment->start_date        = $startDate;
-        $treatment->end_date          = $endDate;
-        $treatment->treatment_days    = $endDate ? Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) : 0;
-        $treatment->medication_time   = $request->medication_time;
-        $treatment->prescription      = $request->prescription ? json_encode($request->prescription) : null;
-        $treatment->treatment_status  = $request->treatment_status;
-        $treatment->save();
+        // 6. Simpan data ke dalam database menggunakan Database Transaction
+        try {
+            DB::transaction(function () use ($request, $patient, $isUpdate, $treatment, $startDate, $diagnosisDate, $endDate) {
+                // Aturan Bisnis Perubahan 5:
+                // Ketika Petugas menambahkan episode pengobatan baru sementara pasien masih memiliki pengobatan
+                // sebelumnya dengan status Berjalan, sistem harus mengubah status pengobatan sebelumnya
+                // menjadi 'Perlu Tindak Lanjut'.
+                if (!$isUpdate) {
+                    PatientTreatment::where('patient_id', $patient->id)
+                        ->where(function ($q) {
+                            $q->where('treatment_status', 'Berjalan')
+                              ->orWhere('treatment_status', 'berjalan');
+                        })
+                        ->update([
+                            'treatment_status' => 'Perlu Tindak Lanjut',
+                        ]);
+                }
+
+                $treatment->patient_id        = $request->patient_id;
+                $treatment->treatment_type_id = $request->treatment_type_id;
+                $treatment->diagnosis_date    = $diagnosisDate;
+                $treatment->start_date        = $startDate;
+                $treatment->end_date          = $endDate;
+                $treatment->treatment_days    = ($startDate && $endDate) ? Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) : 0;
+                $treatment->medication_time   = $request->medication_time;
+                $treatment->prescription      = $request->prescription ? json_encode($request->prescription) : null;
+                $treatment->treatment_status  = $request->treatment_status;
+                $treatment->save();
+
+                // 7. Sinkronisasi tanggal mulai pengobatan aktif pada model Patient jika berstatus Berjalan
+                if ($treatment->treatment_status === 'Berjalan' && $patient) {
+                    // Jika proses update dan statusnya Berjalan, pastikan episode Berjalan lainnya untuk pasien ini
+                    // diubah juga menjadi 'Perlu Tindak Lanjut' agar tidak ada episode Berjalan yang bertentangan
+                    if ($isUpdate) {
+                        PatientTreatment::where('patient_id', $patient->id)
+                            ->where('id', '!=', $treatment->id)
+                            ->where(function ($q) {
+                                $q->where('treatment_status', 'Berjalan')
+                                  ->orWhere('treatment_status', 'berjalan');
+                            })
+                            ->update([
+                                'treatment_status' => 'Perlu Tindak Lanjut',
+                            ]);
+                    }
+
+                    $patient->treatment_start_date = $startDate;
+                    $patient->save();
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal menyimpan data pengobatan: ' . $e->getMessage()
+            ], 500);
+        }
 
         return response()->json([
             'message' => $isUpdate
@@ -179,10 +235,51 @@ class TreatmentController extends Controller
             ], 403);
         }
 
-        $treatment->delete();
+        // Validasi: Jika pasien hanya memiliki satu periode pengobatan, tolak penghapusan
+        $patientTreatmentCount = PatientTreatment::where('patient_id', $treatment->patient_id)->count();
+        if ($patientTreatmentCount <= 1) {
+            return response()->json([
+                'message' => 'Periode pengobatan terakhir pasien tidak dapat dihapus. Pasien harus memiliki minimal satu periode pengobatan.'
+            ], 422);
+        }
+
+        // Validasi: Hanya periode pengobatan terbaru yang boleh dihapus
+        $latestId = PatientTreatment::where('patient_id', $treatment->patient_id)->max('id');
+        if ($treatment->id != $latestId) {
+            return response()->json([
+                'message' => 'Hanya periode pengobatan terbaru yang dapat dihapus.'
+            ], 422);
+        }
+
+        // Safety check: jika periode pengobatan sudah memiliki riwayat minum obat, tolak penghapusan untuk integritas data monitoring
+        if ($treatment->medicationRecords()->exists()) {
+            return response()->json([
+                'message' => 'Tidak dapat menghapus periode pengobatan yang sudah memiliki riwayat minum obat.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($treatment) {
+            $patientId = $treatment->patient_id;
+            // Bersihkan relasi visits sebelum menghapus record treatment
+            $treatment->visits()->delete();
+            $treatment->delete();
+
+            // Sinkronkan data pengobatan aktif pasien setelah penghapusan periode terbaru
+            $remainingLatest = PatientTreatment::where('patient_id', $patientId)
+                ->orderBy('start_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($remainingLatest) {
+                $patient = Patient::find($patientId);
+                if ($patient) {
+                    $patient->treatment_start_date = $remainingLatest->start_date;
+                    $patient->save();
+                }
+            }
+        });
 
         return response()->json([
-            'message' => 'Data pengobatan berhasil dihapus.'
+            'message' => 'Periode pengobatan berhasil dihapus.'
         ], 200);
     }
 
@@ -230,8 +327,32 @@ class TreatmentController extends Controller
             ], 403);
         }
 
-        $treatment->treatment_status = $request->treatment_status;
-        $treatment->save();
+        try {
+            DB::transaction(function () use ($treatment, $request) {
+                $treatment->treatment_status = $request->treatment_status;
+                $treatment->save();
+
+                if ($treatment->treatment_status === 'Berjalan' && $treatment->patient) {
+                    // Pastikan tidak ada episode Berjalan lainnya yang bertentangan
+                    PatientTreatment::where('patient_id', $treatment->patient_id)
+                        ->where('id', '!=', $treatment->id)
+                        ->where(function ($q) {
+                            $q->where('treatment_status', 'Berjalan')
+                              ->orWhere('treatment_status', 'berjalan');
+                        })
+                        ->update([
+                            'treatment_status' => 'Perlu Tindak Lanjut',
+                        ]);
+
+                    $treatment->patient->treatment_start_date = $treatment->start_date;
+                    $treatment->patient->save();
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal memperbarui status pengobatan: ' . $e->getMessage()
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'Status pengobatan berhasil diperbarui.',

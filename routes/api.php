@@ -186,6 +186,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Data Pasien TB
     Route::prefix('patients')->group(function () {
+        Route::get('/generate-username', [PatientController::class, 'generateUsername']);
         Route::get('/home', [PatientController::class, 'home']);
         Route::get('/{id}/home', [PatientController::class, 'home']);
         Route::match(['get', 'post'], '/', [PatientController::class, 'index']);           // Pencarian atau daftar pasien
