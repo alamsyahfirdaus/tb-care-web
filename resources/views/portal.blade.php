@@ -33,6 +33,11 @@
                     <a href="https://wa.me/62893829624" target="_blank" rel="noopener noreferrer">Hubungi
                         admin melalui WhatsApp</a>
                 </div>
+                <div class="text-center mt-3 pt-2 border-top" style="font-size: 13px;">
+                    <a href="{{ route('privacy-policy') }}" class="text-muted">
+                        <i class="fas fa-shield-alt mr-1"></i> Kebijakan Privasi
+                    </a>
+                </div>
             </div>
         </div>
     </div>

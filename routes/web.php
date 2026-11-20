@@ -44,6 +44,9 @@ Route::get('/image/{filename}', function ($filename) {
 // Portal Beranda Publik
 Route::get('/', [HomeController::class, 'portal'])->name('portal')->middleware('guest');
 
+// Halaman Kebijakan Privasi (Privacy Policy) Publik
+Route::get('/privacy-policy', [HomeController::class, 'privacyPolicy'])->name('privacy-policy');
+
 /*
 |--------------------------------------------------------------------------
 | 2. Route Autentikasi

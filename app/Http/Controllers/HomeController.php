@@ -15,4 +15,9 @@ class HomeController extends Controller
     {
         return view('portal');
     }
+
+    public function privacyPolicy()
+    {
+        return view('privacy-policy');
+    }
 }
