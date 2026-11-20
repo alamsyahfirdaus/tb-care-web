@@ -178,7 +178,7 @@ class BulkReminderController extends Controller
         foreach ($fcmTokensToNotify as $item) {
             try {
                 $title = "Pengingat Minum Obat dari {$user->name}";
-                $body = $messageText;
+                $body = 'Anda menerima pengingat minum obat dari petugas.';
                 $data = [
                     'type'            => 'chat',
                     'conversation_id' => (string) $item['conversation_id'],

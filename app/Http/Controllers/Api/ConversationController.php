@@ -641,12 +641,10 @@ class ConversationController extends Controller
         try {
             if ($message->message_type === 'image') {
                 $title = "Pesan gambar dari {$sender->name}";
-                $body = !empty(trim($message->message ?? ''))
-                    ? trim($message->message)
-                    : 'Anda menerima sebuah gambar.';
+                $body = 'Anda menerima sebuah gambar.';
             } else {
                 $title = "Pesan baru dari {$sender->name}";
-                $body = $message->message ?? 'Anda menerima pesan baru.';
+                $body = 'Anda menerima pesan baru.';
             }
 
             $data = [

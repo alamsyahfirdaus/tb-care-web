@@ -538,9 +538,11 @@ class KaderController extends Controller
 
         $patientUser = $patient->user;
         $title = ($request->type === 'visit')
-            ? 'Pengingat Jadwal Kontrol TB'
-            : 'Pengingat Minum Obat TB';
-        $body = trim($request->message);
+            ? 'Pengingat Jadwal Kontrol'
+            : 'Pengingat Minum Obat';
+        $body = ($request->type === 'visit')
+            ? 'Silakan periksa jadwal kontrol faskes Anda di aplikasi TB Care.'
+            : 'Waktunya meminum obat sesuai anjuran petugas kesehatan.';
 
         $status = 'no_token';
         $errorReason = null;

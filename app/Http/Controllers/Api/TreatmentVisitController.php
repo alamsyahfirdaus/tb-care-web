@@ -101,6 +101,30 @@ class TreatmentVisitController extends Controller
 
         $visit->save();
 
+        // Kirim Push Notification via FCM ke pasien terkait (best-effort)
+        try {
+            $patientUser = optional($treatment->patient)->user;
+            if ($patientUser && !empty($patientUser->fcm_token)) {
+                $isUpdate = $request->filled('id');
+                $visitDateFormatted = \Carbon\Carbon::parse($visit->visit_date)->locale('id')->isoFormat('D MMMM Y');
+                $title = $isUpdate ? 'Pembaruan Jadwal Kontrol' : 'Jadwal Kontrol Baru';
+                $body  = $isUpdate
+                    ? "Jadwal kontrol faskes Anda telah diperbarui menjadi tanggal {$visitDateFormatted}."
+                    : "Petugas telah menjadwalkan kontrol faskes untuk Anda pada tanggal {$visitDateFormatted}.";
+                $fcmPayload = [
+                    'type'              => 'visit_schedule',
+                    'notification_type' => 'visit_schedule',
+                    'visit_id'          => (string) $visit->id,
+                    'patient_id'        => (string) $treatment->patient_id,
+                    'click_action'      => 'FLUTTER_NOTIFICATION_CLICK',
+                ];
+
+                \App\Services\FcmService::sendNotification([$patientUser->fcm_token], $title, $body, $fcmPayload);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('FCM visit schedule dispatch failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => $request->filled('id')
                 ? 'Data jadwal kontrol berhasil diperbarui.'
@@ -174,6 +198,27 @@ class TreatmentVisitController extends Controller
             $visit->notes = $existingNotes . 'Dibatalkan: ' . $request->input('notes');
         }
         $visit->save();
+
+        // Kirim Push Notification via FCM ke pasien terkait (best-effort)
+        try {
+            $patientUser = optional(optional($visit->patientTreatment)->patient)->user;
+            if ($patientUser && !empty($patientUser->fcm_token)) {
+                $visitDateFormatted = \Carbon\Carbon::parse($visit->visit_date)->locale('id')->isoFormat('D MMMM Y');
+                $title = 'Jadwal Kontrol Dibatalkan';
+                $body  = "Jadwal kontrol faskes Anda pada tanggal {$visitDateFormatted} telah dibatalkan.";
+                $fcmPayload = [
+                    'type'              => 'visit_schedule',
+                    'notification_type' => 'visit_schedule',
+                    'visit_id'          => (string) $visit->id,
+                    'patient_id'        => (string) optional($visit->patientTreatment)->patient_id,
+                    'click_action'      => 'FLUTTER_NOTIFICATION_CLICK',
+                ];
+
+                \App\Services\FcmService::sendNotification([$patientUser->fcm_token], $title, $body, $fcmPayload);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('FCM visit cancellation dispatch failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Jadwal kontrol berhasil dibatalkan.',
