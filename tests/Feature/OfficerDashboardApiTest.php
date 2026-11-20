@@ -127,7 +127,7 @@ class OfficerDashboardApiTest extends TestCase
 
         $data = $response->json('data');
         $this->assertEquals('village', $data['regional_statistics']['level']);
-        $this->assertEquals('Jumlah Pasien Berdasarkan Desa/Kelurahan', $data['regional_statistics']['title']);
+        $this->assertEquals('Jumlah Pasien Berdasarkan Wilayah', $data['regional_statistics']['title']);
         $this->assertEquals(2, $data['total_patients']);
         $this->assertEquals(1, $data['active_treatments']);
         $this->assertEquals(1, $data['follow_up_count']);
@@ -170,7 +170,7 @@ class OfficerDashboardApiTest extends TestCase
 
         $data = $response->json('data');
         $this->assertEquals('subdistrict', $data['regional_statistics']['level']);
-        $this->assertEquals('Jumlah Pasien Berdasarkan Kecamatan', $data['regional_statistics']['title']);
+        $this->assertEquals('Jumlah Pasien Berdasarkan Wilayah', $data['regional_statistics']['title']);
     }
 
     public function test_dinkes_provinsi_sees_district_level_distribution()
@@ -200,6 +200,6 @@ class OfficerDashboardApiTest extends TestCase
 
         $data = $response->json('data');
         $this->assertEquals('district', $data['regional_statistics']['level']);
-        $this->assertEquals('Jumlah Pasien Berdasarkan Kabupaten/Kota', $data['regional_statistics']['title']);
+        $this->assertEquals('Jumlah Pasien Berdasarkan Wilayah', $data['regional_statistics']['title']);
     }
 }

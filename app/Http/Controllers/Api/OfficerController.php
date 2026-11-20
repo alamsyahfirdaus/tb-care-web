@@ -132,7 +132,7 @@ class OfficerController extends Controller
                     'treatment_type'         => $tTypeName,
                     'treatment_status'       => 'Perlu Tindak Lanjut',
                     'treatment_status_label' => 'Perlu Tindak Lanjut',
-                    'reason'                 => 'Periode pengobatan berakhir, memerlukan evaluasi akhir',
+                    'reason'                 => 'Periode pengobatan berakhir',
                     'start_date'             => $tr?->start_date ? substr($tr->start_date, 0, 10) : null,
                     'end_date'               => $tr?->end_date ? substr($tr->end_date, 0, 10) : null,
                 ];
@@ -201,7 +201,7 @@ class OfficerController extends Controller
             return [
                 'level'       => 'village',
                 'level_label' => 'Desa/Kelurahan',
-                'title'       => 'Jumlah Pasien Berdasarkan Desa/Kelurahan',
+                'title'       => 'Jumlah Pasien Berdasarkan Wilayah',
                 'data'        => $raw,
             ];
         }
@@ -228,7 +228,7 @@ class OfficerController extends Controller
             return [
                 'level'       => 'subdistrict',
                 'level_label' => 'Kecamatan',
-                'title'       => 'Jumlah Pasien Berdasarkan Kecamatan',
+                'title'       => 'Jumlah Pasien Berdasarkan Wilayah',
                 'data'        => $raw,
             ];
         }
@@ -264,7 +264,7 @@ class OfficerController extends Controller
             return [
                 'level'       => 'district',
                 'level_label' => 'Kabupaten/Kota',
-                'title'       => 'Jumlah Pasien Berdasarkan Kabupaten/Kota',
+                'title'       => 'Jumlah Pasien Berdasarkan Wilayah',
                 'data'        => $raw,
             ];
         }
@@ -285,7 +285,7 @@ class OfficerController extends Controller
         return [
             'level'       => 'district',
             'level_label' => 'Kabupaten/Kota',
-            'title'       => 'Jumlah Pasien Berdasarkan Kabupaten/Kota',
+            'title'       => 'Jumlah Pasien Berdasarkan Wilayah',
             'data'        => $districtCounts,
         ];
     }

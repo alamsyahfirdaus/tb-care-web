@@ -27,7 +27,7 @@ class TreatmentVisitController extends Controller
             'id'                   => 'nullable|exists:treatment_visits,id',
             'patient_treatment_id' => 'required|exists:patient_treatments,id',
             'visit_date'           => $request->filled('id') ? 'required|date' : 'required|date|after_or_equal:today',
-            'visit_time'           => 'nullable|date_format:H:i',
+            'visit_time'           => 'required|date_format:H:i',
             'visit_status'         => 'nullable|in:Terjadwal,Selesai,Hadir,Tidak Hadir,Dibatalkan',
             'notes'                => 'nullable|string',
         ], [
@@ -37,7 +37,8 @@ class TreatmentVisitController extends Controller
             'visit_date.required'           => 'Tanggal kontrol wajib diisi.',
             'visit_date.after_or_equal'     => 'Tanggal kontrol tidak boleh sebelum hari ini.',
             'visit_date.date'               => 'Tanggal kontrol harus berupa format tanggal yang valid.',
-            'visit_time.date_format'        => 'Format waktu kontrol harus dalam format HH:ii (contoh: 08:30).',
+            'visit_time.required'           => 'Waktu kontrol wajib diisi.',
+            'visit_time.date_format'        => 'Format waktu kontrol harus dalam format HH:mm (contoh: 08:30).',
             'visit_status.in'               => 'Status jadwal kontrol harus salah satu dari: Terjadwal, Selesai, Hadir, Tidak Hadir, atau Dibatalkan.',
             'notes.string'                  => 'Catatan harus berupa teks.',
         ]);
@@ -88,7 +89,15 @@ class TreatmentVisitController extends Controller
         $visit->visit_date           = $request->visit_date;
         $visit->visit_time           = $request->visit_time;
         $visit->visit_status         = $request->visit_status ?? 'Terjadwal';
-        $visit->notes                = $request->notes;
+
+        // Pertahankan catatan lama jika sedang update dan notes tidak dikirim atau null
+        if ($request->filled('id')) {
+            if ($request->has('notes') && $request->notes !== null) {
+                $visit->notes = $request->notes;
+            }
+        } else {
+            $visit->notes = $request->notes;
+        }
 
         $visit->save();
 
