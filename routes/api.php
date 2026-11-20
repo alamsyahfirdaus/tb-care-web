@@ -92,8 +92,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/fcm-token', [ProfileController::class, 'updateFcmToken']); // Update token FCM
     });
 
-    // Wilayah Binaan Kader
-    Route::get('/officer/kader-areas', [OfficerController::class, 'getKaderAreas']);
+    // Modul & Dashboard Role Petugas (PJTB dan seluruh jabatan di atasnya)
+    Route::prefix('officer')->group(function () {
+        Route::get('/dashboard', [OfficerController::class, 'dashboard']);
+        Route::get('/dashboard/region-patients', [OfficerController::class, 'regionPatients']);
+        Route::get('/kader-areas', [OfficerController::class, 'getKaderAreas']);
+    });
 
     // Pengobatan Pasien
     Route::prefix('treatments')->group(function () {

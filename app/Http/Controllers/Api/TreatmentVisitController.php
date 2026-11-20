@@ -26,7 +26,7 @@ class TreatmentVisitController extends Controller
         $validator = Validator::make($request->all(), [
             'id'                   => 'nullable|exists:treatment_visits,id',
             'patient_treatment_id' => 'required|exists:patient_treatments,id',
-            'visit_date'           => 'required|date|after_or_equal:today',
+            'visit_date'           => $request->filled('id') ? 'required|date' : 'required|date|after_or_equal:today',
             'visit_time'           => 'nullable|date_format:H:i',
             'visit_status'         => 'nullable|in:Terjadwal,Selesai,Hadir,Tidak Hadir,Dibatalkan',
             'notes'                => 'nullable|string',

@@ -72,7 +72,7 @@ class AuthController extends Controller
             $user->patient = $patient;
         } elseif ($user->user_type_id == 3) {
             // Jika user adalah petugas, load officer beserta relasi wilayah
-            $officer = Officer::with(['puskesmas', 'district.province', 'kaderAreas.village', 'kaderAreas.subdistrict'])->where('user_id', $user->id)->first();
+            $officer = Officer::with(['puskesmas.subdistrict.district.province', 'district.province', 'kaderAreas.village', 'kaderAreas.subdistrict'])->where('user_id', $user->id)->first();
             if ($officer) {
                 $officer->append(['officer_type_name', 'scope_description']);
             }

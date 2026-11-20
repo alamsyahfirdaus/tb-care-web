@@ -51,7 +51,7 @@ class VillageSearchApiTest extends TestCase
         $this->assertEquals('Kawalu', $talagasari['subdistrict']['name']);
         $this->assertEquals('Kota Tasikmalaya', $talagasari['district']['name']);
         $this->assertEquals('Jawa Barat', $talagasari['province']['name']);
-        $this->assertEquals('Kawalu • Kota Tasikmalaya', $talagasari['parent_display']);
+        $this->assertEquals('Kawalu - Kota Tasikmalaya', $talagasari['parent_display']);
     }
 
     /**

@@ -63,6 +63,17 @@ class ProfileController extends Controller
             $userData['scope_description'] = $user->officer->scope_description;
             $userData['puskesmas_id'] = $user->officer->puskesmas_id;
             $userData['puskesmas_name'] = optional($user->officer->puskesmas)->name;
+
+            $officerPuskesmas = $user->officer->puskesmas;
+            if ($officerPuskesmas) {
+                $pSubName = optional($officerPuskesmas->subdistrict)->name;
+                $pDistName = optional(optional($officerPuskesmas->subdistrict)->district)->name;
+                $userData['puskesmas_subdistrict_name'] = $pSubName;
+                $userData['puskesmas_district_name'] = $pDistName;
+                $userData['puskesmas_location'] = ($pSubName && $pDistName) ? "$pSubName - $pDistName" : ($pSubName ?: $pDistName);
+                $userData['puskesmas_full'] = implode(', ', array_filter([$officerPuskesmas->name, $pSubName, $pDistName]));
+            }
+
             $isKader = method_exists($user->officer, 'isKader') ? $user->officer->isKader() : ((int)$user->officer->officer_type_id === 4);
             $userData['is_kader'] = $isKader;
 
